@@ -1,0 +1,4 @@
+/out
+go.sum
+*.log
+cover.*

@@ -1,0 +1,26 @@
+image: gta-devel
+
+stages:
+  - build
+  - test
+
+compile:
+  stage: build
+  tags:
+    - go
+    - tss2
+  script:
+    - go build ./...
+
+
+test:
+  stage: test
+  tags:
+    - go
+  script:
+    - go test ./... -coverpkg=./... -coverprofile cover.out
+    - go tool cover -func cover.out
+    - go tool cover -html=cover.out -o cover.html
+  artifacts:
+    paths:
+      - "cover.html"
