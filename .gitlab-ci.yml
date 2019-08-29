@@ -22,8 +22,7 @@ build_image:
   stage: init
   script:
 #    - docker image inspect gta-devel || if [ $? -eq 0 ]; then "gta-devel image is present"; fi
-    - cd cicd
-    - docker build --tag=gta-devel --build-arg http_proxy=http://proxy-us.intel.com:911 --build-arg https_proxy=http://proxy-us.intel.com:911
+    - docker build --tag=gta-devel --build-arg http_proxy=http://proxy-us.intel.com:911 --build-arg https_proxy=http://proxy-us.intel.com:911 cicd
     
 compile:
   stage: build
