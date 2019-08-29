@@ -30,7 +30,7 @@ test:
   tags:
     - gta
   dependencies:
-    - build
+    - build:gta
   script:
     - go test ./... -coverpkg=./... -coverprofile cover.out
     - go tool cover -func cover.out
