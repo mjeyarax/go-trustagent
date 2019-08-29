@@ -11,3 +11,4 @@ all: gta
 clean:
 	rm -f cover.*
 	rm -rf out/
+	rm -rf builds/

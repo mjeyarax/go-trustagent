@@ -1,6 +1,9 @@
+# https://docs.gitlab.com/ee/ci/docker/using_docker_build.html
+
 image: gta-devel
 
 before_script:
+  - docker info
   - git config --global http.proxy http://proxy-us.intel.com:911
   - git config --global https.proxy http://proxy-us.intel.com:911
   - git config --global url."ssh://git@gitlab.devtools.intel.com:29418".insteadOf https://gitlab.devtools.intel.com
@@ -11,9 +14,17 @@ variables:
   no_proxy: ".intel.com"
 
 stages:
+  - build_image
   - build
   - test
 
+build_image:
+  stage: init
+  script:
+#    - docker image inspect gta-devel || if [ $? -eq 0 ]; then "gta-devel image is present"; fi
+    - cd cicd
+    - docker build --tag=gta-devel --build-arg http_proxy=http://proxy-us.intel.com:911 --build-arg https_proxy=http://proxy-us.intel.com:911
+    
 compile:
   stage: build
   tags:
