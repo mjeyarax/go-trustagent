@@ -14,29 +14,29 @@ variables:
   no_proxy: ".intel.com"
 
 stages:
-  - build_image
   - build
   - test
 
-build_image:
-  stage: init
+build:docker_image:
+  stage: build
   script:
-#    - docker image inspect gta-devel || if [ $? -eq 0 ]; then "gta-devel image is present"; fi
-    - docker build --tag=gta-devel --build-arg http_proxy=http://proxy-us.intel.com:911 --build-arg https_proxy=http://proxy-us.intel.com:911 cicd
-    
-compile:
+    - docker image inspect gta-devel || if [ $? -eq 0 ]; then echo "The gta-devel image is present and will not be created"; else docker build --tag=gta-devel --build-arg http_proxy=http://proxy-us.intel.com:911 --build-arg https_proxy=http://proxy-us.intel.com:911 cicd; fi
+
+build:gta:
   stage: build
   tags:
-    - go
-    - tss2
+    - gta
+  dependencies:
+    - build:docker_image
   script:
     - go build ./...
-
 
 test:
   stage: test
   tags:
     - go
+  dependencies:
+    - build:gta
   script:
     - go test ./... -coverpkg=./... -coverprofile cover.out
     - go tool cover -func cover.out
