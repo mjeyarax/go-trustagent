@@ -1,16 +1,16 @@
-# https://docs.gitlab.com/ee/ci/docker/using_docker_build.html
+# Requires:
+#  - 'gta-devel' docker image installed on local host (see commnents in /cicd/Dockerfile)
+#  - gitlab-runner installed
+# Local run: gitlab-runner exec docker -docker-pull-policy never build:gta
 
 before_script:
-#  - docker info
-#  - docker build --tag=gta-devel --build-arg http_proxy=http://proxy-us.intel.com:911 --build-arg https_proxy=http://proxy-us.intel.com:911 cicd
   - git config --global http.proxy http://proxy-us.intel.com:911
   - git config --global https.proxy http://proxy-us.intel.com:911
   - git config --global url."ssh://git@gitlab.devtools.intel.com:29418".insteadOf https://gitlab.devtools.intel.com
-
-variables:
-  http_proxy: http://proxy-us.intel.com:911
-  https_proxy: http://proxy-us.intel.com:911
-  no_proxy: ".intel.com"
+  - export http_proxy=http://proxy-us.intel.com:911
+  - export https_proxy=http://proxy-us.intel.com:911
+  - export no_proxy=127.0.0.1,localhost
+  - cd $CI_PROJECT_DIR
 
 stages:
   - build
@@ -22,7 +22,12 @@ build:gta:
   tags:
     - gta
   script:
-    - go build ./...
+    - make installer
+  artifacts:
+    paths:
+      - "out/tagent-*.bin"
+      - "out/tagent"
+    expire_in: 1 week
 
 test:
   stage: test
