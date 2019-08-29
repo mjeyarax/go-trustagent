@@ -1,10 +1,7 @@
 # https://docs.gitlab.com/ee/ci/docker/using_docker_build.html
 
-image: gta-devel
-
 before_script:
   - docker info
-#  - docker image inspect gta-devel || if [ $? -eq 0 ]; then echo "The gta-devel image is present and will not be created"; else docker build --tag=gta-devel --build-arg http_proxy=http://proxy-us.intel.com:911 --build-arg https_proxy=http://proxy-us.intel.com:911 cicd; fi
   - docker build --tag=gta-devel --build-arg http_proxy=http://proxy-us.intel.com:911 --build-arg https_proxy=http://proxy-us.intel.com:911 cicd
   - git config --global http.proxy http://proxy-us.intel.com:911
   - git config --global https.proxy http://proxy-us.intel.com:911
@@ -21,6 +18,7 @@ stages:
 
 build:gta:
   stage: build
+  image: gta-devel
   tags:
     - gta
   script:
@@ -28,6 +26,7 @@ build:gta:
 
 test:
   stage: test
+  image: gta-devel
   tags:
     - gta
   dependencies:
