@@ -3,6 +3,9 @@
 # -> docker build --tag=gta-devel .
 #--------------------------------------------------------------------------------------------------
 # Proxy stuff...
+#  docker build --tag=gta-devel --build-arg http_proxy=http://proxy-us.intel.com:911 --build-arg https_proxy=http://proxy-us.intel.com:911 .
+# 
+# SSH...?
 #  docker build --tag=gta-devel --build-arg http_proxy=http://proxy-us.intel.com:911 --build-arg https_proxy=http://proxy-us.intel.com:911 --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)" --build-arg ssh_pub_key="$(cat ~/.ssh/id_rsa.pub)" .
 #
 #  git config --global http.proxy http://proxy-us.intel.com:911
@@ -11,7 +14,6 @@
 #  export http_proxy=http://proxy-us.intel.com:911
 #  export https_proxy=http://proxy-us.intel.com:911
 #  export no_proxy=127.0.0.1,localhost
-# 
 #
 # Create an instance that can be used to build...
 #   docker run -it -v $(pwd):/docker_host gta-devel /bin/bash
