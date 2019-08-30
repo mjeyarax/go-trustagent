@@ -1,17 +1,11 @@
-# Requires:
-#  - 'gta-devel' docker image installed on local host (see commnents in /cicd/Dockerfile)
-#  - gitlab-runner installed
-# Local run: gitlab-runner exec docker -docker-pull-policy never build:gta
+#--------------------------------------------------------------------------------------------------
+# See 'Readme.md' for information
+#--------------------------------------------------------------------------------------------------
 
 before_script:
   - git config --global http.proxy http://proxy-us.intel.com:911
   - git config --global https.proxy http://proxy-us.intel.com:911
-  #- git config --global url."ssh://git@gitlab.devtools.intel.com:29418".insteadOf https://gitlab.devtools.intel.com
   - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.devtools.intel.com".insteadOf "https://gitlab.devtools.intel.com"
-
-  #- echo "[http \"https://gitlab.devtools.intel.com\"]" >> ~/.gitconfig
-  #- echo "        proxy = \"\"" >> ~/.gitconfig
-
   - export http_proxy=http://proxy-us.intel.com:911
   - export https_proxy=http://proxy-us.intel.com:911
   - export no_proxy=127.0.0.1,localhost,gitlab.devtools.intel.com
@@ -31,7 +25,7 @@ build:gta:
     - make installer
   artifacts:
     paths:
-      - "out/tagent-*.bin"
+      - "out/trustagent-*.bin"
       - "out/tagent"
     expire_in: 1 week
 
