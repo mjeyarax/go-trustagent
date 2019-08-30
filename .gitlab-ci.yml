@@ -9,14 +9,14 @@ before_script:
   - git config --global url."ssh://git@gitlab.devtools.intel.com:29418".insteadOf https://gitlab.devtools.intel.com
   - export http_proxy=http://proxy-us.intel.com:911
   - export https_proxy=http://proxy-us.intel.com:911
-  - export no_proxy=127.0.0.1,localhost
+  - export no_proxy=127.0.0.1,localhost,gitlab.devtools.intel.com
   - cd $CI_PROJECT_DIR
 
 stages:
   - build
   - test
 
-  
+
 build:gta:
   stage: build
   image: gta-devel
