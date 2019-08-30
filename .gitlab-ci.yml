@@ -16,6 +16,7 @@ stages:
   - build
   - test
 
+  
 build:gta:
   stage: build
   image: gta-devel
