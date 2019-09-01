@@ -18,7 +18,11 @@ Building, debuging and ci/cd use the 'gta-devel' image defined in cicd/Dockerfil
     3. `docker image ls` should show 'gta-devel'
 2. Start a new instance of the container, mounting the code as `/docker_host` directory in the container
     1. `docker run -it -v $(pwd):/docker_host gta-devel /bin/bash`
-    2. CONFIGURE GIT INSTRUCTIONS HERE
+    2. Configure git to access gitlab to resolve dependencies on other ISecL go libraries.
+        1. `git config --global http.proxy http://proxy-us.intel.com:911`
+        2. `git config --global https.proxy http://proxy-us.intel.com:911`
+        3. `git config --global url."ssh://git@gitlab.devtools.intel.com:29418".insteadOf https://gitlab.devtools.intel.com`
+        4. Create ssh keys in ~/.ssh (id_rsa and id_rsa.pub)
     3. `cd /docker_host`
     3. `make installer`
     4. tagent and trustagent*.bin will be in the `/out` subdirectory

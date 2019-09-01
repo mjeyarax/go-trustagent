@@ -8,7 +8,7 @@ gta:
 
 installer: gta
 	mkdir -p out/installer
-	cp dist/linux/trustagent.service out/installer/trustagent.service
+	cp dist/linux/tagent.service out/installer/tagent.service
 	cp dist/linux/install.sh out/installer/install.sh && chmod +x out/installer/install.sh
 	cp out/tagent out/installer/tagent
 	makeself out/installer out/trustagent-$(VERSION).bin "TrustAgent $(VERSION)" ./install.sh
