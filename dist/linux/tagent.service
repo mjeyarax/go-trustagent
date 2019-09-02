@@ -3,15 +3,14 @@ Description=TrustAgent Service
 
 [Service]
 Type=simple
-User=ta
-Group=ta
-ExecStart=/opt/trustagent/bin/tagent run
+User=tagent
+Group=tagent
+WorkingDirectory=/opt/trustagent/bin
+ExecStart=/opt/trustagent/bin/tagent start
 ExecReload=/bin/kill -s HUP $MAINPID
 TimeoutStartSec=15
 Restart=on-failure
 PermissionsStartOnly=true
-#RuntimeDirectory=cms
-#RuntimeDirectoryMode=0775
 
 [Install]
 WantedBy=multi-user.target

@@ -17,7 +17,8 @@
  }
  
  func setupLogging() {
-	 logFile, err := os.OpenFile("trustagent.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0664)
+	 // TODO: move path to constants
+	 logFile, err := os.OpenFile("/opt/trustagent/logs/trustagent.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0664)
 	 if err != nil {
 		 panic(err)
 	 }
@@ -40,7 +41,7 @@
 		 // TODO:  create moduleLog.xml, platform-info, etc.
  
 		 // create and start webservice
-		 service, err := resource.CreateTrustAgentService(8450)
+		 service, err := resource.CreateTrustAgentService(8446) // TODO config.port
 		 if err != nil {
 			 panic(err)
 		 }

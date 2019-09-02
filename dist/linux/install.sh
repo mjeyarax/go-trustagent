@@ -1,3 +1,6 @@
+#--------------------------------------------------------------------------------------------------
+#
+#--------------------------------------------------------------------------------------------------
 #!/bin/bash
 
 DEFAULT_TRUSTAGENT_HOME=/opt/trustagent
@@ -11,9 +14,10 @@ export TRUSTAGENT_LOGIN_REGISTER=${TRUSTAGENT_LOGIN_REGISTER:-true}
 export TRUSTAGENT_HOME=${TRUSTAGENT_HOME:-$DEFAULT_TRUSTAGENT_HOME}
 
 TRUSTAGENT_EXE=tagent
+TRUSTAGENT_ENV_FILE=trustagent.env
 TRUSTAGENT_SERVICE=tagent.service
 TRUSTAGENT_BIN_DIR=$TRUSTAGENT_HOME/bin
-TRUSTAGENT_LOG_DIR=$TRUSTAGENT_HOME/log
+TRUSTAGENT_LOG_DIR=$TRUSTAGENT_HOME/logs
 TRUSTAGENT_CFG_DIR=$TRUSTAGENT_HOME/config
 
 if [[ $EUID -ne 0 ]]; then 
@@ -21,55 +25,110 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-# READ .env file
-echo PWD IS $(pwd)
-if [ -f ~/trustagent.env ]; then
-    echo Reading Installation options from `realpath ~/trustagent.env`
-    env_file=~/trustagent.env
-elif [ -f trustagent.env ]; then
-    echo Reading Installation options from `realpath trustagent.env`
-    env_file=trustagent.env
+echo "Installer started from " $USER_PWD
+
+if [ -f $USER_PWD/$TRUSTAGENT_ENV_FILE ]; then
+    env_file=$USER_PWD/$TRUSTAGENT_ENV_FILE
+elif [ -f ~/$TRUSTAGENT_ENV_FILE ]; then
+    env_file=~/$TRUSTAGENT_ENV_FILE
 fi
 
-if [ -n $env_file ]; then
-    . $env_file
-    env_file_exports=$(cat $env_file | grep -E '^[A-Z0-9_]+\s*=' | cut -d = -f 1)
-    if [ -n "$env_file_exports" ]; then eval export $env_file_exports; fi
-else
+if [ -z "$env_file" ]; then
     echo No .env file found
     PROVISION_ATTESTATION="false"
+else
+    echo "Using env file " $env_file
+    source $env_file
+    env_file_exports=$(cat $env_file | grep -E '^[A-Z0-9_]+\s*=' | cut -d = -f 1)
+    if [ -n "$env_file_exports" ]; then eval export $env_file_exports; fi
 fi
 
 echo "Starting trustagent installation..."
 
-echo "Setting up TrustAgent user..."
-id -u tagent 2> /dev/null || useradd tagent
+#echo "Setting up TrustAgent user..."
+#id -u tagent 2> /dev/null || useradd tagent
+#if [ "$(whoami)" == "root" ]; then
+
+# SCRIPT ASSUMES ROOT...
+  # create a trustagent user if there isn't already one created
+  TRUSTAGENT_USERNAME=${TRUSTAGENT_USERNAME:-$DEFAULT_TRUSTAGENT_USERNAME}
+  if ! getent passwd $TRUSTAGENT_USERNAME 2>&1 >/dev/null; then
+    useradd --comment "Trust Agent User" --home $TRUSTAGENT_HOME --system --shell /bin/false $TRUSTAGENT_USERNAME
+    usermod --lock $TRUSTAGENT_USERNAME
+    # note: to assign a shell and allow login you can run "usermod --shell /bin/bash --unlock $TRUSTAGENT_USERNAME"
+  fi
+#else
+  # already running as trustagent user
+#  TRUSTAGENT_USERNAME=$(whoami)
+#  if [ ! -w "$TRUSTAGENT_HOME" ] && [ ! -w $(dirname $TRUSTAGENT_HOME) ]; then
+#    TRUSTAGENT_HOME=$(cd ~ && pwd)
+#  fi
+#  echo_warning "Installing as $TRUSTAGENT_USERNAME into $TRUSTAGENT_HOME"  
+#fi
+
+# TODO:  GONNA NEED TO ASSIGN OWNERSHIP TO TPM...
+#  # add tagent user to tss group
+#  usermod -a -G tss $TRUSTAGENT_USERNAME
+
+#  # enable and start the tpm2-abrmd service
+#  systemctl enable tpm2-abrmd.service
+#  systemctl start tpm2-abrmd.service
+#fi
 
 echo "Deploying tagent..."
-mkdir -p $TRUSTAGENT_BIN_DIR && chown tagent:tagent $TRUSTAGENT_BIN_DIR/
-cp $TRUSTAGENT_EXE $TRUSTAGENT_BIN_DIR/ && chown tagent:tagent $TRUSTAGENT_BIN_DIR/$TRUSTAGENT_EXE
-chmod 750 $TRUSTAGENT_BIN_DIR/*
+
+mkdir -p $TRUSTAGENT_HOME
+mkdir -p $TRUSTAGENT_BIN_DIR
+mkdir -p $TRUSTAGENT_CFG_DIR
+mkdir -p $TRUSTAGENT_LOG_DIR
+
+# 19. setup authbind to allow non-root trustagent to listen on ports 80, 443 and 1443
+# setup authbind to allow non-root trustagent to listen on port 1443
+#if [ ! -f /etc/authbind/byport/1443 ]; then
+#    touch /etc/authbind/byport/1443
+#    chmod 500 /etc/authbind/byport/1443
+#    chown $TRUSTAGENT_USERNAME /etc/authbind/byport/1443
+#fi
+# setup authbind to allow non-root trustagent to listen on ports 80 and 443
+#if [ -n "$TRUSTAGENT_USERNAME" ] && [ "$TRUSTAGENT_USERNAME" != "root" ] && [ -d /etc/authbind/byport ]; then
+#  touch /etc/authbind/byport/80 /etc/authbind/byport/443
+#  chmod 500 /etc/authbind/byport/80 /etc/authbind/byport/443
+#  chown $TRUSTAGENT_USERNAME /etc/authbind/byport/80 /etc/authbind/byport/443
+#fi
+
+cp $TRUSTAGENT_EXE $TRUSTAGENT_BIN_DIR/ 
 
 # make a link in /usr/bin to tagent...
 ln -sfT $TRUSTAGENT_BIN_DIR/$TRUSTAGENT_EXE /usr/bin/$TRUSTAGENT_EXE
 
-# Create configuration directory
-#mkdir -p $TRUSTAGENT_CFG_DIR && chown tagent:tagent $TRUSTAGENT_CFG_DIR
-#chmod 700 $TRUSTAGENT_CFG_DIR
-#chmod g+s $TRUSTAGENT_CFG_DIR
-
-# Create logging directory
-#mkdir -p $TRUSTAGENT_LOG_DIR && chown tagent:tagent $TRUSTAGENT_LOG_DIR
-#chmod 761 $TRUSTAGENT_LOG_DIR
-#chmod g+s $TRUSTAGENT_LOG_DIR
-
 # Install systemd script
-cp $TRUSTAGENT_SERVICE $TRUSTAGENT_HOME && chown tagent:tagent $TRUSTAGENT_HOME/$TRUSTAGENT_SERVICE && chown tagent:tagent $TRUSTAGENT_HOME
+cp $TRUSTAGENT_SERVICE $TRUSTAGENT_HOME 
+
+# file ownershipe/permissions
+chown -R $TRUSTAGENT_USERNAME:$TRUSTAGENT_USERNAME $TRUSTAGENT_HOME
+chmod 755 $TRUSTAGENT_BIN/*
 
 # Enable systemd service
 systemctl disable $TRUSTAGENT_SERVICE > /dev/null 2>&1
 systemctl enable $TRUSTAGENT_HOME/$TRUSTAGENT_SERVICE
 systemctl daemon-reload
+
+# 19. setup authbind to allow non-root trustagent to listen on ports 80, 443 and 1443
+# setup authbind to allow non-root trustagent to listen on port 1443
+mkdir -p /etc/authbind/byport
+if [ ! -f /etc/authbind/byport/1443 ]; then
+#  if [ "$(whoami)" == "root" ]; then
+    #if [ -n "$TRUSTAGENT_USERNAME" ] && [ "$TRUSTAGENT_USERNAME" != "root" ] && [ -d /etc/authbind/byport ]; then
+      touch /etc/authbind/byport/1443
+     chmod 500 /etc/authbind/byport/1443
+      chown $TRUSTAGENT_USERNAME /etc/authbind/byport/1443
+#    fi
+#  else
+#    echo_warning "You must be root to setup authbind configuration"
+#  fi
+fi
+
+
 
 if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PROVISION_ATTESTATION" == "yes" ]]; then
     echo "Automatic provisioning is enabled, using mtwilson url " $MTWILSON_API_URL

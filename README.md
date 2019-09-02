@@ -27,6 +27,16 @@ Building, debuging and ci/cd use the 'gta-devel' image defined in cicd/Dockerfil
     3. `make installer`
     4. tagent and trustagent*.bin will be in the `/out` subdirectory
 
+# Installation
+1. Start an container of `gta-devel` that runs `systemd`...
+    * `docker run --rm --privileged -ti -e 'container=docker' -v /sys/fs/cgroup:/sys/fs/cgroup:ro -v $(pwd):/docker_host  gta-devel /usr/sbin/init`
+2. Use Docker/vscode to 'attach' to the container.
+3. Change directory to where trustagent*.bin file exists.
+4. <ENV FILE CONFIGURATION>
+5. Run `./trustagent_v1.0.0.bin`
+6. Start the trustagent service: `systemctl start tagent`
+7. Make sure the service is running: `systemctl status tagent` does not show errors.
+8. Confirm the REST API is accessible: `curl --request GET http://localhost:8446/v2/aik -k --noproxy "*"` returns without error.
 
 # Debugging Instructions
 
