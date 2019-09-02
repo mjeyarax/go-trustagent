@@ -45,26 +45,10 @@ fi
 
 echo "Starting trustagent installation..."
 
-#echo "Setting up TrustAgent user..."
-#id -u tagent 2> /dev/null || useradd tagent
-#if [ "$(whoami)" == "root" ]; then
-
-# SCRIPT ASSUMES ROOT...
-  # create a trustagent user if there isn't already one created
-  TRUSTAGENT_USERNAME=${TRUSTAGENT_USERNAME:-$DEFAULT_TRUSTAGENT_USERNAME}
-  if ! getent passwd $TRUSTAGENT_USERNAME 2>&1 >/dev/null; then
-    useradd --comment "Trust Agent User" --home $TRUSTAGENT_HOME --system --shell /bin/false $TRUSTAGENT_USERNAME
-    usermod --lock $TRUSTAGENT_USERNAME
-    # note: to assign a shell and allow login you can run "usermod --shell /bin/bash --unlock $TRUSTAGENT_USERNAME"
-  fi
-#else
-  # already running as trustagent user
-#  TRUSTAGENT_USERNAME=$(whoami)
-#  if [ ! -w "$TRUSTAGENT_HOME" ] && [ ! -w $(dirname $TRUSTAGENT_HOME) ]; then
-#    TRUSTAGENT_HOME=$(cd ~ && pwd)
-#  fi
-#  echo_warning "Installing as $TRUSTAGENT_USERNAME into $TRUSTAGENT_HOME"  
-#fi
+TRUSTAGENT_USERNAME=${TRUSTAGENT_USERNAME:-$DEFAULT_TRUSTAGENT_USERNAME}
+if ! getent passwd $TRUSTAGENT_USERNAME 2>&1 >/dev/null; then
+useradd --comment "Trust Agent User" --home $TRUSTAGENT_HOME --system --shell /bin/false $TRUSTAGENT_USERNAME
+usermod --lock $TRUSTAGENT_USERNAME
 
 # TODO:  GONNA NEED TO ASSIGN OWNERSHIP TO TPM...
 #  # add tagent user to tss group
@@ -75,26 +59,11 @@ echo "Starting trustagent installation..."
 #  systemctl start tpm2-abrmd.service
 #fi
 
-echo "Deploying tagent..."
-
+# setup directories...
 mkdir -p $TRUSTAGENT_HOME
 mkdir -p $TRUSTAGENT_BIN_DIR
 mkdir -p $TRUSTAGENT_CFG_DIR
 mkdir -p $TRUSTAGENT_LOG_DIR
-
-# 19. setup authbind to allow non-root trustagent to listen on ports 80, 443 and 1443
-# setup authbind to allow non-root trustagent to listen on port 1443
-#if [ ! -f /etc/authbind/byport/1443 ]; then
-#    touch /etc/authbind/byport/1443
-#    chmod 500 /etc/authbind/byport/1443
-#    chown $TRUSTAGENT_USERNAME /etc/authbind/byport/1443
-#fi
-# setup authbind to allow non-root trustagent to listen on ports 80 and 443
-#if [ -n "$TRUSTAGENT_USERNAME" ] && [ "$TRUSTAGENT_USERNAME" != "root" ] && [ -d /etc/authbind/byport ]; then
-#  touch /etc/authbind/byport/80 /etc/authbind/byport/443
-#  chmod 500 /etc/authbind/byport/80 /etc/authbind/byport/443
-#  chown $TRUSTAGENT_USERNAME /etc/authbind/byport/80 /etc/authbind/byport/443
-#fi
 
 cp $TRUSTAGENT_EXE $TRUSTAGENT_BIN_DIR/ 
 
@@ -104,31 +73,24 @@ ln -sfT $TRUSTAGENT_BIN_DIR/$TRUSTAGENT_EXE /usr/bin/$TRUSTAGENT_EXE
 # Install systemd script
 cp $TRUSTAGENT_SERVICE $TRUSTAGENT_HOME 
 
-# file ownershipe/permissions
+# file ownership/permissions
 chown -R $TRUSTAGENT_USERNAME:$TRUSTAGENT_USERNAME $TRUSTAGENT_HOME
 chmod 755 $TRUSTAGENT_BIN/*
 
-# Enable systemd service
+# Enable tagent service
 systemctl disable $TRUSTAGENT_SERVICE > /dev/null 2>&1
 systemctl enable $TRUSTAGENT_HOME/$TRUSTAGENT_SERVICE
 systemctl daemon-reload
 
-# 19. setup authbind to allow non-root trustagent to listen on ports 80, 443 and 1443
-# setup authbind to allow non-root trustagent to listen on port 1443
-mkdir -p /etc/authbind/byport
-if [ ! -f /etc/authbind/byport/1443 ]; then
-#  if [ "$(whoami)" == "root" ]; then
-    #if [ -n "$TRUSTAGENT_USERNAME" ] && [ "$TRUSTAGENT_USERNAME" != "root" ] && [ -d /etc/authbind/byport ]; then
-      touch /etc/authbind/byport/1443
-     chmod 500 /etc/authbind/byport/1443
-      chown $TRUSTAGENT_USERNAME /etc/authbind/byport/1443
-#    fi
-#  else
-#    echo_warning "You must be root to setup authbind configuration"
-#  fi
-fi
-
-
+# TODO:  If the TrustAgent's port is below 1024, use authbind to establish permissons
+# see https://blog.webhosting.net/how-to-get-tomcat-running-on-centos-7-2-using-privileged-ports-1024/
+# This will require a change to the tagent.service as well.
+#mkdir -p /etc/authbind/byport
+#if [ ! -f /etc/authbind/byport/1443 ]; then
+#    touch /etc/authbind/byport/1443
+#    chmod 500 /etc/authbind/byport/1443
+#    chown $TRUSTAGENT_USERNAME /etc/authbind/byport/1443
+#fi
 
 if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PROVISION_ATTESTATION" == "yes" ]]; then
     echo "Automatic provisioning is enabled, using mtwilson url " $MTWILSON_API_URL
@@ -151,6 +113,7 @@ if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PR
         echo "Installation completed with errors"
     fi
 else
-    echo "Automatic provisioning is disabled, the TrustAgent installation is complete"
-    echo "You must use 'tagent setup' commands to complete provisioning (see tagent --help)"
+    echo "Automatic provisioning is disabled, the TrustAgent installation is complete."
+    echo "You must use 'tagent setup' commands to complete provisioning (see tagent --help)."
+    echo "The tagent service must also be started (systemctl start tagent)"
 fi
