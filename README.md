@@ -17,7 +17,7 @@ Building, debuging and ci/cd use the 'gta-devel' image defined in cicd/Dockerfil
     2. `docker build --tag=gta-devel --build-arg http_proxy=<proxy-if-needed> https_proxy=<proxy-if-needed> .`
     3. `docker image ls` should show 'gta-devel'
 2. Start a new instance of the container, mounting the code as `/docker_host` directory in the container
-    1. `docker run -it -v $(pwd):/docker_host gta-devel /bin/bash`
+    1. `docker run -it -v $(pwd):/docker_host gta-devel /bin/bash` (you may want to run this from the root directory of your development environment so that other ISecL projects are available in the container at '/docker_host')
     2. Configure git to access gitlab to resolve dependencies on other ISecL go libraries.
         1. `git config --global http.proxy http://proxy-us.intel.com:911`
         2. `git config --global https.proxy http://proxy-us.intel.com:911`

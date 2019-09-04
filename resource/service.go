@@ -6,6 +6,7 @@
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"crypto/tls"
 	"os"
@@ -26,7 +27,11 @@ type TrustAgentService struct {
 	router			*mux.Router
 }
 
-func CreateTrustAgentService (port int) (TrustAgentService, error) {
+func CreateTrustAgentService (port int) (*TrustAgentService, error) {
+
+	if(port == 0) {
+		return nil, errors.New("Port cannot be zero")
+	}
 
 	trustAgentService := TrustAgentService {
 		port : port,
@@ -39,9 +44,9 @@ func CreateTrustAgentService (port int) (TrustAgentService, error) {
 		for _, s := range setters {
 			s(sr)
 		}
-	} (SetAikRoutes)
+	} (SetAikRoutes, SetHostRoutes)
 	
-	return trustAgentService, nil
+	return &trustAgentService, nil
 }
 
 

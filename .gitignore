@@ -3,3 +3,4 @@ go.sum
 *.log
 cover.*
 /builds
+NVChip*

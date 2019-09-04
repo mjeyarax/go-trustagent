@@ -11,7 +11,6 @@
 )
 
 func SetAikRoutes(router *mux.Router) {
-
 	router.HandleFunc("/aik", func(w http.ResponseWriter, r *http.Request) {
 		GetAik(w, r)
 	}).Methods("GET")
