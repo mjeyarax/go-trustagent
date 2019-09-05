@@ -119,6 +119,10 @@ chmod 755 $TRUSTAGENT_BIN/*
 #--------------------------------------------------------------------------------------------------
 # 5. Configure services, etc.
 #--------------------------------------------------------------------------------------------------
+# make sure the tss user owns /dev/tpm0 or tpm2-abrmd service won't start
+chown tss:tss /dev/tpm0
+
+# start tpm2-abrmd service
 systemctl enable $TPM2_ABRMD_SERVICE
 systemctl start $TPM2_ABRMD_SERVICE
 
