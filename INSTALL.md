@@ -2,10 +2,10 @@
 
 ## Prerequisites
 1. trustagent_v1.0.0.bin installer from gitlab (see https://gitlab.devtools.intel.com/kentthom/go-trust-agent)
-2. TPM 2.0 compute node with RHEL 8 Host and the following packages
-    1. tboot
-    2. tpm2-abrmd.2.0
-    2. ...
+2. TPM 2.0 compute node with RHEL 8 Host and the following packages...
+    1. tpm2-abrmd (v2.0.x)
+    2. dmidecode (v3.x)
+    3. redhat-lsb-core (v4.1.x)
 
 ## Provisioning Information
 The following (example) information needs to be provided in `trustagent.env` file.

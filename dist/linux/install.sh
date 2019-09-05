@@ -33,8 +33,7 @@ TRUSTAGENT_BIN_DIR=$TRUSTAGENT_HOME/bin
 TRUSTAGENT_LOG_DIR=$TRUSTAGENT_HOME/logs
 TRUSTAGENT_CFG_DIR=$TRUSTAGENT_HOME/configuration
 TRUSTAGENT_VAR_DIR=$TRUSTAGENT_HOME/var
-TRUSTAGENT_DEPENDENCIES=('tpm2-abrmd-2.0' 'dmidecode-3.2' 'redhat-lsb-core-4.1')
-
+TRUSTAGENT_DEPENDENCIES=('tpm2-abrmd-2.0' 'dmidecode-3' 'redhat-lsb-core-4.1')
 TPM2_ABRMD_SERVICE=tpm2-abrmd.service
 
 #--------------------------------------------------------------------------------------------------
@@ -132,24 +131,24 @@ systemctl daemon-reload
 # 6. If automatic provisioning is enabled, do it here...
 #--------------------------------------------------------------------------------------------------
 if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PROVISION_ATTESTATION" == "yes" ]]; then
-    echo "Automatic provisioning is enabled, using mtwilson url " $MTWILSON_API_URL
+    echo "Automatic provisioning is enabled, using mtwilson url $MTWILSON_API_URL"
 
     $TRUSTAGENT_EXE setup
     if [ $? -eq 0 ]; then 
-        systemctl start $TRUSTAGENT_SERIVCE
+        systemctl start $TRUSTAGENT_SERVICE
         echo "Waiting for daemon to settle down before checking status"
         sleep 5
 
-        systemctl status $TRUSTAGENT_SERIVCE 2>&1 > /dev/null
+        systemctl status $TRUSTAGENT_SERVICE 2>&1 > /dev/null
         if [ $? -ne 0 ]; then
-            echo "Installation completed with Errors - $TRUSTAGENT_SERIVCE daemon not started."
-            echo "Please check errors in syslog using \`journalctl -u $TRUSTAGENT_SERIVCE\`"
+            echo "Installation completed with Errors - $TRUSTAGENT_SERVICE daemon not started."
+            echo "Please check errors in syslog using \`journalctl -u $TRUSTAGENT_SERVICE\`"
             exit 1
         fi
 
         echo "$TRUSTAGENT_SERIVCE daemon is running"
     else 
-        echo "Installation completed with errors"
+        echo "'$TRUSTAGENT_EXE setup' failed"
         exit 1
     fi
 else
