@@ -31,15 +31,13 @@ build:gta:
 
 test:
   stage: test
-  image: 
-    name: gta-devel
-    entrypoint: ["/usr/sbin/init"]
+  image: gta-devel
   tags:
     - gta
   dependencies:
     - build:gta
   script:
-    - go test ./... -coverpkg=./... -coverprofile cover.out
+    - go test ./... -tags=integration -coverpkg=./... -coverprofile cover.out
     - go tool cover -func cover.out
     - go tool cover -html=cover.out -o cover.html
   artifacts:

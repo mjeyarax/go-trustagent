@@ -1,8 +1,14 @@
+//+build !integration
+
 /*
  * Copyright (C) 2019 Intel Corporation
  * SPDX-License-Identifier: BSD-3-Clause
  */
- package platforminfo
+
+//
+// These tests require systemd to run 'dmidecode' and to be run as root.
+//
+package platforminfo
 
 import (
 	"encoding/json"
