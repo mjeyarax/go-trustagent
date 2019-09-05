@@ -255,23 +255,24 @@ func vmmInfo() (string, string, error) {
 		Docker version 1.13.1, build 07f3374/1.13.1
 	*/
 	result, err := readAndParseFromCommandLine(dockerVersionCmd)
-	response := result[0]
+
+	// if no error occurs, assume docker is installed, return name and version...
 	if err == nil && len(result) != 0 {
+		response := result[0]
 		parts := strings.Split(response, " ")
-		return parts[0], strings.TrimSuffix(parts[2], ","), err
+		return parts[0], strings.TrimSuffix(parts[2], ","), nil
 	}
-	// Check if virsh is installed
+
+	// Check if virsh is installed...
 	result, err = readAndParseFromCommandLine(virshVersionCmd)
-	response = result[0]
-	if err != nil {
-		return "Host_No_VMM", "0.0", ErrNoVMMError
-	} else if strings.TrimSpace(response) == "" {
-		return "Host_No_VMM", "0.0", ErrMissingVirshVersionFileError
+	if err == nil && len(result) != 0 {
+		response := result[0]
+		parts := strings.Split(response, " ")
+		return "Virsh", parts[0], nil
 	}
-	parts := strings.Split(response, " ")
-	hostName := "Virsh"
-	hostVersion := parts[0]
-	return hostName, hostVersion, err
+
+	// if neither is installed, just return empty strings to satisfy platforminfo json
+	return "", "", nil
 }
 
 // HostName retireves the network hostname.

@@ -1,5 +1,7 @@
-// yum install tpm2-abrmd-devel.x86_64
-// SDL linking securirty issues
+/*
+ * Copyright (C) 2019 Intel Corporation
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
 
 #include <stdlib.h>
 #include <stdio.h> // remove (printf?)

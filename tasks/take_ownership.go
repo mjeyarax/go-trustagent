@@ -1,4 +1,8 @@
-package tasks
+/*
+ * Copyright (C) 2019 Intel Corporation
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+ package tasks
 
 import (
 	"errors"
@@ -12,8 +16,8 @@ import (
 )
 
 type TakeOwnership struct {
-	Flags 	[]string
-	Config 	*config.TrustAgentConfiguration
+	Flags 		[]string
+	secretKey 	[]byte
 }
 
 func (task* TakeOwnership) Run(c setup.Context) error {
@@ -26,16 +30,16 @@ func (task* TakeOwnership) Run(c setup.Context) error {
 		return err
 	}
 
-	if task.Config.Tpm.SecretKey == nil {
-		task.Config.Tpm.SecretKey, err = crypt.GetRandomBytes(20)
+	if config.GetConfiguration().Tpm.SecretKey == nil {
+		config.GetConfiguration().Tpm.SecretKey, err = crypt.GetRandomBytes(20)
 		if err != nil {
 			return errors.New("An error occurred generating a random key")
 		}
 
-		// TODO: Save config file
+		config.GetConfiguration().Save()
 	}
 	
-	err = tpmProvider.TakeOwnership(task.Config.Tpm.SecretKey)
+	err = tpmProvider.TakeOwnership(config.GetConfiguration().Tpm.SecretKey)
 	if err != nil {
 		return err
 	}
@@ -52,11 +56,11 @@ func (task* TakeOwnership) Validate(c setup.Context) error {
 		return err
 	}
 
-	if task.Config.Tpm.SecretKey == nil {
+	if config.GetConfiguration().Tpm.SecretKey == nil {
 		return errors.New("The configuration does not contain the tpm secret key")
 	}
 
-	ok, err := t.IsOwnedWithAuth(task.Config.Tpm.SecretKey)
+	ok, err := t.IsOwnedWithAuth(config.GetConfiguration().Tpm.SecretKey)
 	if !ok {
 		return errors.New("The tpm is not owned with the current secret key")
 	}

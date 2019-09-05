@@ -5,14 +5,17 @@
  package main
  
  import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"os"
-	"fmt"
+	"os/user"
 
 	log "github.com/sirupsen/logrus"
 
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
+	"intel/isecl/go-trust-agent/platforminfo"
 	"intel/isecl/go-trust-agent/resource"
 	"intel/isecl/go-trust-agent/tasks"
 )
@@ -38,6 +41,48 @@
 
 	return &cfg, nil
  }
+
+ func updatePlatformInfo() error {
+
+	// make sure the system-info directory exists
+	_, err := os.Stat(constants.SystemInfoDir)
+	if err != nil {
+		return err
+	}
+
+	// create the 'platform-info' file
+	f, err := os.Create(constants.PlatformInfoFilePath)
+	defer f.Close()
+	if err != nil {
+		return err
+	}
+
+	// collect the platform info
+	platformInfo, err := platforminfo.GetPlatformInfo()
+	if err != nil {
+		panic(err)
+	}
+
+	// serialize to json
+	b, err := json.Marshal(platformInfo)
+	if err != nil {
+		return err
+	}
+
+	_, err = f.Write(b)
+	if err != nil {
+		return err
+	}
+
+	log.Info("Successfully updated platform-info")
+	return nil
+ }
+
+ func updateMeasureLog() error {
+
+	log.Info("Successfully updated measure-log")
+	return nil
+ }
  
  func main() {
 	err := setupLogging()
@@ -52,19 +97,32 @@
 		os.Exit(1)
 	}
 
-	cfg, err := initConfiguration()
-	if err != nil {
-		//fmt.Printf("Error initializing configuration: %s\n", err)
-		panic(err)
+	currentUser, _ := user.Current()
+	if currentUser.Username != constants.RootUserName && currentUser.Username != constants.TagentUserName {
+		fmt.Printf("tagent cannot be run as user '%s'\n", currentUser.Username)
+		os.Exit(1)
 	}
 
 	cmd := os.Args[1]
 	switch cmd {
 	case "start":
-		// TODO:  create moduleLog.xml, platform-info, etc.
+
+		if config.GetConfiguration().Port == 0 {
+			panic("'tagent setup' must be run before 'start'")
+		}
+
+		err = updatePlatformInfo()
+		if err != nil {
+			log.Printf("There was an error creating platform-info: %s\n", err.Error())
+		}
+
+		err = updateMeasureLog()
+		if err != nil {
+			log.Printf("There was an error creating measure-log: %s\n", err.Error())
+		}
 
 		// create and start webservice
-		service, err := resource.CreateTrustAgentService(cfg.Port)
+		service, err := resource.CreateTrustAgentService(config.GetConfiguration().Port)
 		if err != nil {
 			panic(err)
 		}
@@ -72,18 +130,21 @@
 		service.Start()
 	case "setup":
 		var setupCommand string
-		if(len(os.Args) == 2) {
-			setupCommand = tasks.SetupAllCommand
-		} else {
+		if(len(os.Args) > 2) {
 			setupCommand = os.Args[2]
+		} else {
+			setupCommand = tasks.SetupAllCommand
 		}
 
-		registry, err := tasks.CreateTaskRegistry(cfg, os.Args)
+		registry, err := tasks.CreateTaskRegistry(os.Args)
 		if err != nil {
 			panic(err)
 		}
 
-		registry.RunCommand(setupCommand)
+		err = registry.RunCommand(setupCommand)
+		if err != nil {
+			panic(err)
+		}
 
 	default:
 		printUsage()

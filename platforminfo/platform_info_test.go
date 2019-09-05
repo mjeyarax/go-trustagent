@@ -5,6 +5,7 @@
  package platforminfo
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -92,7 +93,7 @@ func TestNoOfSockets(t *testing.T) {
 	assert := assert.New(t)
 	numSockets, err := NoOfSockets()
 	assert.NoError(err)
-	fmt.Printf("Number of sockets: '%s'\n", string(numSockets))
+	fmt.Printf("Number of sockets: '%d'\n", numSockets)
 }
 
 func TestTPMEnabled(t *testing.T) {
@@ -107,4 +108,13 @@ func TestTXTEnabled(t *testing.T) {
 	txtStatus, err := TXTEnabled()
 	assert.NoError(err)
 	fmt.Printf("TXT Enabled: '%t'\n", txtStatus)
+}
+
+func TestPlatformInfoStruct(t *testing.T) {
+	assert := assert.New(t)
+	platformInfo, err := GetPlatformInfo()
+	assert.NoError(err)
+	b, err := json.Marshal(platformInfo)
+	assert.NoError(err)
+	fmt.Printf("PlatformInfo JSON:\n%s\n", string(b))
 }

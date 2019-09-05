@@ -5,11 +5,15 @@
  package resource
 
  import (
-	"encoding/json"
+	"bytes"
+	"io/ioutil"
 	"net/http"
+	"os"
+
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
-	"intel/isecl/go-trust-agent/platforminfo"
+
+	"intel/isecl/go-trust-agent/constants"
 )
 
 func SetHostRoutes(router *mux.Router) {
@@ -18,15 +22,32 @@ func SetHostRoutes(router *mux.Router) {
 	}).Methods("GET")
 }
 
-// curl --request GET http://localhost:8446/v2/host -k --noproxy "*"
+// curl --request GET http://localhost:1443/v2/host -k --noproxy "*"
+
+// Assuming that the /opt/trustagent/var/system-info/platform-info file has been create
+// during startup, just read the contents of the json file and return it to the http
+// writer
 func GetPlatformInfo(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 	log.Info("GetPlatformInfo")
 
-	platformInfo, err := platforminfo.GetPlatformInfo()
-	if err != nil {
+	if _, err := os.Stat(constants.PlatformInfoFilePath); os.IsNotExist(err) {
+		log.Errorf("%s does not exist", constants.PlatformInfoFilePath)
 		httpWriter.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
-	json.NewEncoder(httpWriter).Encode(platformInfo)
+	b, err := ioutil.ReadFile(constants.PlatformInfoFilePath)
+	if err != nil {
+		log.Errorf("There was an error reading %s", constants.PlatformInfoFilePath)
+		httpWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := bytes.NewBuffer(b).WriteTo(httpWriter); err != nil {
+		log.Errorf("There was an error writing platform-info")
+		httpWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	httpWriter.WriteHeader(http.StatusOK)
 }

@@ -1,14 +1,27 @@
 #--------------------------------------------------------------------------------------------------
+# T R U S T A G E N T   I N S T A L L E R
 #
+# Overall process:
+# 1. Make sure the script is ready to be run (root user, dependencies installed, etc.).
+# 2. Load trustagent.env if present and apply exports.
+# 3. Create tagent user
+# 4. Create directories, copy files and own them by tagent user.
+# 5. Make sure tpm2-abrmd is started and deploy tagent service.
+# 6. If 'automatic provisioning' is enabled (PROVISION_ATTESTATION=y), initiate 'tagent setup'. 
+#    Otherwise, exit with a message that the user must provision the trust agent and start the
+#    service.
 #--------------------------------------------------------------------------------------------------
 #!/bin/bash
 
+#--------------------------------------------------------------------------------------------------
+# Script variables
+#--------------------------------------------------------------------------------------------------
 DEFAULT_TRUSTAGENT_HOME=/opt/trustagent
 DEFAULT_TRUSTAGENT_USERNAME=tagent
 
 export PROVISION_ATTESTATION=${PROVISION_ATTESTATION:-n}
 export AUTOMATIC_PULL_MANIFEST=${AUTOMATIC_PULL_MANIFEST:-y}
-export TRUSTAGENT_ADMIN_USERNAME=${TRUSTAGENT_ADMIN_USERNAME:-tagent-admin}
+export TRUSTAGENT_ADMIN_USERNAME=${TRUSTAGENT_ADMIN_USERNAME:-tagentadmin}
 export REGISTER_TPM_PASSWORD=${REGISTER_TPM_PASSWORD:-y}
 export TRUSTAGENT_LOGIN_REGISTER=${TRUSTAGENT_LOGIN_REGISTER:-true}
 export TRUSTAGENT_HOME=${TRUSTAGENT_HOME:-$DEFAULT_TRUSTAGENT_HOME}
@@ -18,15 +31,42 @@ TRUSTAGENT_ENV_FILE=trustagent.env
 TRUSTAGENT_SERVICE=tagent.service
 TRUSTAGENT_BIN_DIR=$TRUSTAGENT_HOME/bin
 TRUSTAGENT_LOG_DIR=$TRUSTAGENT_HOME/logs
-TRUSTAGENT_CFG_DIR=$TRUSTAGENT_HOME/config
+TRUSTAGENT_CFG_DIR=$TRUSTAGENT_HOME/configuration
+TRUSTAGENT_VAR_DIR=$TRUSTAGENT_HOME/var
+TRUSTAGENT_DEPENDENCIES=('tpm2-abrmd-2.0' 'dmidecode-3.2' 'redhat-lsb-core-4.1')
+
+TPM2_ABRMD_SERVICE=tpm2-abrmd.service
+
+#--------------------------------------------------------------------------------------------------
+# 1. Script prerequisites
+#--------------------------------------------------------------------------------------------------
+echo "Starting trustagent installation from " $USER_PWD
 
 if [[ $EUID -ne 0 ]]; then 
     echo "This installer must be run as root"
     exit 1
 fi
 
-echo "Installer started from " $USER_PWD
+# make sure dependencies are installed
+for i in ${TRUSTAGENT_DEPENDENCIES[@]}; do
+    echo "Checking for dependency ${i}"
+    rpm -qa | grep ${i} > /dev/null
+    if [ $? -ne 0 ]; then
+        echo "Error: Dependency ${i} must be installed."
+        exit 1
+    fi
+done
 
+# make sure tpm2-abrmd service is installed
+systemctl list-unit-files --no-pager | grep $TPM2_ABRMD_SERVICE > /dev/null
+if [ $? -ne 0 ]; then
+    echo "The tpm2-abrmd service must be installed"
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------------------------
+# 2. Load environment variable file
+#--------------------------------------------------------------------------------------------------
 if [ -f $USER_PWD/$TRUSTAGENT_ENV_FILE ]; then
     env_file=$USER_PWD/$TRUSTAGENT_ENV_FILE
 elif [ -f ~/$TRUSTAGENT_ENV_FILE ]; then
@@ -34,36 +74,36 @@ elif [ -f ~/$TRUSTAGENT_ENV_FILE ]; then
 fi
 
 if [ -z "$env_file" ]; then
-    echo No .env file found
+    echo "No environment file found"
     PROVISION_ATTESTATION="false"
 else
-    echo "Using env file " $env_file
+    echo "Using environment file $env_file"
     source $env_file
     env_file_exports=$(cat $env_file | grep -E '^[A-Z0-9_]+\s*=' | cut -d = -f 1)
     if [ -n "$env_file_exports" ]; then eval export $env_file_exports; fi
 fi
 
-echo "Starting trustagent installation..."
-
+#--------------------------------------------------------------------------------------------------
+# 3. Create tagent user
+#--------------------------------------------------------------------------------------------------
 TRUSTAGENT_USERNAME=${TRUSTAGENT_USERNAME:-$DEFAULT_TRUSTAGENT_USERNAME}
 if ! getent passwd $TRUSTAGENT_USERNAME 2>&1 >/dev/null; then
-useradd --comment "Trust Agent User" --home $TRUSTAGENT_HOME --system --shell /bin/false $TRUSTAGENT_USERNAME
-usermod --lock $TRUSTAGENT_USERNAME
+    useradd --comment "Trust Agent User" --home $TRUSTAGENT_HOME --system --shell /bin/false $TRUSTAGENT_USERNAME
+    usermod --lock $TRUSTAGENT_USERNAME
+fi
 
-# TODO:  GONNA NEED TO ASSIGN OWNERSHIP TO TPM...
-#  # add tagent user to tss group
-#  usermod -a -G tss $TRUSTAGENT_USERNAME
+# to access tpm, abrmd, etc.
+usermod -a -G tss $TRUSTAGENT_USERNAME
 
-#  # enable and start the tpm2-abrmd service
-#  systemctl enable tpm2-abrmd.service
-#  systemctl start tpm2-abrmd.service
-#fi
-
-# setup directories...
+#--------------------------------------------------------------------------------------------------
+# 4. Setup directories, copy files and own them
+#--------------------------------------------------------------------------------------------------
 mkdir -p $TRUSTAGENT_HOME
 mkdir -p $TRUSTAGENT_BIN_DIR
 mkdir -p $TRUSTAGENT_CFG_DIR
 mkdir -p $TRUSTAGENT_LOG_DIR
+mkdir -p $TRUSTAGENT_VAR_DIR
+mkdir -p $TRUSTAGENT_VAR_DIR/system-info
 
 cp $TRUSTAGENT_EXE $TRUSTAGENT_BIN_DIR/ 
 
@@ -77,43 +117,46 @@ cp $TRUSTAGENT_SERVICE $TRUSTAGENT_HOME
 chown -R $TRUSTAGENT_USERNAME:$TRUSTAGENT_USERNAME $TRUSTAGENT_HOME
 chmod 755 $TRUSTAGENT_BIN/*
 
+#--------------------------------------------------------------------------------------------------
+# 5. Configure services, etc.
+#--------------------------------------------------------------------------------------------------
+systemctl enable $TPM2_ABRMD_SERVICE
+systemctl start $TPM2_ABRMD_SERVICE
+
 # Enable tagent service
 systemctl disable $TRUSTAGENT_SERVICE > /dev/null 2>&1
 systemctl enable $TRUSTAGENT_HOME/$TRUSTAGENT_SERVICE
 systemctl daemon-reload
 
-# TODO:  If the TrustAgent's port is below 1024, use authbind to establish permissons
-# see https://blog.webhosting.net/how-to-get-tomcat-running-on-centos-7-2-using-privileged-ports-1024/
-# This will require a change to the tagent.service as well.
-#mkdir -p /etc/authbind/byport
-#if [ ! -f /etc/authbind/byport/1443 ]; then
-#    touch /etc/authbind/byport/1443
-#    chmod 500 /etc/authbind/byport/1443
-#    chown $TRUSTAGENT_USERNAME /etc/authbind/byport/1443
-#fi
-
+#--------------------------------------------------------------------------------------------------
+# 6. If automatic provisioning is enabled, do it here...
+#--------------------------------------------------------------------------------------------------
 if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PROVISION_ATTESTATION" == "yes" ]]; then
     echo "Automatic provisioning is enabled, using mtwilson url " $MTWILSON_API_URL
 
     $TRUSTAGENT_EXE setup
-    SETUPRESULT=$?
-    if [ ${SETUPRESULT} == 0 ]; then 
+    if [ $? -eq 0 ]; then 
         systemctl start $TRUSTAGENT_SERIVCE
         echo "Waiting for daemon to settle down before checking status"
-        sleep 3
+        sleep 5
+
         systemctl status $TRUSTAGENT_SERIVCE 2>&1 > /dev/null
-        if [ $? != 0 ]; then
+        if [ $? -ne 0 ]; then
             echo "Installation completed with Errors - $TRUSTAGENT_SERIVCE daemon not started."
             echo "Please check errors in syslog using \`journalctl -u $TRUSTAGENT_SERIVCE\`"
             exit 1
         fi
+
         echo "$TRUSTAGENT_SERIVCE daemon is running"
-        echo "Installation completed successfully!"
     else 
         echo "Installation completed with errors"
+        exit 1
     fi
 else
-    echo "Automatic provisioning is disabled, the TrustAgent installation is complete."
-    echo "You must use 'tagent setup' commands to complete provisioning (see tagent --help)."
-    echo "The tagent service must also be started (systemctl start tagent)"
+    echo ""
+    echo "Automatic provisioning is disabled. You must use 'tagent setup' command to complete"
+    echo "provisioning (see tagent --help). The tagent service must also be started using 'systemctl"
+    echo "start tagent.service'"
 fi
+
+echo "Installation complete"

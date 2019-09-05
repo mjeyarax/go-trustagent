@@ -79,7 +79,7 @@ rm -f /lib/systemd/system/anaconda.target.wants/*;
 RUN yum -y group install "Development Tools" 
 RUN yum -y install golang makeself
 
-# platform-info dependencies
+# platforminfo dependencies
 RUN yum -y install dmidecode redhat-lsb
 
 # tss2

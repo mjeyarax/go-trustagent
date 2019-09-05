@@ -14,7 +14,7 @@ Building, debuging and ci/cd use the 'gta-devel' image defined in cicd/Dockerfil
 ### Compiling GTA
 1. Create the 'gta-devel' docker image...
     1. `cd cicd`
-    2. `docker build --tag=gta-devel --build-arg http_proxy=<proxy-if-needed> https_proxy=<proxy-if-needed> .`
+    2. `docker build --tag=gta-devel --build-arg http_proxy=<proxy-if-needed> --build-arg https_proxy=<proxy-if-needed> .`
     3. `docker image ls` should show 'gta-devel'
 2. Start a new instance of the container, mounting the code as `/docker_host` directory in the container
     1. `docker run -it -v $(pwd):/docker_host gta-devel /bin/bash` (you may want to run this from the root directory of your development environment so that other ISecL projects are available in the container at '/docker_host')
@@ -28,6 +28,10 @@ Building, debuging and ci/cd use the 'gta-devel' image defined in cicd/Dockerfil
     4. tagent and trustagent*.bin will be in the `/out` subdirectory
 
 # Installation
+See INSTALL.md
+
+# Debugging Instructions
+To debug GTA in a 'gta-devel' container, it must run 'systemd' so that services that support http, tpm2-abrmd, dmidecode (for platform-info), etc. can run.
 1. Start an container of `gta-devel` that runs `systemd`...
     * `docker run --rm --privileged -ti -e 'container=docker' -v /sys/fs/cgroup:/sys/fs/cgroup:ro -v $(pwd):/docker_host  gta-devel /usr/sbin/init`
 2. Use Docker/vscode to 'attach' to the container.
@@ -38,17 +42,15 @@ Building, debuging and ci/cd use the 'gta-devel' image defined in cicd/Dockerfil
 7. Make sure the service is running: `systemctl status tagent` does not show errors.
 8. Confirm the REST API is accessible: `curl --request GET http://localhost:8446/v2/aik -k --noproxy "*"` returns without error.
 
-# Debugging Instructions
-
-## TPM Simulator Setup TBD
-## Golang debugging TBD
+## TPM Simulator Setup (TBD)
+## Golang debugging (TBD)
 
 
 # GitLab-Runner Configuration
 GTA is build and unit tested in gitlab at https://gitlab.devtools.intel.com/kentthom/go-trust-agent using Gitlab-Runners...
 
 1. The gitlab runner needs to be a Linux host with Docker installed.
-2. Make sure the 'gta-devel' docker image is created (see Compiling GTA above).
+2. Make sure the 'gta-devel' docker image is created (see 'Compiling GTA' above).
 3. Install gitlab-runner (see https://docs.gitlab.com/runner/install/linux-manually.html)
 4. Register using `gitlab-runner register` and providing the following values when prompted...
     1. Provide the url of gitlab

@@ -4,8 +4,15 @@
  */
  package platforminfo
 
+ import (
+	 "runtime"
+	 "strings"
+ )
+
 // Struct used to hold the current host's platform information that can be encoded/decoded to 
 // json (see example below).
+//
+// PLEASE NOTE THAT THE PLATFORMINFO NEEDS TO BE RUN AS ROOT ON LINUX.
 //
 // {
 //     "errorCode": 0,
@@ -58,17 +65,17 @@ type PlatformInfo struct {
 	ProcessorFlags string			`json:"process_flags"`
 	TPMVersion string				`json:"tpm_version"`
 	PCRBanks []string				`json:"pcr_banks"`
-	NumberOfSockets string			`json:"no_of_sockets"`
-	TPMEnabled bool					`json:"tpm_enabled"`
-	TXTEnabled bool					`json:"txt_enabled"`
-	TbootInstalled bool				`json:"tboot_installed"`
-	IsDockerEnvironment bool		`json:"is_docker_env"`
+	NumberOfSockets int				`json:"no_of_sockets,string"`
+	TPMEnabled bool					`json:"tpm_enabled,string"`
+	TXTEnabled bool					`json:"txt_enabled,string"`
+	TbootInstalled bool				`json:"tboot_installed,string"`
+	IsDockerEnvironment bool		`json:"is_docker_env,string"`
 	HardwareFeatures struct {
 		TXT struct {
-			Enabled bool			`json:"enabled"`
+			Enabled bool			`json:"enabled,string"`
 		}							`json:"TXT"`
 		TPM struct {
-			Enabled bool			`json:"enabled"`
+			Enabled bool			`json:"enabled,string"`
 			Meta struct {
 				TPMVersion string	`json:"tpm_version"`
 				PCRBanks string 	`json:"pcr_banks"`
@@ -90,20 +97,23 @@ func GetPlatformInfo() (PlatformInfo, error) {
     platformInfo.VMMVersion, _ = VMMVersion()
     platformInfo.ProcessorInfo, _  = ProcessorID()
     platformInfo.HostName, _ = HostName()
-    platformInfo.HardwareUUID, _ = HardwareUUID()
-    //KWT: platformInfo.ProcessorFlags, _ = ProcessorFlags() --> array to single string
-    platformInfo.TPMVersion, _ = TPMVersion()               // TODO:  delegate to tpm
-    platformInfo.PCRBanks = []string { "SHA1", "SHA256",}   // TODO:  delegate to tpm
-    //KWT: platformInfo.NumberOfSockets, _ = NoOfSockets()
+	platformInfo.HardwareUUID, _ = HardwareUUID()
+	
+	processorFlags, _ := ProcessorFlags()
+    platformInfo.ProcessorFlags = strings.Join(processorFlags, " ")
+	
+	platformInfo.TPMVersion, _ = TPMVersion()               // TODO:  delegate to tpm
+	platformInfo.PCRBanks = []string { "SHA1", "SHA256",}   // TODO:  delegate to tpm
+    platformInfo.NumberOfSockets, _ = NoOfSockets()
     platformInfo.TPMEnabled, _ = TPMEnabled()               // TODO:  delegate to tpm
     platformInfo.TXTEnabled, _ = TXTEnabled()               // TODO:  delegate to tpm
-    platformInfo.TbootInstalled = true                   // TODO: ???
-    //KWT: platformInfo.IsDockerEnvironment --> VMMName contains docker
+	platformInfo.TbootInstalled = runtime.GOOS == "linux" 
+	platformInfo.IsDockerEnvironment = strings.Contains(strings.ToLower(platformInfo.VMMName), "docker")
     platformInfo.HardwareFeatures.TXT.Enabled = platformInfo.TXTEnabled
     platformInfo.HardwareFeatures.TPM.Enabled = platformInfo.TPMEnabled
     platformInfo.HardwareFeatures.TPM.Meta.TPMVersion = platformInfo.TPMVersion
-    //KWT: platformInfo.HardwareFeatures.TPM.Meta.PCRBanks = platformInfo.PCRBanks
-
+	platformInfo.HardwareFeatures.TPM.Meta.PCRBanks = strings.Join(platformInfo.PCRBanks, "_")
+	platformInfo.InstalledComponents = []string {"trustagent"}
 
 	return platformInfo, nil
 }
