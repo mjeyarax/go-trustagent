@@ -8,13 +8,12 @@
 
 import (
 	"testing"
-
 	"github.com/stretchr/testify/assert"
-
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/lib/common/crypt"
 )
 
+// TODO
 func TestTakeOwnership(t *testing.T) {
 	assert := assert.New(t)
 
@@ -24,7 +23,7 @@ func TestTakeOwnership(t *testing.T) {
 	cfg := config.TrustAgentConfiguration {}
 	cfg.Tpm.SecretKey = secretKey
 
-	registry, err := CreateTaskRegistry(&cfg, nil)
+	registry, err := CreateTaskRegistry(nil)
 	assert.NoError(err)
 
 	registry.RunCommand(TakeOwnershipCommand)

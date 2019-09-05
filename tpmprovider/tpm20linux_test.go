@@ -10,20 +10,20 @@ import (
 )
 
 func TestTpmVersion(t *testing.T) {
-	tpm, _ := NewTpm()
-	defer tpm.Close()
-	version := tpm.Version()
+	tpmProvider, _ := NewTpmProvider()
+	defer tpmProvider.Close()
+	version := tpmProvider.Version()
 	t.Logf("Version %d\n", version)
 	assert.NotEqual(t, version, 0)
 }
 
 func TestTpmTakeOwnership(t *testing.T) {
-	tpm, _ := NewTpm()
-	defer tpm.Close()
+	tpmProvider, _ := NewTpmProvider()
+	defer tpmProvider.Close()
 
 	var b[] byte
 	b = make([]byte, 20, 20)
 
-	rc := tpm.TakeOwnership(b)
+	rc := tpmProvider.TakeOwnership(b)
 	assert.Equal(t, rc, nil)
 }

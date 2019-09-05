@@ -31,7 +31,9 @@ build:gta:
 
 test:
   stage: test
-  image: gta-devel
+  image: 
+    name: gta-devel
+    entrypoint: ["/usr/sbin/init"]
   tags:
     - gta
   dependencies:
