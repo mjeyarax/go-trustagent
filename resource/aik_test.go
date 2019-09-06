@@ -12,16 +12,26 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"github.com/stretchr/testify/assert"
+	"intel/isecl/go-trust-agent/config"
+)
+
+const (
+	TestUser		= "test"
+	TestPassword	= "test"
 )
 
 func TestAik(t *testing.T) {
 	assert := assert.New(t)
 
+	config.GetConfiguration().TrustAgentService.Username = TestUser
+	config.GetConfiguration().TrustAgentService.Password = TestPassword
 	trustAgentService, err := CreateTrustAgentService(8450)
 	assert.NoError(err)
 
 	request, err := http.NewRequest("GET", "/v2/aik", nil)
 	assert.NoError(err)
+
+	request.SetBasicAuth(TestUser, TestPassword)
 
 	recorder := httptest.NewRecorder()
 	trustAgentService.router.ServeHTTP(recorder, request)
