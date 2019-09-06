@@ -15,9 +15,10 @@ type TaskRegistry struct {
 }
 
 const (
-	SetupAllCommand			= "all"
-	TakeOwnershipCommand 	= "takeownership"
-	SetupServerComand		= "setupserver"
+	SetupAllCommand				= "all"
+	TakeOwnershipCommand 		= "takeownership"
+	ServerConfigCommand			= "serverconfig"
+	CreateTLSKeyPairCommand		= "createtlskeypair"
 )
 
 func CreateTaskRegistry(flags []string) (TaskRegistry, error) {
@@ -26,13 +27,15 @@ func CreateTaskRegistry(flags []string) (TaskRegistry, error) {
 	registry.taskMap = make(map[string][]setup.Task)
 
 	takeOwnership := TakeOwnership { Flags : flags }
-	setupServer := SetupServer {Flags : flags }
+	serverConfig := ServerConfig {Flags : flags }
+	createTLSKeyPair := CreateTLSKeyPair { Flags: flags }
 
 	registry.taskMap[TakeOwnershipCommand] = []setup.Task { &takeOwnership, }
-	registry.taskMap[SetupServerComand] = []setup.Task { &setupServer, }
+	registry.taskMap[ServerConfigCommand] = []setup.Task { &serverConfig, }
 
 	registry.taskMap[SetupAllCommand] = []setup.Task {
-		&setupServer,
+		&serverConfig,
+		&createTLSKeyPair,
 		&takeOwnership,
 	}
 

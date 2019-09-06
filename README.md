@@ -17,7 +17,7 @@ Building, debuging and ci/cd use the 'gta-devel' image defined in cicd/Dockerfil
     2. `docker build --tag=gta-devel --build-arg http_proxy=<proxy-if-needed> --build-arg https_proxy=<proxy-if-needed> .`
     3. `docker image ls` should show 'gta-devel'
 2. Start a new instance of the container, mounting the code as `/docker_host` directory in the container
-    1. `docker run -it -v $(pwd):/docker_host gta-devel /bin/bash` (you may want to run this from the root directory of your development environment so that other ISecL projects are available in the container at '/docker_host')
+    1. `docker run -it -v $(pwd):/docker_host gta-devel -p 9443:1443 /bin/bash` (you may want to run this from the root directory of your development environment so that other ISecL projects are available in the container at '/docker_host')
     2. Configure git to access gitlab to resolve dependencies on other ISecL go libraries.
         1. `git config --global http.proxy http://proxy-us.intel.com:911`
         2. `git config --global https.proxy http://proxy-us.intel.com:911`
@@ -34,7 +34,7 @@ See INSTALL.md
 To debug GTA in a 'gta-devel' container, it must run 'systemd' so that services that support http, tpm2-abrmd, dmidecode (for platform-info), etc. can run.
 
 1. Start an container of `gta-devel` that runs `systemd`...
-    * `docker run --rm --privileged -ti -e 'container=docker' -v /sys/fs/cgroup:/sys/fs/cgroup:ro -v $(pwd):/docker_host  gta-devel /usr/sbin/init`
+    * `docker run --rm --privileged -ti -e 'container=docker' -v /sys/fs/cgroup:/sys/fs/cgroup:ro -v $(pwd):/docker_host -p 9443:1443 gta-devel /usr/sbin/init`
 2. Use Docker/vscode to 'attach' to the container.
 3. Change directory to where trustagent*.bin file exists.
 4. Create a `trustagent.env` file...
@@ -56,7 +56,7 @@ To debug GTA in a 'gta-devel' container, it must run 'systemd' so that services 
 5. Run `./trustagent_v1.0.0.bin`
 6. Start the trustagent service: `systemctl start tagent`
 7. Make sure the service is running: `systemctl status tagent` does not show errors.
-8. Confirm the REST API is accessible: `curl --request GET http://localhost:8446/v2/aik -k --noproxy "*"` returns without error.
+8. Confirm the REST API is accessible: `curl --request GET --user user:password https://localhost:1443/v2/host -k --noproxy "*"` returns without error.
 
 ## TPM Simulator Setup (TBD)
 ## Golang debugging (TBD)

@@ -21,8 +21,12 @@ import (
 
 type TrustAgentConfiguration struct {
 	configFile       		string
-	Port             		int
 	LogLevel         		log.Level
+	TrustAgentService struct {
+		Port				int
+		Username			string
+		Password			string
+	}
 	HVS struct {
 		Port				int
 		Url					string

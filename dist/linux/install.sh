@@ -73,7 +73,7 @@ elif [ -f ~/$TRUSTAGENT_ENV_FILE ]; then
 fi
 
 if [ -z "$env_file" ]; then
-    echo "No environment file found"
+    echo "The trustagent.env file was not provided, 'automatic provisioning' will not be performed"
     PROVISION_ATTESTATION="false"
 else
     echo "Using environment file $env_file"
@@ -117,14 +117,16 @@ chown -R $TRUSTAGENT_USERNAME:$TRUSTAGENT_USERNAME $TRUSTAGENT_HOME
 chmod 755 $TRUSTAGENT_BIN/*
 
 #--------------------------------------------------------------------------------------------------
-# 5. Configure services, etc.
+# 5. Enable/configure services, etc.
 #--------------------------------------------------------------------------------------------------
-# make sure the tss user owns /dev/tpm0 or tpm2-abrmd service won't start
-chown tss:tss /dev/tpm0
+# make sure the tss user owns /dev/tpm0 or tpm2-abrmd service won't start (this file does not
+# exist when using the tpm simulator, so check for its existence)
+if [ -f /dev/tpm0 ]; then
+    chown tss:tss /dev/tpm0
+fi
 
-# start tpm2-abrmd service
+# enable tpm2-abrmd service (start below if automatic provisioning is enabled)
 systemctl enable $TPM2_ABRMD_SERVICE
-systemctl start $TPM2_ABRMD_SERVICE
 
 # Enable tagent service
 systemctl disable $TRUSTAGENT_SERVICE > /dev/null 2>&1
@@ -137,20 +139,39 @@ systemctl daemon-reload
 if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PROVISION_ATTESTATION" == "yes" ]]; then
     echo "Automatic provisioning is enabled, using mtwilson url $MTWILSON_API_URL"
 
+    # make sure that tpm2-abrmd is running before running 'tagent setup'
+    systemctl status $TPM2_ABRMD_SERVICE 2>&1 > /dev/null
+    if [ $? -ne 0 ]; then
+        echo "Starting $TPM2_ABRMD_SERVICE"
+        systemctl start $TPM2_ABRMD_SERVICE 2>&1 > /dev/null
+        sleep 3
+
+        # todo:  in production we want to check that is is running, but in development
+        # the simulator needs to be started first -- for now warn, don't error...
+        systemctl status $TPM2_ABRMD_SERVICE 2>&1 > /dev/null
+        if [ $? -ne 0 ]; then
+            echo "WARNING: Could not start $TPM2_ABRMD_SERVICE"
+        fi
+    fi
+
     $TRUSTAGENT_EXE setup
-    if [ $? -eq 0 ]; then 
+
+    # this script is run by root, so own any setup generated files by 'tagent'
+    chown -R $TRUSTAGENT_USERNAME:$TRUSTAGENT_USERNAME $TRUSTAGENT_HOME
+
+    if [ $? -eq 0 ]; then         
         systemctl start $TRUSTAGENT_SERVICE
-        echo "Waiting for daemon to settle down before checking status"
-        sleep 5
+        echo "Waiting for $TRUSTAGENT_SERVICE to start"
+        sleep 3
 
         systemctl status $TRUSTAGENT_SERVICE 2>&1 > /dev/null
         if [ $? -ne 0 ]; then
-            echo "Installation completed with Errors - $TRUSTAGENT_SERVICE daemon not started."
+            echo "Installation completed with errors - $TRUSTAGENT_SERVICE did not start."
             echo "Please check errors in syslog using \`journalctl -u $TRUSTAGENT_SERVICE\`"
             exit 1
         fi
 
-        echo "$TRUSTAGENT_SERIVCE daemon is running"
+        echo "$TRUSTAGENT_SERVICE is running"
     else 
         echo "'$TRUSTAGENT_EXE setup' failed"
         exit 1
@@ -162,4 +183,4 @@ else
     echo "start tagent.service'"
 fi
 
-echo "Installation complete"
+echo "Installation succeeded"

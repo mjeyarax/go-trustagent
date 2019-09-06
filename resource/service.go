@@ -14,12 +14,12 @@ import (
 	"os/signal"
 	"syscall"
 	"fmt"
-
 	log "github.com/sirupsen/logrus"
 	stdlog "log"
-
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"intel/isecl/go-trust-agent/config"
+	"intel/isecl/go-trust-agent/constants"
 )
 
 type TrustAgentService struct {
@@ -39,14 +39,34 @@ func CreateTrustAgentService (port int) (*TrustAgentService, error) {
 
 	// Register routes...
 	trustAgentService.router = mux.NewRouter()
-	sr := trustAgentService.router.PathPrefix("/v2").Subrouter()	
-	func(setters ...func(*mux.Router)) {
-		for _, s := range setters {
-			s(sr)
-		}
-	} (SetAikRoutes, SetHostRoutes)
+	trustAgentService.router.HandleFunc("/v2/aik", basicAuth(GetAik)).Methods("GET")
+	trustAgentService.router.HandleFunc("/v2/host", basicAuth(GetPlatformInfo)).Methods("GET")
 	
 	return &trustAgentService, nil
+}
+
+func basicAuth(handler http.HandlerFunc) http.HandlerFunc {
+	return func(httpWriter http.ResponseWriter, httpRequest *http.Request) {
+		log.Info("Basic auth")
+		user, pass, ok := httpRequest.BasicAuth()
+		
+		if !ok {
+			http.Error(httpWriter, "authorization failed", http.StatusUnauthorized)
+			return
+		}
+
+		if user != config.GetConfiguration().TrustAgentService.Username {
+			http.Error(httpWriter, "authorization failed", http.StatusUnauthorized)
+			return
+		}
+
+		if pass != config.GetConfiguration().TrustAgentService.Password {
+			http.Error(httpWriter, "authorization failed", http.StatusUnauthorized)
+			return
+		}
+
+		handler(httpWriter, httpRequest)
+	}
 }
 
 
@@ -72,15 +92,7 @@ func (service *TrustAgentService) Start() error {
 
 	// dispatch web server go routine
 	go func() {
-		// tlsCert := constants.TLSCertPath
-		// tlsKey := constants.TLSKeyPath
-		// if err := h.ListenAndServeTLS(tlsCert, tlsKey); err != nil {
-		// 	log.WithError(err).Info("Failed to start HTTPS server")
-		// 	stop <- syscall.SIGTERM
-		// }
-
-		// KWT:  TLS setup
-		if err := h.ListenAndServe(); err != nil {
+		if err := h.ListenAndServeTLS(constants.TLSCertFilePath, constants.TLSKeyFilePath); err != nil {
 			log.WithError(err).Info("Failed to start trustagent server")
 			stop <- syscall.SIGTERM
 		}

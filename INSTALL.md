@@ -7,6 +7,8 @@
     2. dmidecode (v3.x)
     3. redhat-lsb-core (v4.1.x)
 
+    Ex. `yum -y install tpm2-abrmd dmidecode redhat-lsb-core`
+
 ## Provisioning Information
 The following (example) information needs to be provided in `trustagent.env` file.
 

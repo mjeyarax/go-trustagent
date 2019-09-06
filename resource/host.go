@@ -9,24 +9,53 @@
 	"io/ioutil"
 	"net/http"
 	"os"
-
-	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
-
 	"intel/isecl/go-trust-agent/constants"
 )
 
-func SetHostRoutes(router *mux.Router) {
-	router.HandleFunc("/host", func(w http.ResponseWriter, r *http.Request) {
-		GetPlatformInfo(w, r)
-	}).Methods("GET")
-}
-
-// curl --request GET http://localhost:1443/v2/host -k --noproxy "*"
-
 // Assuming that the /opt/trustagent/var/system-info/platform-info file has been create
-// during startup, just read the contents of the json file and return it to the http
-// writer
+// during startup, this function reads the contents of the json file and return it to the http
+// writer.
+//
+// curl --request GET --user user:pass https://localhost:1443/v2/host -k --noproxy "*"
+// { 
+// 	"errrCode":0,
+// 	"os_name":"Fedora",
+// 	"os_version":"29",
+// 	"bios_version":"-1",
+// 	"vmm_name":"",
+// 	"VMMVersion":"",
+// 	"processor_info":"-1",
+// 	"host_name":"63a5dc91a4e4",
+// 	"hardware_uuid":"-1",
+// 	"process_flags":"",
+// 	"tpm_version":"0",
+// 	"pcr_banks":[ 
+// 	   "SHA1",
+// 	   "SHA256"
+// 	],
+// 	"no_of_sockets":"2",
+// 	"tpm_enabled":"false",
+// 	"txt_enabled":"false",
+// 	"tboot_installed":"true",
+// 	"is_docker_env":"false",
+// 	"hardware_features":{ 
+// 	   "TXT":{ 
+// 		  "enabled":"false"
+// 	   },
+// 	   "TPM":{ 
+// 		  "enabled":"false",
+// 		  "Meta":{ 
+// 			 "tpm_version":"0",
+// 			 "pcr_banks":"SHA1_SHA256"
+// 		  }
+// 	   }
+// 	},
+// 	"installed_components":[ 
+// 	   "trustagent"
+// 	]
+//  }
+//
 func GetPlatformInfo(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 	log.Info("GetPlatformInfo")
 

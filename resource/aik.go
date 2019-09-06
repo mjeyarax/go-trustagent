@@ -6,17 +6,10 @@
 
  import (
 	"net/http"
-	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
-func SetAikRoutes(router *mux.Router) {
-	router.HandleFunc("/aik", func(w http.ResponseWriter, r *http.Request) {
-		GetAik(w, r)
-	}).Methods("GET")
-}
-
-// curl --request GET http://localhost:1443/v2/aik -k --noproxy "*"
+// curl --request GET --user user:pass https://localhost:1443/v2/aik -k --noproxy "*"
 func GetAik(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 	log.Info("GetAik")
 	httpWriter.WriteHeader(http.StatusOK)

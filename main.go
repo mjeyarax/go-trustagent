@@ -107,8 +107,8 @@
 	switch cmd {
 	case "start":
 
-		if config.GetConfiguration().Port == 0 {
-			panic("'tagent setup' must be run before 'start'")
+		if config.GetConfiguration().TrustAgentService.Port == 0 {
+			panic("The port has not been set, 'tagent setup' must be run before 'start'")
 		}
 
 		err = updatePlatformInfo()
@@ -122,7 +122,7 @@
 		}
 
 		// create and start webservice
-		service, err := resource.CreateTrustAgentService(config.GetConfiguration().Port)
+		service, err := resource.CreateTrustAgentService(config.GetConfiguration().TrustAgentService.Port)
 		if err != nil {
 			panic(err)
 		}
