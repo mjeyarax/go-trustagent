@@ -15,6 +15,7 @@ import (
 	"math/big"
 	"os"
 	"time"
+	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/lib/common/setup"
 )

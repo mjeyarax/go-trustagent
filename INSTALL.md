@@ -33,7 +33,7 @@ PROVISION_ATTESTATION=y
 2. Copy the trustagent.env file in the same directory as the installer.
 3. Change permissions on the installer if needed:`chmod +x trustagent_v1.0.0.bin`.
 4. Run the installer: `./trustagent_v1.0.0.bin`.  With `PROVISION_ATTESTATION=y`, the installer will run `tagent setup` and start the tagent service.
-5. Confirm that the service is up by running `systemctl status tagent.service`.  Additionally, the service can be validated by confirming that `curl --request GET http://localhost:1443/v2/host -k --noproxy "*"` returns valid host json.
+5. Confirm that the service is up by running `systemctl status tagent.service`.  Additionally, the service can be validated by confirming that `curl --request GET --user <TRUSTAGENT_ADMIN_USERNAME>:< TRUSTAGENT_ADMIN_PASSWORD>password https://<compute-node-ip>:1443/v2/host -k --noproxy "*"` returns valid host json.
 
 ## HVS Provisioning
 Once GTA is up and running it can be registered with HVS (TBD)...
