@@ -46,6 +46,13 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
+# make sure tagent.service is not running or install won't work
+systemctl status $TRUSTAGENT_SERVICE 2>&1 > /dev/null
+if [ $? -eq 0 ]; then
+    echo "Please stop the tagent service before running the installer"
+    exit 1
+fi
+
 # make sure dependencies are installed
 for i in ${TRUSTAGENT_DEPENDENCIES[@]}; do
     echo "Checking for dependency ${i}"
