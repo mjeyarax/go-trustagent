@@ -34,8 +34,8 @@ test:
 #  image: gta-devel
   tags:
     - gta-tst
-  dependencies:
-    - build:gta
+#  dependencies:
+#    - build:gta
   script:
     - go test ./... -tags=integration -coverpkg=./... -coverprofile cover.out
     - go tool cover -func cover.out
