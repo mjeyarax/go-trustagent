@@ -33,7 +33,7 @@ test:
   stage: test
 #  image: gta-devel
   tags:
-    - gta-tst
+    - gta-test
 #  dependencies:
 #    - build:gta
   script:
