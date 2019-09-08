@@ -31,9 +31,9 @@ build:gta:
 
 test:
   stage: test
-  image: gta-devel
+#  image: gta-devel
   tags:
-    - gta
+    - gta-tst
   dependencies:
     - build:gta
   script:
