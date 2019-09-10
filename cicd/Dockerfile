@@ -21,7 +21,7 @@
 # T P M   S I M U L A T O R
 #--------------------------------------------------------------------------------------------------
 # Create an instance that runs systemd (ex. so that tpm simulator can be run)...
-#   docker run --rm --privileged -ti -e 'container=docker' -v /sys/fs/cgroup:/sys/fs/cgroup:ro -v /c/Users/kentthom/Desktop/gta_src:/docker_host -p 127.0.0.1:8446:8080/tcp gta-devel /usr/sbin/init
+#  docker run --rm --privileged -ti -e 'container=docker' -v /sys/fs/cgroup:/sys/fs/cgroup:ro -v $(pwd):/docker_host -p 9443:1443 gta-devel /usr/sbin/init
 #
 # Attach to instance using 'docker attach'...
 # Start simulator: /simulator/src/tpm_server&
@@ -77,7 +77,7 @@ rm -f /lib/systemd/system/anaconda.target.wants/*;
 
 #  Development tools: gcc 8.3.1 (rhel8), ldd v2.28
 RUN yum -y group install "Development Tools" 
-RUN yum -y install golang makeself
+RUN yum -y install golang makeself gdb
 
 # platforminfo dependencies
 RUN yum -y install dmidecode redhat-lsb
@@ -93,3 +93,8 @@ RUN wget https://downloads.sourceforge.net/project/ibmswtpm2/ibmtpm1332.tar.gz \
     && tar -xavf ../ibmtpm1332.tar.gz \
     && cd src \
     && make
+
+# git config stuff
+# ssh keys
+# start simulator
+# edit /usr/lib/systemd/system/tpm2-abrmd.service --> add --tcti=mssim (daemon reload, restart service) --> tpm2_pcrlist is ok

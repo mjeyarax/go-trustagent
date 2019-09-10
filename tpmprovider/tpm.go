@@ -9,7 +9,6 @@ import "C"
 
 import (
 	"crypto"
-	"errors"
 )
 
 type CertifiedKey struct {
@@ -32,24 +31,18 @@ type TpmProvider interface {
 	Sign(ck *CertifiedKey, keyAuth []byte, alg crypto.Hash, hashed []byte) ([]byte, error)
 //	GetModuleLog() (string, error)
 //	GetTcbMeasurement() (string, error)
+
+
+
+	// Overview of function here
 	TakeOwnership(newOwnerAuth []byte) error
+	
 	IsOwnedWithAuth(ownerAuth []byte) (bool, error)
+	
 	SetCredential(authHandle uint, ownerAuth []byte, /*credentialType constants.CredentialType,*/ credentialBlob []byte) error
 	GetCredential(authHandle uint, /*credentialType constants.CredentialType*/) ([]byte, error)
 	GetAssetTag(authHandle uint) ([]byte, error)
 	GetAssetTagIndex() (uint, error)
 	//GetPcrBanks() ([]constants.PcrBank, error)
 	//Getquote(pcrBanks []constants.PcrBank, pcrs []constants.Pcr, aikBlob []byte, aikAuth []byte, nonce []byte)
-}
-
-func NewTpmProvider() (TpmProvider, error) {
-	var tpm* C.tpm
-	tpm = C.TpmCreate()
-
-	if(tpm == nil) {
-		return nil, errors.New("Could not allocate native tpm")
-	}
-
-	tpmProvider := Tpm20Linux {tpm: tpm}
-	return &tpmProvider, nil
 }

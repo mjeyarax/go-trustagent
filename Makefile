@@ -4,7 +4,11 @@ GITCOMMITDATE := $(shell git log -1 --date=short --pretty=format:%cd)
 VERSION := $(or ${GITTAG}, v1.0.0)
 
 gta:
-	env GOOS=linux go build -ldflags "-X intel/isecl/go-trust-agent/version.Version=$(VERSION) -X intel/isecl/go-trust-agent/version.GitHash=$(GITCOMMIT)" -o out/tagent
+	env GOOS=linux go build -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/version.Version=$(VERSION) -X intel/isecl/go-trust-agent/version.GitHash=$(GITCOMMIT)" -o out/tagent
+
+# KWT
+# Pass the '-w' flag to the linker to omit the debug information (for example, go build -ldflags=-w prog.go).
+# https://golang.org/doc/gdb
 
 installer: gta
 	mkdir -p out/installer

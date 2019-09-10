@@ -70,7 +70,7 @@ func (task* ServerConfig) Run(c setup.Context) error {
 
 func (task* ServerConfig) Validate(c setup.Context) error {
 	if config.GetConfiguration().TrustAgentService.Port == 0 || config.GetConfiguration().TrustAgentService.Port > 65535 {
-		return fmt.Errorf("Invalid port value: '%d'", config.GetConfiguration().TrustAgentService.Port)
+		return fmt.Errorf("Validation error: Invalid port value: '%d'", config.GetConfiguration().TrustAgentService.Port)
 	}
 
 	err := validation.ValidateAccount(config.GetConfiguration().TrustAgentService.Username, config.GetConfiguration().TrustAgentService.Password)

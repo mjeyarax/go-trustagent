@@ -13,20 +13,33 @@ import "C"
 
 import (
 	"crypto"
+	"errors"
 	"fmt"
 )
 
 type Tpm20Linux struct {
-	tpm* C.tpm
+	tpmCtx *C.tpmCtx
+}
+
+func NewTpmProvider() (TpmProvider, error) {
+	var ctx* C.tpmCtx
+	ctx = C.TpmCreate()
+
+	if(ctx == nil) {
+		return nil, errors.New("Could not create tpm context")
+	}
+
+	tpmProvider := Tpm20Linux {tpmCtx: ctx}
+	return &tpmProvider, nil
 }
 
 func (t* Tpm20Linux) Close() {
-	C.TpmDelete(t.tpm)
-	t.tpm = nil
+	C.TpmDelete(t.tpmCtx)
+	t.tpmCtx = nil
 }
 
 func (t* Tpm20Linux) Version() C.TPM_VERSION {
-	return C.Version(t.tpm)
+	return C.Version(t.tpmCtx)
 }
 
 func (t* Tpm20Linux) CreateCertifiedKey(keyAuth []byte, aikAuth []byte) (*CertifiedKey, error) {
@@ -57,7 +70,7 @@ func (t* Tpm20Linux) Sign(ck *CertifiedKey, keyAuth []byte, alg crypto.Hash, has
 
 func (t* Tpm20Linux) TakeOwnership(newOwnerAuth []byte) error {
 	// review/refine how to best pass bytes and other values to C...
-	rc := C.TakeOwnership(t.tpm, C.CString(string(newOwnerAuth)), C.int(len(newOwnerAuth)))
+	rc := C.TakeOwnership(t.tpmCtx, C.CString(string(newOwnerAuth)), C.size_t(len(newOwnerAuth)))
 
 	if(rc != 0) {
 		return fmt.Errorf("TakeOwnership returned error code %d", rc)
@@ -69,14 +82,10 @@ func (t* Tpm20Linux) TakeOwnership(newOwnerAuth []byte) error {
 func (t* Tpm20Linux) IsOwnedWithAuth(ownerAuth []byte) (bool, error) {
 
 	// IsOwnedWithAuth returns 0 (true) if 'owned', negative on error, 'false' if > 0
-	rc := C.IsOwnedWithAuth(t.tpm, C.CString(string(ownerAuth)), C.int(len(ownerAuth)))
+	rc := C.IsOwnedWithAuth(t.tpmCtx, C.CString(string(ownerAuth)), C.size_t(len(ownerAuth)))
 
-	if(rc < 0) {
+	if(rc != 0) {
 		return false, fmt.Errorf("IsOwnedWithAuth returned error code %d", rc)
-	}
-
-	if(rc > 0) {
-		return false, nil
 	}
 
 	return true, nil

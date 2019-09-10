@@ -1,5 +1,5 @@
 
-// +build integration
+// +build !integration
 
 /*
  * Copyright (C) 2019 Intel Corporation
@@ -19,11 +19,8 @@ import (
 func TestTakeOwnership(t *testing.T) {
 	assert := assert.New(t)
 
-	secretKey, err := crypt.GetRandomBytes(20)
-	assert.NoError(err)
-
 	cfg := config.TrustAgentConfiguration {}
-	cfg.Tpm.SecretKey = secretKey
+	cfg.Tpm.SecretKey = "0123456789012345678901234567890123456789"
 
 	registry, err := CreateTaskRegistry(nil)
 	assert.NoError(err)

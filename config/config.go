@@ -34,7 +34,7 @@ type TrustAgentConfiguration struct {
 		Password			string
 	}
 	Tpm struct {
-		SecretKey			[]byte
+		SecretKey			string
 	}
 }
 var mu sync.Mutex
