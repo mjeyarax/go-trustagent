@@ -68,24 +68,24 @@ func (t* Tpm20Linux) Sign(ck *CertifiedKey, keyAuth []byte, alg crypto.Hash, has
 //	return `tcbmeasurment`, nil
 //}
 
-func (t* Tpm20Linux) TakeOwnership(newOwnerAuth []byte) error {
+func (t* Tpm20Linux) TakeOwnership(secretKey []byte) error {
 	// review/refine how to best pass bytes and other values to C...
-	rc := C.TakeOwnership(t.tpmCtx, C.CString(string(newOwnerAuth)), C.size_t(len(newOwnerAuth)))
+	rc := C.TakeOwnership(t.tpmCtx, C.CString(string(secretKey)), C.size_t(len(secretKey)))
 
 	if(rc != 0) {
-		return fmt.Errorf("TakeOwnership returned error code %d", rc)
+		return fmt.Errorf("TakeOwnership returned error code 0x%X", rc)
 	}
 
 	return nil
 }
 
-func (t* Tpm20Linux) IsOwnedWithAuth(ownerAuth []byte) (bool, error) {
+func (t* Tpm20Linux) IsOwnedWithAuth(secretKey []byte) (bool, error) {
 
 	// IsOwnedWithAuth returns 0 (true) if 'owned', negative on error, 'false' if > 0
-	rc := C.IsOwnedWithAuth(t.tpmCtx, C.CString(string(ownerAuth)), C.size_t(len(ownerAuth)))
+	rc := C.IsOwnedWithAuth(t.tpmCtx, C.CString(string(secretKey)), C.size_t(len(secretKey)))
 
 	if(rc != 0) {
-		return false, fmt.Errorf("IsOwnedWithAuth returned error code %d", rc)
+		return false, fmt.Errorf("IsOwnedWithAuth returned error code 0x%X", rc)
 	}
 
 	return true, nil

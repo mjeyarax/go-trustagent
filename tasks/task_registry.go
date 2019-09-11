@@ -32,6 +32,7 @@ func CreateTaskRegistry(flags []string) (TaskRegistry, error) {
 
 	registry.taskMap[TakeOwnershipCommand] = []setup.Task { &takeOwnership, }
 	registry.taskMap[ServerConfigCommand] = []setup.Task { &serverConfig, }
+	registry.taskMap[CreateTLSKeyPairCommand] = []setup.Task { &createTLSKeyPair, }
 
 	registry.taskMap[SetupAllCommand] = []setup.Task {
 		&serverConfig,

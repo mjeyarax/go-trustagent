@@ -17,6 +17,7 @@
 #define TRUE 1
 #define FALSE 0
 
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof(*array))
 
 // from https://github.com/tpm2-software/tpm2-tools/blob/3.1.0/lib/tpm2_util.h
 #define BUFFER_SIZE(type, field) (sizeof((((type *)NULL)->field)))
@@ -72,7 +73,13 @@
 
 #define LOG(fmt, ...) fprintf(stdout, "[LOG:%s::%d] " fmt "\n", __FILE__, __LINE__ __VA_OPT__(,) __VA_ARGS__);
 #define ERROR(fmt, ...) fprintf(stderr, "[ERR:%s::%d] " fmt "\n", __FILE__, __LINE__ __VA_OPT__(,) __VA_ARGS__);
+
+#define ENABLE_DEBUG_LOGGING 0
+#if ENABLE_DEBUG_LOGGING
 #define DEBUG(fmt, ...) fprintf(stdout, "[DBG:%s::%d] " fmt "\n", __FILE__, __LINE__ __VA_OPT__(,) __VA_ARGS__);
+#else
+#define DEBUG(fmt, ...)
+#endif
 
 struct tpmCtx
 {
