@@ -9,6 +9,7 @@ import "C"
 
 import (
 	"crypto"
+	"fmt"
 )
 
 type MockTpm struct {
@@ -19,25 +20,25 @@ func NewMockTpm() (TpmProvider, error) {
 	return &tpmMock, nil
 }
 
-func (t MockTpm) Close() {
+func (t *MockTpm) Close() {
 }
 
-func (t MockTpm) Version() C.TPM_VERSION {
+func (t *MockTpm) Version() C.TPM_VERSION {
 	return C.TPM_VERSION_UNKNOWN
 }
 
-func (t MockTpm) CreateCertifiedKey(keyAuth []byte, aikAuth []byte) (*CertifiedKey, error) {
+func (t *MockTpm) CreateCertifiedKey(keyAuth []byte, aikAuth []byte) (*CertifiedKey, error) {
 	var ck CertifiedKey
 	return &ck, nil
 }
 
-func (t MockTpm) Unbind(ck *CertifiedKey, keyAuth []byte, encData []byte) ([]byte, error) {
+func (t *MockTpm) Unbind(ck *CertifiedKey, keyAuth []byte, encData []byte) ([]byte, error) {
 	var b[] byte
 	b = make([]byte, 20, 20)
 	return b, nil
 }
 
-func (t MockTpm) Sign(ck *CertifiedKey, keyAuth []byte, alg crypto.Hash, hashed []byte) ([]byte, error) {
+func (t *MockTpm) Sign(ck *CertifiedKey, keyAuth []byte, alg crypto.Hash, hashed []byte) ([]byte, error) {
 	var b[] byte
 	b = make([]byte, 20, 20)
 	return b, nil
@@ -52,31 +53,47 @@ func (t MockTpm) Sign(ck *CertifiedKey, keyAuth []byte, alg crypto.Hash, hashed 
 //	return `tcbmeasurment`, nil
 //}
 
-func (t MockTpm) TakeOwnership(newOwnerAuth []byte) error {
+func (t *MockTpm) TakeOwnership(newOwnerAuth []byte) error {
 	return nil
 }
 
-func (t MockTpm) IsOwnedWithAuth(ownerAuth []byte) (bool, error) {
+func (t *MockTpm) IsOwnedWithAuth(ownerAuth []byte) (bool, error) {
 	return true, nil
 }
 
-func (t MockTpm) SetCredential(authHandle uint, ownerAuth []byte, credentialBlob []byte) error {
+func (t *MockTpm) GetEndorsementKeyCertificate(tpmSecretKey string) ([]byte, error) {
+	return nil, fmt.Errorf("MockTpm.GetEndorsementKeyCertificate is not implemented")
+}
+
+func (t *MockTpm) CreateEndorsementKey(tpmSecretKey string) error {
+	return fmt.Errorf("MockTpm.CreateEndorsementKey is not implemented")
+}
+
+func (t *MockTpm) NvIndexExists(handle uint32) (bool, error) {
+	return false, fmt.Errorf("MockTpm.NvIndexExists is not implemented")
+}
+
+func (tpm *MockTpm) PublicKeyExists(handle uint32) (bool, error) {
+	return false, fmt.Errorf("MockTpm.PublicKeyExists is not implemented")
+}
+
+func (t *MockTpm) SetCredential(authHandle uint, ownerAuth []byte, credentialBlob []byte) error {
 	return nil
 }
 
-func (t MockTpm) GetCredential(authHandle uint) ([]byte, error) {
+func (t *MockTpm) GetCredential(authHandle uint) ([]byte, error) {
 	var b[] byte
 	b = make([]byte, 20, 20)
 	return b, nil
 }
 
-func (t MockTpm) GetAssetTag(authHandle uint) ([]byte, error) {
+func (t *MockTpm) GetAssetTag(authHandle uint) ([]byte, error) {
 	var b[] byte
 	b = make([]byte, 20, 20)
 	return b, nil
 }
 
-func (t MockTpm) GetAssetTagIndex() (uint, error) {
+func (t *MockTpm) GetAssetTagIndex() (uint, error) {
 	return 0, nil
 }
 

@@ -22,6 +22,11 @@ type CertifiedKey struct {
 	KeyName []byte
 }
 
+// provides go visibility to values defined in tpm.h (shared with c code)
+const (
+	NV_IDX_ENDORSEMENT_KEY = C.NV_IDX_ENDORSEMENT_KEY
+)
+
 type TpmProvider interface {
 	Close()
 
@@ -35,7 +40,12 @@ type TpmProvider interface {
 
 
 	// Overview of function here
-	TakeOwnership(newOwnerAuth []byte) error
+	TakeOwnership(tpmSecretKey []byte) error
+	
+	GetEndorsementKeyCertificate(tpmSecretKey string) ([]byte, error)
+	CreateEndorsementKey(tpmSecretKey string) error
+	NvIndexExists(nvIndex uint32) (bool, error)
+	PublicKeyExists(handle uint32) (bool, error)
 	
 	IsOwnedWithAuth(ownerAuth []byte) (bool, error)
 	

@@ -88,4 +88,8 @@ struct tpmCtx
     TSS2_SYS_CONTEXT* sys;
 };
 
+// util.c
+int str2Tpm2bAuth(const char* secretKey, size_t keyLength, TPM2B_AUTH* tpm2bAuth);
+int GetMaxNVBufferSize(TSS2_SYS_CONTEXT *sys, uint32_t *size);
+
 #endif

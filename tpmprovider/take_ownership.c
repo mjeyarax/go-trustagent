@@ -89,41 +89,6 @@ static int change_auth(TSS2_SYS_CONTEXT* sys,
     return rval;
 }
 
-// Utility function that takes an ascii string and converts it into a TPM2B_AUTH similar
-// to https://raw.githubusercontent.com/tpm2-software/tpm2-tools/3.1.0/lib/tpm2_util.c
-// (tpm2_util_hex_to_byte_structure).
-static int str2Tpm2bAuth(const char* secretKey, size_t keyLength, TPM2B_AUTH* tpm2bAuth) 
-{
-    int i = 0;
-
-    if (secretKey == NULL || tpm2bAuth == NULL)
-    {
-        return -1;
-    }
-
-    if (keyLength % 2)
-    {
-        return -2;
-    }
-
-    if (keyLength/2 > ARRAY_SIZE(tpm2bAuth->buffer))
-    {
-        return -3;
-    }
-
-    tpm2bAuth->size = keyLength/2;
-
-    for (i = 0; i < tpm2bAuth->size; i++) 
-    {
-        char tmpStr[4] = { 0 };
-        tmpStr[0] = secretKey[i * 2];
-        tmpStr[1] = secretKey[i * 2 + 1];
-        tpm2bAuth->buffer[i] = strtol(tmpStr, NULL, 16);
-    }
-
-    return 0;
-}
-
 static int take_ownership(TSS2_SYS_CONTEXT* sys, TPM2B_AUTH* newSecretKey, TPM2B_AUTH* oldSecretKey)
 {
     TSS2_RC rc;
@@ -209,7 +174,7 @@ static int create_primary(TSS2_SYS_CONTEXT *sys, TPM2B_AUTH* secretKey, TPM2_HAN
 // 'TakeOwnership' wraps three tpm2-tools commands: tpm2_takeownership, tpm2_createprimary 
 // and tpm2_evictcontrol
 //-------------------------------------------------------------------------------------------------
-int TakeOwnership(tpmCtx* ctx, char* secretKey, size_t keyLength) 
+int TakeOwnership(tpmCtx* ctx, char* tpmSecretKey, size_t keyLength) 
 {
     TSS2_RC rval = 0;
     TPM2_HANDLE handle2048rsa = 0;
@@ -220,21 +185,8 @@ int TakeOwnership(tpmCtx* ctx, char* secretKey, size_t keyLength)
                                    // THE TPM IS CLEARED.  Changing the password is a feature
                                    // enhancement.
 
-    if(secretKey == NULL)
-    {
-        ERROR("The TPM secret key must be provided.")
-        return -1;
-    }
 
-    if(keyLength == 0 || keyLength > sizeof(TPM2B_AUTH))
-    {
-        ERROR("Invalid secret key length.")
-        return -2;
-    }
-
-    DEBUG("SK: '%s'", secretKey);
-
-    rval = str2Tpm2bAuth(secretKey, keyLength, &newSecretKey);
+    rval = str2Tpm2bAuth(tpmSecretKey, keyLength, &newSecretKey);
     if(rval != 0)
     {
         ERROR("There was an error creating the new TPM2B_AUTH");
@@ -286,20 +238,6 @@ int IsOwnedWithAuth(tpmCtx* ctx, char* secretKey, size_t keyLength)
     int rval;
     TPM2B_AUTH newSecretKey = {0};
     TPM2B_AUTH oldSecretKey = {0};
-
-    if(secretKey == NULL)
-    {
-        ERROR("The TPM secret key must be provided.")
-        return -1;
-    }
-
-    if(keyLength == 0 || keyLength > sizeof(TPM2B_AUTH))
-    {
-        ERROR("Invalid secret key length.")
-        return -2;
-    }
-
-    DEBUG("SK: '%s'", secretKey);
 
     rval = str2Tpm2bAuth(secretKey, keyLength, &newSecretKey);
     if(rval != 0)
