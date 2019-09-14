@@ -47,13 +47,35 @@ type ProvisionEndorsementKey struct {
 
 func (task* ProvisionEndorsementKey) Run(c setup.Context) error {
 	var err error
+	var registered bool
+	var isEkSigned bool
 
 	if err = task.readEndorsementKeyCertificate(); err != nil {
 		return err
 	}
 
-	if err = task.registerEndorsementKeyCertificate(); err != nil {
+	if err := task.downloadEndorsementAuthorities(); err != nil {
 		return err
+	}
+
+	if isEkSigned, err = task.isEkSignedByEndorsementAuthority(); err != nil {
+		return err
+	}
+
+	if isEkSigned {
+		log.Info("EC is already issued by endorsement authority; no need to request new EC")
+		return nil
+	}
+
+	if registered, err = task.isEkRegisteredWithMtWilson(); err != nil {
+		log.Info("EK is already registered with Mt Wilson; no need to request an EC")
+		return err
+	}
+
+	if !registered {
+		if err = task.registerEkWithMtWilson(); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -61,8 +83,7 @@ func (task* ProvisionEndorsementKey) Run(c setup.Context) error {
 
 func (task* ProvisionEndorsementKey) Validate(c setup.Context) error {
 
-	// WEEK2:  Validate endorsement key registration
-
+	// assume valid if error did not occur during 'Run'
 	log.Info("Successfully provisioned endorsement key")
 	return nil
 }
@@ -102,40 +123,6 @@ func (task* ProvisionEndorsementKey) readEndorsementKeyCertificate() error {
 	task.ekCert, err = x509.ParseCertificate(ekCertBytes)
 	if err != nil {
 		return err
-	}
-
-	return nil
-}
-
-// download 'endorsement.pem' from mtwilson
-// check if the ec is registed with mtwilson and if not, register it
-func (task* ProvisionEndorsementKey) registerEndorsementKeyCertificate() error {
-
-	var err error
-	var registered bool
-	var isEkSigned bool
-
-	if err := task.downloadEndorsementAuthorities(); err != nil {
-		return err
-	}
-
-	if isEkSigned, err = task.isEkSignedByEndorsementAuthority(); err != nil {
-		return err
-	}
-
-	if isEkSigned {
-		log.Info("EC is already issued by endorsement authority; no need to request new EC")
-		return nil
-	}
-
-	if registered, err = task.isEkRegisteredWithMtWilson(); err != nil {
-		return err
-	}
-
-	if !registered {
-		if err = task.registerEkWithMtWilson(); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -203,6 +190,8 @@ func (task* ProvisionEndorsementKey) downloadEndorsementAuthorities() error {
 			return fmt.Errorf("Could not load endorsement authorities")
 		}
 
+		log.Infof("Endorsement authorities contains %d subjects", len(task.endorsementAuthorities.Subjects()))
+
 		// KWT:  When to save the file (now or later during validation, or at all?)
 		err = ioutil.WriteFile(constants.EndorsementAuthoritiesFile, data, 0644)
 		if err != nil {
@@ -213,12 +202,12 @@ func (task* ProvisionEndorsementKey) downloadEndorsementAuthorities() error {
 	return nil
 }
 
-// WEEK2:  Needs to be debugged to see if it 'verifying'...
+// WEEK2:  Getting 'X509: Unhandled critical extension'
 func (task* ProvisionEndorsementKey) isEkSignedByEndorsementAuthority() (bool, error) {
 	isEkSigned := false
 
-	opts := x509.VerifyOptions{
-		//DNSName: "mail.google.com",
+	opts := x509.VerifyOptions {
+		//DNSName: "10.105.168.60",
 		Roots:   task.endorsementAuthorities,
 	}
 
@@ -231,7 +220,6 @@ func (task* ProvisionEndorsementKey) isEkSignedByEndorsementAuthority() (bool, e
 	return isEkSigned, nil
 }
 
-// WEEK2: debug
 func (task* ProvisionEndorsementKey) isEkRegisteredWithMtWilson() (bool, error) {
 
 	hardwareUUID, err := platforminfo.HardwareUUID()
@@ -246,7 +234,7 @@ func (task* ProvisionEndorsementKey) isEkRegisteredWithMtWilson() (bool, error) 
 		return false, err
 	}
 
-	url := fmt.Sprintf("%s/tpm-endorsements?hardware_uuid=%s", config.GetConfiguration().HVS.Url, hardwareUUID)
+	url := fmt.Sprintf("%s/tpm-endorsements?hardwareUuidEqualTo=%s", config.GetConfiguration().HVS.Url, hardwareUUID)
 	request, _:= http.NewRequest("GET", url, nil)
 	request.SetBasicAuth(config.GetConfiguration().HVS.Username, config.GetConfiguration().HVS.Password)
 
@@ -263,15 +251,24 @@ func (task* ProvisionEndorsementKey) isEkRegisteredWithMtWilson() (bool, error) 
 			return false, fmt.Errorf("Error reading response: %s", err)
 		}
 
-		// WEEK2:  Parse json and see if this hardware-id is in the list (return true)
+//		log.Infof("Endorsements: %s", string(data))
 
-		log.Info(string(data))
+		var objmap map[string]interface{}
+		if err := json.Unmarshal(data, &objmap); err != nil {
+			return false, fmt.Errorf("Error parsing json: %s", err)
+		}
+
+		if(objmap["tpm_endorsements"] != nil && len(objmap["tpm_endorsements"].([]interface{})) > 0) {
+			// a endorsement was found with this hardware uuid
+			return true, nil
+		}
+
 	}
 
 	return false, nil
 }
 
-// WEEK2:  move
+// KWT:  move this to mtwilson client
 type TpmEndorsement struct {
 	HardwareUUID 	string 	`json:"hardware_uuid"`
 	Issuer 			string 	`json:"issuer"`
