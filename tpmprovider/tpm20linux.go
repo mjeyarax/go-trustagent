@@ -97,11 +97,11 @@ func (t* Tpm20Linux) GetEndorsementKeyCertificate(tpmSecretKey string) ([]byte, 
 	var ekBytesLength C.int
 	
 	rc := C.GetEndorsementKeyCertificate(t.tpmCtx, C.CString(tpmSecretKey), C.size_t(len(tpmSecretKey)), &ekBytes, &ekBytesLength)
-	defer C.free(unsafe.Pointer(ekBytes))
-
 	if rc != 0 {
 		return nil, fmt.Errorf("GetEndorsementKeyCertificate returned error code 0x%X", rc)
 	}
+
+	defer C.free(unsafe.Pointer(ekBytes))
 
 	if ekBytesLength <= 0 || ekBytesLength > 4000 {
 		return nil, fmt.Errorf("The buffer size is incorrect")

@@ -28,10 +28,10 @@ type TrustAgentConfiguration struct {
 		Password			string
 	}
 	HVS struct {
-		Port				int
 		Url					string
-		UserName			string
+		Username			string
 		Password			string
+		TLS384				string
 	}
 	Tpm struct {
 		SecretKey			string

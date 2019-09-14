@@ -12,7 +12,6 @@ import (
 	"testing"
 	"github.com/stretchr/testify/assert"
 	"intel/isecl/go-trust-agent/config"
-	"intel/isecl/lib/common/crypt"
 )
 
 // TODO
