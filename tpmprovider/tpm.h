@@ -24,6 +24,11 @@ typedef enum NV_IDX
     NV_IDX_ENDORSEMENT_KEY = 0x1c00002
 } NV_IDX;
 
+typedef enum TPM_HANDLE 
+{
+    TPM_HANDLE_AIK = 0x81018000
+} TPM_HANDLE;
+
 tpmCtx* TpmCreate();
 void TpmDelete(tpmCtx* ctx);
 
@@ -31,10 +36,16 @@ TPM_VERSION Version(tpmCtx* ctx);
 //int CreateCertifiedKey(char* keyAuth, char* aikAuth);
 //int Unbind(ck *CertifiedKey, char* keyAuth, char* encData); // result buffer go allocated byte array passed in as reference, filled in by 'C' ([]byte, error)
 //int Sign(ck *CertifiedKey, char* keyAuth []byte, alg crypto.Hash, hashed []byte) ([]byte, error)
-int TakeOwnership(tpmCtx* ctx, char* secretKey, size_t keyLen);
-int IsOwnedWithAuth(tpmCtx* ctx, char* secretKey, size_t keyLen);
-int CreateEndorsementKey(tpmCtx* ctx, char* secretKey, size_t keyLength);
-int GetEndorsementKeyCertificate(tpmCtx* ctx, char* secretKey, size_t keyLength, char** ekBytes, int* ekBytesLength);
+int TakeOwnership(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength);
+int IsOwnedWithAuth(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength);
+int CreateEndorsementKey(const tpmCtx* ctx, const char* tpmSecretKey, size_t secretKeyLength);
+int GetEndorsementKeyCertificate(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char** ekBytes, int* ekBytesLength);
+
+int IsAikPresent(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength);
+int CreateAik(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength);
+int GetAikBytes(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char** aikBytes, int* aikBytesLength);
+int GetAikName(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char** aikName, int* aikNameLength);
+
 int NvIndexExists(tpmCtx* ctd, uint32_t nvIndex);
 int PublicKeyExists(tpmCtx* ctd, uint32_t handle);
 //int SetCredential(authHandle uint, ownerAuth []byte, /*credentialType constants.CredentialType,*/ credentialBlob []byte) error

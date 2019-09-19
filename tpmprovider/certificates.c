@@ -9,7 +9,7 @@
 // tpm2_getpubek -e hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -o hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -H 0x81010000 -g 0x1 -f /tmp/endorsementKey
 //
 // From: https://github.com/tpm2-software/tpm2-tools/blob/3.1.0/tools/tpm2_getpubek.c
-int CreateEndorsementKey(tpmCtx* ctx, char* tpmSecretKey, size_t keyLength)
+int CreateEndorsementKey(const tpmCtx* ctx, const char* tpmSecretKey, size_t keyLength)
 {
     TSS2_RC                 rval;
     TSS2L_SYS_AUTH_RESPONSE sessionsDataOut = {0};

@@ -6,13 +6,13 @@ package tasks
 
 import (
 	"bytes"
-	"crypto/tls"
+// /	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"encoding/base64"
-	"encoding/hex"
+//	"encoding/hex"
 	"encoding/json"
-	//"encoding/pem"
+//	"encoding/pem"
 	"io/ioutil"
 	"net/http"
 	log "github.com/sirupsen/logrus"
@@ -21,7 +21,7 @@ import (
 	"intel/isecl/go-trust-agent/platforminfo"
 	"intel/isecl/go-trust-agent/tpmprovider"
 	"intel/isecl/lib/common/setup"
-	commonTls "intel/isecl/lib/common/tls"
+//	commonTls "intel/isecl/lib/common/tls"
 )
 
 //-------------------------------------------------------------------------------------------------
@@ -125,44 +125,17 @@ func (task* ProvisionEndorsementKey) readEndorsementKeyCertificate() error {
 		return err
 	}
 
-	return nil
-}
-
-// KWT:  Merge this (or use) into mtwilson.Client
-func mtwilsonClient(tls384 string) (*http.Client, error) {
-
-	var certificateDigest [48]byte
-
-	certDigestBytes, err := hex.DecodeString(tls384)
+	// WEEK2: Remove
+	err = ioutil.WriteFile("/opt/trustagent/configuration/ek.der", ekCertBytes, 0644)
 	if err != nil {
-		return nil, fmt.Errorf("error converting certificate digest to hex: %s", err)
+		return fmt.Errorf("Error %s", err)
 	}
-
-	if len(certDigestBytes) != 48 {
-		return nil, fmt.Errorf("Incorrect TLS384 string length %d", len(certDigestBytes))
-	}
-
-	copy(certificateDigest[:], certDigestBytes)
-
-	// init http client
-	tlsConfig := tls.Config{}
-	if certDigestBytes != nil {
-		// set explicit verification
-		tlsConfig.InsecureSkipVerify = true
-		tlsConfig.VerifyPeerCertificate = commonTls.VerifyCertBySha384(certificateDigest)
-	}
-
-	transport := http.Transport{
-		TLSClientConfig: &tlsConfig,
-	}
-
-	client := http.Client{Transport: &transport}
-	return &client, nil
+	return nil
 }
 
 func (task* ProvisionEndorsementKey) downloadEndorsementAuthorities() error {
 
-	client, err := mtwilsonClient(config.GetConfiguration().HVS.TLS384)
+	client, err := newMtwilsonClient()
 	if err != nil {
 		return err
 	}
@@ -190,8 +163,6 @@ func (task* ProvisionEndorsementKey) downloadEndorsementAuthorities() error {
 			return fmt.Errorf("Could not load endorsement authorities")
 		}
 
-		log.Infof("Endorsement authorities contains %d subjects", len(task.endorsementAuthorities.Subjects()))
-
 		// KWT:  When to save the file (now or later during validation, or at all?)
 		err = ioutil.WriteFile(constants.EndorsementAuthoritiesFile, data, 0644)
 		if err != nil {
@@ -206,16 +177,111 @@ func (task* ProvisionEndorsementKey) downloadEndorsementAuthorities() error {
 func (task* ProvisionEndorsementKey) isEkSignedByEndorsementAuthority() (bool, error) {
 	isEkSigned := false
 
+
 	opts := x509.VerifyOptions {
-		//DNSName: "10.105.168.60",
 		Roots:   task.endorsementAuthorities,
 	}
 
-	if _, err := task.ekCert.Verify(opts); err != nil {
-		log.Warnf("Failed to verify endorsement authorities: " + err.Error())
-	} else {
+
+
+	_, err := task.ekCert.Verify(opts);
+
+	if err == nil {
 		isEkSigned = true
+	}else if err.Error() == "x509: unhandled critical extension" {
+		// In at least one case, the cert provided by the TPM contains...
+		//      X509v3 Key Usage: critical
+		// 		Key Encipherment
+		// which causes go to return an 'UnhandledCriticalExtension'
+		// Going to ignore that error and assume the cert is valid.
+
+		isEkSigned = true
+	} else {
+		log.Warnf("Failed to verify endorsement authorities: " + err.Error())
 	}
+
+
+// 	eaBytes, err := ioutil.ReadFile(constants.EndorsementAuthoritiesFile)
+// 	if err != nil {
+// 		return false, err
+// 	}
+
+// 	i := 0
+// 	for {
+// 		block, next := pem.Decode(eaBytes)
+// 		if block == nil {
+// 			break
+// 		}
+
+// 		if block.Type == "CERTIFICATE" {
+// 			caCert, err := x509.ParseCertificate(block.Bytes)
+// 			if err != nil {
+// 				log.Warnf("Could not parse block %d", i)
+// 			} else {
+
+// //				log.Infof("%s ==> %s", task.ekCert.Issuer.ToRDNSequence().String(), caCert.Subject.ToRDNSequence().String())
+// 				if (task.ekCert.Issuer.ToRDNSequence().String() == caCert.Subject.ToRDNSequence().String()) {
+// 					log.Info("CERT MATCH")
+
+// 					certPool := x509.NewCertPool()
+// 					certPool.AddCert(caCert)
+			
+// 					opts := x509.VerifyOptions {
+// 						Roots: certPool,
+// 						//Intermediates : certPool,
+// 					}
+				
+// 					if _, err := task.ekCert.Verify(opts); err != nil {
+// 						log.Warnf("Failed to verify endorsement authorities: " + err.Error())
+// 					} else {
+// 						log.Info("EK MATCH")
+// 						isEkSigned = true
+// 						break
+// 					}
+// 				}
+// 			}
+// 		}
+
+// 		eaBytes = next
+// 		i++
+// 	}
+
+	// for i, derBytes := range task.endorsementAuthorities.Subjects() {
+
+	// 	log.Info("%d: %s", i, base64.StdEncoding.EncodeToString(derBytes))
+
+	// 	eaCert, err := x509.ParseCertificate(derBytes)
+	// 	if err != nil {
+	// 		log.Warnf("Failed to load ca at index %d", i)
+	// 		continue
+	// 	}
+
+	// 	certPool := x509.NewCertPool()
+	// 	certPool.AddCert(eaCert)
+
+	// 	opts := x509.VerifyOptions {
+	// 		Roots: certPool,
+	// 	}
+	
+	// 	if _, err := task.ekCert.Verify(opts); err != nil {
+	// 		log.Warnf("Failed to verify endorsement authorities: " + err.Error())
+	// 	} else {
+	// 		isEkSigned = true
+	// 		break
+	// 	}
+
+	// }
+
+	// opts := x509.VerifyOptions {
+	// 	//DNSName: "10.105.168.60",
+	// 	Roots:   task.endorsementAuthorities,
+	// }
+
+	// if _, err := task.ekCert.Verify(opts); err != nil {
+	// 	log.Warnf("Failed to verify endorsement authorities: " + err.Error())
+	// } else {
+	// 	isEkSigned = true
+	// }
 
 	return isEkSigned, nil
 }
@@ -229,7 +295,7 @@ func (task* ProvisionEndorsementKey) isEkRegisteredWithMtWilson() (bool, error) 
 
 	log.Debugf("HARDWARE-UUID: %s", hardwareUUID)
 
-	client, err := mtwilsonClient(config.GetConfiguration().HVS.TLS384)
+	client, err := newMtwilsonClient()
 	if err != nil {
 		return false, err
 	}
@@ -268,15 +334,6 @@ func (task* ProvisionEndorsementKey) isEkRegisteredWithMtWilson() (bool, error) 
 	return false, nil
 }
 
-// KWT:  move this to mtwilson client
-type TpmEndorsement struct {
-	HardwareUUID 	string 	`json:"hardware_uuid"`
-	Issuer 			string 	`json:"issuer"`
-	Revoked			bool	`json:"revoked"`
-	Certificate		string 	`json:"certificate"`
-	Command			string 	`json:"command"`
-}
-
 func (task* ProvisionEndorsementKey) registerEkWithMtWilson() error {
 
 	hardwareUUID, err := platforminfo.HardwareUUID()
@@ -306,7 +363,7 @@ func (task* ProvisionEndorsementKey) registerEkWithMtWilson() error {
 
 	log.Info(string(jsonData))
 
-	client, err := mtwilsonClient(config.GetConfiguration().HVS.TLS384)
+	client, err := newMtwilsonClient()
 	if err != nil {
 		return err
 	}

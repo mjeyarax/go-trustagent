@@ -25,6 +25,7 @@ type CertifiedKey struct {
 // provides go visibility to values defined in tpm.h (shared with c code)
 const (
 	NV_IDX_ENDORSEMENT_KEY = C.NV_IDX_ENDORSEMENT_KEY
+	TPM_HANDLE_AIK		   = C.TPM_HANDLE_AIK
 )
 
 type TpmProvider interface {
@@ -41,13 +42,19 @@ type TpmProvider interface {
 
 	// Overview of function here
 	TakeOwnership(tpmSecretKey []byte) error
+	IsOwnedWithAuth(ownerAuth []byte) (bool, error)
 	
 	GetEndorsementKeyCertificate(tpmSecretKey string) ([]byte, error)
+
+	IsAikPresent(tpmSecretKey string) (bool, error)
+	CreateAik(tpmSecretKey string) error
+	GetAikBytes(tpmSecretKey string) ([]byte, error)
+	GetAikName(tpmSecretKey string) ([]byte, error)
+
 	CreateEndorsementKey(tpmSecretKey string) error
 	NvIndexExists(nvIndex uint32) (bool, error)
 	PublicKeyExists(handle uint32) (bool, error)
 	
-	IsOwnedWithAuth(ownerAuth []byte) (bool, error)
 	
 	SetCredential(authHandle uint, ownerAuth []byte, /*credentialType constants.CredentialType,*/ credentialBlob []byte) error
 	GetCredential(authHandle uint, /*credentialType constants.CredentialType*/) ([]byte, error)

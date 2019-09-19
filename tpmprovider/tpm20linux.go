@@ -103,12 +103,72 @@ func (t* Tpm20Linux) GetEndorsementKeyCertificate(tpmSecretKey string) ([]byte, 
 
 	defer C.free(unsafe.Pointer(ekBytes))
 
-	if ekBytesLength <= 0 || ekBytesLength > 4000 {
+	if ekBytesLength <= 0 || ekBytesLength > 4000 {	// KWT max?
 		return nil, fmt.Errorf("The buffer size is incorrect")
 	}
 
 	returnValue = C.GoBytes(unsafe.Pointer(ekBytes), ekBytesLength)
 	return returnValue, nil
+}
+
+func (t *Tpm20Linux) GetAikBytes(tpmSecretKey string) ([]byte, error) {
+	var returnValue []byte
+	var aikPublicBytes *C.char
+	var aikPublicBytesLength C.int
+	
+	rc := C.GetAikBytes(t.tpmCtx, C.CString(tpmSecretKey), C.size_t(len(tpmSecretKey)), &aikPublicBytes, &aikPublicBytesLength)
+	if rc != 0 {
+		return nil, fmt.Errorf("GetAikBytes returned error code 0x%X", rc)
+	}
+
+	defer C.free(unsafe.Pointer(aikPublicBytes))
+
+	if (aikPublicBytesLength <= 0)  { // max size is checked in native/c code call to GetAikBytes
+		return nil, fmt.Errorf("The buffer size is incorrect")
+	}
+
+	returnValue = C.GoBytes(unsafe.Pointer(aikPublicBytes), aikPublicBytesLength)
+	return returnValue, nil
+}
+
+func (t *Tpm20Linux) GetAikName(tpmSecretKey string) ([]byte, error) {
+	var returnValue []byte
+	var aikName *C.char
+	var aikNameLength C.int
+	
+	rc := C.GetAikName(t.tpmCtx, C.CString(tpmSecretKey), C.size_t(len(tpmSecretKey)), &aikName, &aikNameLength)
+	if rc != 0 {
+		return nil, fmt.Errorf("GetAikName returned error code 0x%X", rc)
+	}
+
+	defer C.free(unsafe.Pointer(aikName))
+
+	if (aikNameLength <= 0) { // max size is checked in native/c code call to GetAikName
+		return nil, fmt.Errorf("The buffer size is incorrect")
+	}
+
+	returnValue = C.GoBytes(unsafe.Pointer(aikName), aikNameLength)
+	return returnValue, nil
+}
+
+func (t *Tpm20Linux) IsAikPresent(tpmSecretKey string) (bool, error) {
+	rval := C.IsAikPresent(t.tpmCtx, C.CString(tpmSecretKey), C.size_t(len(tpmSecretKey)))
+	if rval == 0 {
+		return true, nil
+	} else if rval < 0 {
+		return false, nil
+	} else {
+		return false, fmt.Errorf("IsAikPresent returned error code 0x%x", rval)
+	}
+}
+
+func (t *Tpm20Linux) CreateAik(tpmSecretKey string) error {
+	rc := C.CreateAik(t.tpmCtx, C.CString(tpmSecretKey), C.size_t(len(tpmSecretKey)))
+	if rc != 0 {
+		return fmt.Errorf("CreateAik return 0x%x", rc)
+	}
+
+	return nil
 }
 
 func (tpm *Tpm20Linux) CreateEndorsementKey(tpmSecretKey string) error {

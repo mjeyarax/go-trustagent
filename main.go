@@ -133,7 +133,7 @@
 		if(len(os.Args) > 2) {
 			setupCommand = os.Args[2]
 		} else {
-			setupCommand = tasks.SetupAllCommand
+			setupCommand = tasks.DefaultSetupCommand
 		}
 
 		registry, err := tasks.CreateTaskRegistry(os.Args)

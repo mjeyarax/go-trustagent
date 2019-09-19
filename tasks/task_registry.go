@@ -14,11 +14,13 @@ type TaskRegistry struct {
 }
 
 const (
-	SetupAllCommand					= "all"
-	TakeOwnershipCommand 			= "takeownership"
-	TrustAgentConfigCommand			= "config"
-	CreateTLSKeyPairCommand			= "createtlskeypair"
-	ProvisionEndorsementKeyCommand	= "provisionendorsementkey"
+	DefaultSetupCommand						= "all"
+	TakeOwnershipCommand 					= "takeownership"
+	TrustAgentConfigCommand					= "config"
+	CreateTLSKeyPairCommand					= "createtlskeypair"
+	ProvisionEndorsementKeyCommand			= "provisionek"
+	ProvisionAttestationIdentityKeyCommand	= "provisionaik"
+	DownloadPrivacyCACommand				= "downloadprivacyca"
 )
 
 func CreateTaskRegistry(flags []string) (TaskRegistry, error) {
@@ -30,17 +32,23 @@ func CreateTaskRegistry(flags []string) (TaskRegistry, error) {
 	trustAgentConfig := TrustAgentConfig {Flags : flags }
 	createTLSKeyPair := CreateTLSKeyPair { Flags: flags }
 	provisionEndorsementKey := ProvisionEndorsementKey { Flags: flags }
+	provisionAttestationIdentityKey := ProvisionAttestationIdentityKey { Flags: flags }
+	downloadPrivacyCA := DownloadPrivacyCA { Flags: flags }
 
 	registry.taskMap[TakeOwnershipCommand] = []setup.Task { &takeOwnership, }
 	registry.taskMap[TrustAgentConfigCommand] = []setup.Task { &trustAgentConfig, }
 	registry.taskMap[CreateTLSKeyPairCommand] = []setup.Task { &createTLSKeyPair, }
 	registry.taskMap[ProvisionEndorsementKeyCommand] = []setup.Task { &provisionEndorsementKey, }
+	registry.taskMap[ProvisionAttestationIdentityKeyCommand] = []setup.Task { &provisionAttestationIdentityKey, }
+	registry.taskMap[DownloadPrivacyCACommand] = []setup.Task { &downloadPrivacyCA, }
 
-	registry.taskMap[SetupAllCommand] = []setup.Task {
+	registry.taskMap[DefaultSetupCommand] = []setup.Task {
 		&trustAgentConfig,
 		&createTLSKeyPair,
+		&downloadPrivacyCA,
 		&takeOwnership,
 		&provisionEndorsementKey,
+		&provisionAttestationIdentityKey,
 	}
 
 	return registry, nil

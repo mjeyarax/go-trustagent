@@ -65,6 +65,22 @@ func (t *MockTpm) GetEndorsementKeyCertificate(tpmSecretKey string) ([]byte, err
 	return nil, fmt.Errorf("MockTpm.GetEndorsementKeyCertificate is not implemented")
 }
 
+func (t *MockTpm) GetAikBytes(tpmSecretKey string) ([]byte, error) {
+	return nil, fmt.Errorf("MockTpm.GetAikBytes is not implemented")
+}
+
+func (t *MockTpm) GetAikName(tpmSecretKey string) ([]byte, error) {
+	return nil, fmt.Errorf("MockTpm.GetAikName is not implemented")
+}
+
+func (t *MockTpm) IsAikPresent(tpmSecretKey string) (bool, error) {
+	return false, fmt.Errorf("MockTpm.IsAikPresent is not implemented")
+}
+
+func (t *MockTpm) CreateAik(tpmSecretKey string) error {
+	return fmt.Errorf("MockTpm.CreateAik is not implemented")
+}
+
 func (t *MockTpm) CreateEndorsementKey(tpmSecretKey string) error {
 	return fmt.Errorf("MockTpm.CreateEndorsementKey is not implemented")
 }
