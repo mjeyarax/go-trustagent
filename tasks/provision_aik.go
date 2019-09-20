@@ -14,7 +14,7 @@ import (
 	"crypto/sha1"
 	"crypto/x509"
 	"encoding/binary"
-//	"encoding/hex"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -47,53 +47,74 @@ type ProvisionAttestationIdentityKey struct {
 
 func (task* ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 
+	var err error
+
+	// if the configuration's aik secret has not been set, do it now...
+	if config.GetConfiguration().Tpm.AikSecretKey == "" {
+		config.GetConfiguration().Tpm.AikSecretKey, err = crypt.GetHexRandomString(20)
+		err = config.GetConfiguration().Save()
+		if err != nil {
+			return fmt.Errorf("Setup error:  Error saving config [%s]", err)
+		}	
+	}
+
+	// create an IdentiryChallengeRequest and populate it with aik information
 	identityChallengeRequest := IdentityChallengeRequest {}
-	err := task.populateIdentityRequest(&identityChallengeRequest.IdentityRequest)
+	err = task.populateIdentityRequest(&identityChallengeRequest.IdentityRequest)
 	if err != nil {
 		return err
 	} 
 
+	// get the EK cert from the tpm
 	ekCertBytes, err := task.getEndorsementKeyBytes()
 	if err != nil {
 		return err
 	}
 
+	// encrypt the EK cert into binary that is acceptable to HVS/NAIRL
 	identityChallengeRequest.EndorsementCertificate, err = task.getEncryptedEndorsementCertificate(ekCertBytes)
 	if err != nil {
 		return err
 	}
 
+	// send the 'challenge request' to HVS and get an 'proof request' back
 	identityProofRequest, err := task.getIdentityProofRequest(&identityChallengeRequest)
 	if err != nil {
 		return err
 	}
 
-	decrypted1, err := task.activateIdentity(identityProofRequest)
+	// pass the HVS response to the TPM to 'activate' the 'credential' and decrypt
+	// the nonce created by HVS (IdentityProofRequest 'sym_blob')
+	decrypted1, err := task.activateCredential(identityProofRequest, identityChallengeRequest.IdentityRequest.AikName)
 	if err != nil {
 		return err
 	}
 
+	// send the decrypted nonce data back to HVS and get a 'proof request' back
 	identityProofRequest2, err := task.getIdentityProofResponse(decrypted1)
 	if err != nil {
 		return err
 	}
 
-	decrypted2, err := task.activateIdentity(identityProofRequest2);
+	// decrypt the 'proof request' from HVS into the 'aik' cert
+	decrypted2, err := task.activateCredential(identityProofRequest2, identityChallengeRequest.IdentityRequest.AikName);
 	if err != nil {
 		return err
 	}
 
-	// make sure the bytes are a certificates...
+	// make sure the decrypted bytes are a valid certificates...
 	_, err = x509.ParseCertificate(decrypted2)
 	if err != nil {
 		return err
 	}
 
+	// save the aik cert to disk
 	err = ioutil.WriteFile(constants.AikCert, decrypted2, 0600)
 	if err != nil {
 		return err
 	}
 
+	// save the aik blob to disk
 	err = ioutil.WriteFile(constants.AikBlob, identityChallengeRequest.IdentityRequest.AikBlob, 0600)
 	if err != nil {
 		return err
@@ -142,15 +163,13 @@ func (task* ProvisionAttestationIdentityKey) getTpmSymetricKey(key []byte) ([]by
 	binary.Write(buf, binary.BigEndian, []byte("TCPA"))	// 32-36
 	binary.Write(buf, binary.BigEndian, []byte("TCPA"))	// 36-40
 
-//	fmt.Printf("===\n%s\n\n", hex.EncodeToString(buf.Bytes()))
-
-	// TODO:  Sha1 is being used for compatability with HVS --> needs to be fixed before release
+	// KWT:  Sha1 is being used for compatability with HVS --> needs to be fixed before release
 	ekAsymetricBytes, err := rsa.EncryptOAEP(sha1.New(), bytes.NewBuffer(asymKey), privacyCa, buf.Bytes(), []byte("TCPA"))
 	if err != nil {
 		return nil, fmt.Errorf("Error encrypting tpm symetric key: %s", err)
 	}
 
-//	fmt.Printf("RSA[%x]: %s\n\n", len(ekAsymetricBytes), hex.EncodeToString(ekAsymetricBytes))
+//	log.Debugf("RSA[%x]: %s\n\n", len(ekAsymetricBytes), hex.EncodeToString(ekAsymetricBytes))
 	return ekAsymetricBytes, nil
 }
 
@@ -216,10 +235,6 @@ func (task* ProvisionAttestationIdentityKey) getEncryptedEndorsementCertificate(
 	ekSymetricBytes := make([]byte, len(withPadding))
 	mode.CryptBlocks(ekSymetricBytes, withPadding)
 
-	// fmt.Printf("EK Cert   [%x]: %s\n\n", len(ekCertBytes), hex.EncodeToString(ekCertBytes))
-	// fmt.Printf("Encrypted [%x]: %s\n\n", len(ekSymetricBytes), hex.EncodeToString(ekSymetricBytes))
-	// fmt.Printf("Decrypted [%x]: %s\n\n", len(decrypted), hex.EncodeToString(decrypted))
-
 	ekAsymetricBytes, err := task.getTpmSymetricKey(cipherKey)
 	if err != nil {
 		return nil, err
@@ -283,7 +298,7 @@ func (task* ProvisionAttestationIdentityKey) getEncryptedEndorsementCertificate(
 	binary.Write(buf, binary.BigEndian, ekSymetricBytes)
 
 	b := buf.Bytes()
-	//fmt.Printf("===\n%s\n\n", hex.EncodeToString(b))
+	//log.Infof("===\n%s\n\n", hex.EncodeToString(b))
 	return b, nil
 }
 
@@ -346,8 +361,6 @@ func (task* ProvisionAttestationIdentityKey) getIdentityProofRequest(identityCha
 	request.SetBasicAuth(config.GetConfiguration().HVS.Username, config.GetConfiguration().HVS.Password)
 	request.Header.Set("Content-Type", "application/json")
 
-//	fmt.Printf("JSON: %s\n", string(jsonData))
-
 	response, err := client.Do(request)
     if err != nil {
         return nil, fmt.Errorf("%s request failed with error %s\n", url, err)
@@ -362,6 +375,8 @@ func (task* ProvisionAttestationIdentityKey) getIdentityProofRequest(identityCha
 			return nil, fmt.Errorf("Error reading response: %s", err)
 		}
 
+		log.Debugf("Proof Request: %s\n", string(data))
+
 		err = json.Unmarshal(data, &identityProofRequest)
 		if err != nil {
 			return nil, err
@@ -371,8 +386,55 @@ func (task* ProvisionAttestationIdentityKey) getIdentityProofRequest(identityCha
 	return &identityProofRequest, nil
 }
 
-func (task* ProvisionAttestationIdentityKey) activateIdentity(identityProofRequest *IdentityProofRequest) ([]byte, error) {
-	return nil, fmt.Errorf("Not implemented")
+func (task* ProvisionAttestationIdentityKey) activateCredential(identityProofRequest *IdentityProofRequest, aikName []byte) ([]byte, error) {
+
+	tpm, err := tpmprovider.NewTpmProvider()
+	if err != nil {
+		return nil, fmt.Errorf("Setup error: activateCredential not create TpmProvider: %s", err)
+	}
+
+	defer tpm.Close()
+
+	//
+	// Read the credential bytes
+	// The bytes returned by HVS hava 2 byte short of the length of the credential (TCG spec).
+	// Could probably do a slice (i.e. [2:]) but let's read the length and validate the length.
+	// 
+	log.Debugf("identityProofRequest.Credentials[%d]: %s", len(identityProofRequest.Credential), hex.EncodeToString(identityProofRequest.Credential))
+	var credentialSize uint16
+	buf := bytes.NewBuffer(identityProofRequest.Credential)
+	binary.Read(buf, binary.BigEndian, &credentialSize)
+	if (credentialSize == 0 || int(credentialSize) > len(identityProofRequest.Credential)) {
+		return nil, fmt.Errorf("Invalid credential size %d", credentialSize)
+	}
+
+	credentialBytes := buf.Next(int(credentialSize))
+//	log.Debugf("credentialBytes: %s",  hex.EncodeToString(credentialBytes))
+
+
+	//
+	// Read the secret bytes similar to credential (i.e. with 2 byte size header)
+	//
+	log.Debugf("identityProofRequest.Secret[%d]: %s", len(identityProofRequest.Secret), hex.EncodeToString(identityProofRequest.Secret))
+	var secretSize uint16
+	buf = bytes.NewBuffer(identityProofRequest.Secret)
+	binary.Read(buf, binary.BigEndian, &secretSize)
+	if (secretSize == 0 || int(secretSize) > len(identityProofRequest.Secret)) {
+		return nil, fmt.Errorf("Invalid secretSize size %d", secretSize)
+	}
+
+	secretBytes := buf.Next(int(secretSize))
+//	log.Debugf("secretBytes: %s",  hex.EncodeToString(secretBytes))
+
+	//
+	// Now decrypt the secret using ActivateCredential
+	//
+	decrypted, err := tpm.ActivateCredential(config.GetConfiguration().Tpm.SecretKey, config.GetConfiguration().Tpm.AikSecretKey, credentialBytes, secretBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return decrypted, nil
 }
 
 func (task* ProvisionAttestationIdentityKey) getIdentityProofResponse(decrypted []byte) (*IdentityProofRequest, error) {
@@ -380,7 +442,7 @@ func (task* ProvisionAttestationIdentityKey) getIdentityProofResponse(decrypted 
 	var identityProofRequest IdentityProofRequest
 
 	identityChallengeResponse := IdentityChallengeResponse {}
-	identityChallengeResponse.responseToChallenge = decrypted
+	identityChallengeResponse.ResponseToChallenge = decrypted
 	err := task.populateIdentityRequest(&identityChallengeResponse.IdentityRequest)
 	if err != nil {
 		return nil, err

@@ -26,7 +26,8 @@ typedef enum NV_IDX
 
 typedef enum TPM_HANDLE 
 {
-    TPM_HANDLE_AIK = 0x81018000
+    TPM_HANDLE_EK_CERT  = 0x81010000,
+    TPM_HANDLE_AIK      = 0x81018000
 } TPM_HANDLE;
 
 tpmCtx* TpmCreate();
@@ -45,6 +46,18 @@ int IsAikPresent(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength);
 int CreateAik(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength);
 int GetAikBytes(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char** aikBytes, int* aikBytesLength);
 int GetAikName(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char** aikName, int* aikNameLength);
+
+int ActivateCredential(tpmCtx* ctx, 
+                       char* tpmSecretKey, 
+                       size_t tpmSecretKeyLength,
+                       char* aikSecretKey, 
+                       size_t aikSecretKeyLength,
+                       char* credentialBytes, 
+                       size_t credentialBytesLength,
+                       char* secretBytes, 
+                       size_t secretBytesLength,
+                       char **decrypted,
+                       int *decryptedLength);
 
 int NvIndexExists(tpmCtx* ctd, uint32_t nvIndex);
 int PublicKeyExists(tpmCtx* ctd, uint32_t handle);

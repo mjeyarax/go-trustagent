@@ -32,6 +32,7 @@
  
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
 	log.SetOutput(multiWriter)
+	log.SetLevel(config.GetConfiguration().LogLevel)
 
 	return nil
  }

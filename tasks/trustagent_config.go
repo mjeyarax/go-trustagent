@@ -36,8 +36,6 @@ func (task* TrustAgentConfig) Run(c setup.Context) error {
 		dirty = true
 	}
 
-	// SecretKey is not required since it may be set in tasks.take_ownership.go
-
 	//---------------------------------------------------------------------------------------------
 	// MTWILSON_API_URL
 	//---------------------------------------------------------------------------------------------
@@ -46,10 +44,6 @@ func (task* TrustAgentConfig) Run(c setup.Context) error {
 		cfg.HVS.Url = environmentVariable
 		dirty = true
 	}
-
-	// if cfg.HVS.Url == "" {
-	// 	return fmt.Errorf("Mtwilson api url is required")
-	// }
 
 	//---------------------------------------------------------------------------------------------
 	// MTWILSON_API_USERNAME
@@ -60,10 +54,6 @@ func (task* TrustAgentConfig) Run(c setup.Context) error {
 		dirty = true
 	}
 
-	// if cfg.HVS.Username == "" {
-	// 	return fmt.Errorf("Mtwilson user is required")
-	// }
-
 	//---------------------------------------------------------------------------------------------
 	// MTWILSON_API_PASSWORD
 	//---------------------------------------------------------------------------------------------
@@ -72,10 +62,6 @@ func (task* TrustAgentConfig) Run(c setup.Context) error {
 		cfg.HVS.Password = environmentVariable
 		dirty = true
 	}
-
-	// if cfg.HVS.Password == "" {
-	// 	return fmt.Errorf("Mtwilson password is required")
-	// }
 
 	//---------------------------------------------------------------------------------------------
 	// MTWILSON_TLS_CERT_SHA384
@@ -95,10 +81,6 @@ func (task* TrustAgentConfig) Run(c setup.Context) error {
 			dirty = true
 		}
 	}
-
-	// if cfg.HVS.TLS384 == "" {
-	// 	return fmt.Errorf("Mtwilson tls 384 is required")
-	// }
 
 	//---------------------------------------------------------------------------------------------
 	// TRUSTAGENT_PORT
@@ -131,10 +113,6 @@ func (task* TrustAgentConfig) Run(c setup.Context) error {
 		dirty = true
 	}
 
-	// if cfg.TrustAgentService.Username == "" {
-	// 	return fmt.Errorf("Trust agent user is required")
-	// }
-
 	//---------------------------------------------------------------------------------------------
 	// TRUSTAGENT_ADMIN_PASSWORD
 	//---------------------------------------------------------------------------------------------
@@ -143,10 +121,6 @@ func (task* TrustAgentConfig) Run(c setup.Context) error {
 		cfg.TrustAgentService.Password = environmentVariable
 		dirty = true
 	}
-
-	// if cfg.TrustAgentService.Password == "" {
-	// 	return fmt.Errorf("Trust agen password is required")
-	// }
 
 	//---------------------------------------------------------------------------------------------
 	// Save config if 'dirty'

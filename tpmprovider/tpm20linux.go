@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"unsafe"
+//	log "github.com/sirupsen/logrus"
 )
 
 type Tpm20Linux struct {
@@ -169,6 +170,37 @@ func (t *Tpm20Linux) CreateAik(tpmSecretKey string) error {
 	}
 
 	return nil
+}
+
+func (t *Tpm20Linux) ActivateCredential(tpmSecretKey string, aikSecretKey string, credentialBytes []byte, secretBytes []byte) ([]byte, error) {
+
+	var returnValue []byte
+	var decrypted *C.char
+	var decryptedLength C.int
+	
+	rc := C.ActivateCredential(t.tpmCtx, 
+							   C.CString(tpmSecretKey),  
+							   C.size_t(len(tpmSecretKey)), 
+							   C.CString(aikSecretKey),  
+							   C.size_t(len(aikSecretKey)),
+							   C.CString(string(credentialBytes)),
+							   C.size_t(len(credentialBytes)),
+							   C.CString(string(secretBytes)),
+							   C.size_t(len(secretBytes)),
+							   &decrypted, 
+							   &decryptedLength)
+	if rc != 0 {
+		return nil, fmt.Errorf("C.ActivateCredential returned error code 0x%X", rc)
+	}
+
+	defer C.free(unsafe.Pointer(decrypted))
+
+	if (decryptedLength <= 0) { // max size is checked in native/c code call to GetAikName
+		return nil, fmt.Errorf("The buffer size is incorrect")
+	}
+
+	returnValue = C.GoBytes(unsafe.Pointer(decrypted), decryptedLength)
+	return returnValue, nil
 }
 
 func (tpm *Tpm20Linux) CreateEndorsementKey(tpmSecretKey string) error {

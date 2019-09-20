@@ -8,9 +8,7 @@ import (
 	"errors"
 	"intel/isecl/go-trust-agent/constants"
 	"os"
-	"path"
 	"sync"
-
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
@@ -34,7 +32,8 @@ type TrustAgentConfiguration struct {
 		TLS384				string
 	}
 	Tpm struct {
-		SecretKey			string
+		SecretKey			string	// KWT:  Rname this to 'TPM' and 'TpmSecretKey'
+		AikSecretKey		string
 	}
 }
 var mu sync.Mutex
@@ -43,7 +42,7 @@ var instance *TrustAgentConfiguration
 
 func GetConfiguration() *TrustAgentConfiguration {
 	if instance == nil {
-		instance = load(path.Join(constants.ConfigFilePath))
+		instance = load(constants.ConfigFilePath)
 	}
 	return instance
 }
@@ -81,7 +80,7 @@ func load(path string) *TrustAgentConfiguration {
 		yaml.NewDecoder(file).Decode(&c)
 	} else {
 		// file doesnt exist, create a new blank one
-		c.LogLevel = log.DebugLevel
+		c.LogLevel = log.InfoLevel
 	}
 
 	c.configFile = path

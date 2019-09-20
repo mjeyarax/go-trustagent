@@ -55,7 +55,7 @@ type IdentityChallengeRequest struct {
 // }
 type IdentityChallengeResponse struct {
 	IdentityRequest 			IdentityRequest `json:"identity_request"`
-	responseToChallenge 		[]byte 			`json:"response_to_challenge"`
+	ResponseToChallenge 		[]byte 			`json:"response_to_challenge"`
 }
 
 // From PrivacyCA.java...
@@ -77,10 +77,10 @@ type IdentityChallengeResponse struct {
 // 	                                   9Kv5ij8UqHk2P1DzWjCBvwCqHTzRsuf9b9FeT+f4aWgLNQ=="
 // 	}
 type IdentityProofRequest struct {
-	Secret						string `json:"secret"`
-	Credential					string `json:"credential"`
-	SystemBlob					string `json:"sym_blob"`
-	EndorsementCertificateBlob	string `json:"ek_blob"`
+	Secret						[]byte `json:"secret"`
+	Credential					[]byte `json:"credential"`
+	SymetricBlob				[]byte `json:"sym_blob"`
+	EndorsementCertificateBlob	[]byte `json:"ek_blob"`
 }
 
 // KWT:  Merge this (or use) into mtwilson.Client

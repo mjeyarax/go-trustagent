@@ -51,6 +51,8 @@ type TpmProvider interface {
 	GetAikBytes(tpmSecretKey string) ([]byte, error)
 	GetAikName(tpmSecretKey string) ([]byte, error)
 
+	ActivateCredential(tpmSecretKey string, aikSecretKey string, credentialBytes []byte, secretBytes []byte) ([]byte, error)
+
 	CreateEndorsementKey(tpmSecretKey string) error
 	NvIndexExists(nvIndex uint32) (bool, error)
 	PublicKeyExists(handle uint32) (bool, error)

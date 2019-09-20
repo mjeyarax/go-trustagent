@@ -81,6 +81,10 @@ func (t *MockTpm) CreateAik(tpmSecretKey string) error {
 	return fmt.Errorf("MockTpm.CreateAik is not implemented")
 }
 
+func (t *MockTpm) ActivateCredential(tpmSecretKey string, aikSecretKey string, credentialBytes []byte, secretBytes []byte) ([]byte, error) {
+	return nil, fmt.Errorf("MockTpm.ActivateIdentity is not implemented")
+}
+
 func (t *MockTpm) CreateEndorsementKey(tpmSecretKey string) error {
 	return fmt.Errorf("MockTpm.CreateEndorsementKey is not implemented")
 }

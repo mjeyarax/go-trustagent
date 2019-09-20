@@ -34,13 +34,9 @@ func (task* TakeOwnership) Run(c setup.Context) error {
 	
 		defer tpmProvider.Close()
 	
-		newSecretKey, _ := c.GetenvSecret("TPM_OWNER_SECRET", "TPM owner secret")
-
-		if newSecretKey == "" {
-			newSecretKey, err = crypt.GetHexRandomString(20)
-			if err != nil {
-				return errors.New("Setup error: An error occurred generating a random key")
-			}
+		newSecretKey, err := crypt.GetHexRandomString(20)
+		if err != nil {
+			return errors.New("Setup error: An error occurred generating a random key")
 		}
 	
 		if(len(newSecretKey) == 0 || len(newSecretKey) > 40) {
