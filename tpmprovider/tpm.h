@@ -59,8 +59,9 @@ int ActivateCredential(tpmCtx* ctx,
                        char **decrypted,
                        int *decryptedLength);
 
-int NvIndexExists(tpmCtx* ctd, uint32_t nvIndex);
-int PublicKeyExists(tpmCtx* ctd, uint32_t handle);
+int NvIndexExists(tpmCtx* ctx, uint32_t nvIndex);
+int PublicKeyExists(tpmCtx* ctx, uint32_t handle);
+int ReadPublic(tpmCtx* ctx, uint32_t handle, char **public, int *publicLength);
 //int SetCredential(authHandle uint, ownerAuth []byte, /*credentialType constants.CredentialType,*/ credentialBlob []byte) error
 //int GetCredential(authHandle uint, /*credentialType constants.CredentialType*/) ([]byte, error)
 //int GetAssetTag(authHandle uint) ([]byte, error)

@@ -19,7 +19,7 @@ int str2Tpm2bAuth(const char* tpmSecretKey, size_t keyLength, TPM2B_AUTH* tpm2bA
         return -2;
     }
 
-    DEBUG("SK: '%s'", tpmSecretKey);
+//    DEBUG("SK: '%s'", tpmSecretKey);
 
     if (tpm2bAuth == NULL)
     {
@@ -128,3 +128,36 @@ int GetMaxNVBufferSize(TSS2_SYS_CONTEXT *sys, uint32_t *size)
 }
 
 
+int ReadPublic(tpmCtx* ctx, uint32_t handle, char **public, int *publicLength)
+{
+    TSS2_RC                 rval;
+    TSS2L_SYS_AUTH_RESPONSE sessionsDataOut = {0};
+    TPM2B_PUBLIC            inPublic = TPM2B_EMPTY_INIT;;
+    TPM2B_NAME              name = TPM2B_TYPE_INIT(TPM2B_NAME, name);
+    TPM2B_NAME              qualified_name = TPM2B_TYPE_INIT(TPM2B_NAME, name);
+
+    rval = Tss2_Sys_ReadPublic(ctx->sys, handle, 0, &inPublic, &name, &qualified_name, &sessionsDataOut);
+    if (rval != TSS2_RC_SUCCESS)
+    {
+        return rval;
+    }
+
+    if(inPublic.publicArea.unique.rsa.size == 0 || inPublic.publicArea.unique.rsa.size > ARRAY_SIZE(inPublic.publicArea.unique.rsa.buffer))
+    {
+        ERROR("ReadPublic:  Invalid buffer size");
+        return -1;
+    }
+
+    // this will be freed by cgo in tpmlinx20.go
+    *public = (char*)calloc(inPublic.publicArea.unique.rsa.size, 1);
+    if (!*public)
+    {
+        ERROR("ReadPublic: Could not allocated buffer");
+        return -1;
+    }
+
+    memcpy(*public, inPublic.publicArea.unique.rsa.buffer, inPublic.publicArea.unique.rsa.size);
+    *publicLength = inPublic.publicArea.unique.rsa.size;
+
+    return 0;
+}

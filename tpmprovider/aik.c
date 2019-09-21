@@ -16,13 +16,6 @@ int IsAikPresent(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength)
     TPM2B_NAME qualifiedName = TPM2B_TYPE_INIT(TPM2B_NAME, name);
 
     rval = Tss2_Sys_ReadPublic(ctx->sys, TPM_HANDLE_AIK, NULL, &aikPublic, &name, &qualifiedName, &sessionsData);
-    DEBUG("Read AIK name returned %x", rval);
-    
-    // if(rval != TSS2_RC_SUCCESS)
-    // {
-    //     return rval;
-    // }
-
     if (rval != 0)
     {
         return rval;
@@ -32,7 +25,6 @@ int IsAikPresent(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength)
         return -1;   // empty results, no aik so false
     }
     
-
     return 0;   // no error, aikPublic is not empty so true
 }
 
@@ -94,7 +86,6 @@ int GetAikName(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char** a
     TPM2B_NAME qualifiedName = TPM2B_TYPE_INIT(TPM2B_NAME, name);
 
     rval = Tss2_Sys_ReadPublic(ctx->sys, TPM_HANDLE_AIK, NULL, &aikPublic, &name, &qualifiedName, &sessionsData);
-    DEBUG("Read AIK name returned %x", rval);
     if(rval != TSS2_RC_SUCCESS)
     {
         return rval;
@@ -128,7 +119,6 @@ int GetAikBytes(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char** 
     TPM2B_NAME qualifiedName = TPM2B_TYPE_INIT(TPM2B_NAME, name);
 
     rval = Tss2_Sys_ReadPublic(ctx->sys, TPM_HANDLE_AIK, NULL, &aikPublic, &aikName, &qualifiedName, &sessionsData);
-    DEBUG("Read AIK Handle returned %x", rval);
     if(rval != TSS2_RC_SUCCESS)
     {
         return rval;

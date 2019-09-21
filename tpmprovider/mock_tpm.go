@@ -97,6 +97,11 @@ func (tpm *MockTpm) PublicKeyExists(handle uint32) (bool, error) {
 	return false, fmt.Errorf("MockTpm.PublicKeyExists is not implemented")
 }
 
+func (tpm *MockTpm) ReadPublic(secretKey string, handle uint32) ([]byte, error) {
+	return nil, fmt.Errorf("MockTpm.ReadPublic is not implemented")
+}
+
+
 func (t *MockTpm) SetCredential(authHandle uint, ownerAuth []byte, credentialBlob []byte) error {
 	return nil
 }

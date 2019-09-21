@@ -26,6 +26,7 @@ type CertifiedKey struct {
 const (
 	NV_IDX_ENDORSEMENT_KEY = C.NV_IDX_ENDORSEMENT_KEY
 	TPM_HANDLE_AIK		   = C.TPM_HANDLE_AIK
+	TPM_HANDLE_EK		   = C.TPM_HANDLE_EK_CERT
 )
 
 type TpmProvider interface {
@@ -56,6 +57,7 @@ type TpmProvider interface {
 	CreateEndorsementKey(tpmSecretKey string) error
 	NvIndexExists(nvIndex uint32) (bool, error)
 	PublicKeyExists(handle uint32) (bool, error)
+	ReadPublic(secretKey string, handle uint32) ([]byte, error)
 	
 	
 	SetCredential(authHandle uint, ownerAuth []byte, /*credentialType constants.CredentialType,*/ credentialBlob []byte) error

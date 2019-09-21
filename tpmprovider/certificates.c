@@ -151,7 +151,7 @@ int GetEndorsementKeyCertificate(tpmCtx* ctx, char* tpmSecretKey, size_t keyLeng
         return -1;
     }
 
-    DEBUG("certificate size: 0x%x", certificateBufferSize);
+//    DEBUG("certificate size: 0x%x", certificateBufferSize);
 
     *ekCertBytesLength = 0;     // return zero in error conditions below
     *ekCertBytes = calloc(certificateBufferSize, 1);

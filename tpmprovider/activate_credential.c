@@ -144,6 +144,30 @@ int ActivateCredential(tpmCtx* ctx,
         return -1;
     }
 
+
+    DEBUG("CERTINFO SIZE: %d", certInfoData.size);
+    DEBUG("CERTINFO DATA: %s", certInfoData.buffer);
+    DEBUG("SECRET SIZE: %d", secretBytesLength);
+
+
+	char   *out;
+	size_t  i;
+
+//	if (bin == NULL || len == 0)
+//		return NULL;
+
+	out = malloc(certInfoData.size*2+1);
+	for (i=0; i<certInfoData.size ; i++) {
+		out[i*2]   = "0123456789ABCDEF"[certInfoData.buffer[i] >> 4];
+		out[i*2+1] = "0123456789ABCDEF"[certInfoData.buffer[i] & 0x0F];
+	}
+	out[certInfoData.size*2] = '\0';
+
+    DEBUG("WTF: %s", out);
+    free(out);
+
+
+    // this will be freed by cgo in tpmlinx20.go
     *decrypted = (char*)calloc(certInfoData.size, 1);
     if (!*decrypted)
     {
@@ -154,7 +178,6 @@ int ActivateCredential(tpmCtx* ctx,
     memcpy(*decrypted, certInfoData.buffer, certInfoData.size);
     *decryptedLength = certInfoData.size;
 
-    DEBUG("OK");
     return 0;
 }
 
