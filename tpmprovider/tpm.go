@@ -48,7 +48,7 @@ type TpmProvider interface {
 	GetEndorsementKeyCertificate(tpmSecretKey string) ([]byte, error)
 
 	IsAikPresent(tpmSecretKey string) (bool, error)
-	CreateAik(tpmSecretKey string) error
+	CreateAik(tpmSecretKey string, aikSecretKey string) error
 	GetAikBytes(tpmSecretKey string) ([]byte, error)
 	GetAikName(tpmSecretKey string) ([]byte, error)
 

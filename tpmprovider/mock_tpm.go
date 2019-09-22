@@ -77,7 +77,7 @@ func (t *MockTpm) IsAikPresent(tpmSecretKey string) (bool, error) {
 	return false, fmt.Errorf("MockTpm.IsAikPresent is not implemented")
 }
 
-func (t *MockTpm) CreateAik(tpmSecretKey string) error {
+func (t *MockTpm) CreateAik(tpmSecretKey string, aikSecretKey string) error {
 	return fmt.Errorf("MockTpm.CreateAik is not implemented")
 }
 

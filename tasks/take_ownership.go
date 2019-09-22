@@ -18,42 +18,47 @@ type TakeOwnership struct {
 	Flags 		[]string
 }
 
+// Calling this task assumes that the TPM is cleared (not currently owned).
+//
 // Retrieves the 'SecreteKey' value from configuration.  If it is not there, it generates a 
 // new random key (or used TPM_OWNER_SECRET env var) and saves it in the configuration.  It 
 // then passes the new secret key to TpmProvider.TakeOwnership.
 func (task* TakeOwnership) Run(c setup.Context) error {
 
-	// if the config.Tpm.SecretKey is not set, open the TPM and 'takeownership'
-	// using the TPM_OWNER_SECRET or a new random key.
+	// The SecretKey is either set via trustagent.env (env var) and trustagent_config.go,
+	// or is empty.  If it is empty, generate a new random key.  Note:  It could also be
+	// present from the config.yml, but we assume this task is only called when taking
+	// ownership of a cleared tpm.
 	if config.GetConfiguration().Tpm.SecretKey == "" {
-
-		tpmProvider, err := tpmprovider.NewTpmProvider()
-		if err != nil {
-			return fmt.Errorf("Setup error: Could not create TpmProvider: %s", err)
-		}
-	
-		defer tpmProvider.Close()
-	
 		newSecretKey, err := crypt.GetHexRandomString(20)
 		if err != nil {
 			return errors.New("Setup error: An error occurred generating a random key")
 		}
-	
-		if(len(newSecretKey) == 0 || len(newSecretKey) > 40) {
-			return errors.New("Setup error: Invalid secret key")
-		}
 
-		err = tpmProvider.TakeOwnership([]byte(newSecretKey))
-		if err != nil {
-			return err
-		}
-
-		// TakeOwnership didn't fail, update config, the key will be checked in Validate()
 		config.GetConfiguration().Tpm.SecretKey = newSecretKey
-		err = config.GetConfiguration().Save()
-		if err != nil {
-			return fmt.Errorf("Setup error:  Error saving configuration [%s]", err)
-		}
+	}
+
+	tpmProvider, err := tpmprovider.NewTpmProvider()
+	if err != nil {
+		return fmt.Errorf("Setup error: Could not create TpmProvider: %s", err)
+	}
+
+	defer tpmProvider.Close()
+
+
+	if(len(config.GetConfiguration().Tpm.SecretKey) == 0 || len(config.GetConfiguration().Tpm.SecretKey) > 40) {
+		return errors.New("Setup error: Invalid secret key")
+	}
+
+	err = tpmProvider.TakeOwnership([]byte(config.GetConfiguration().Tpm.SecretKey))
+	if err != nil {
+		return err
+	}
+
+	// TakeOwnership didn't fail, update config, the key will be checked in Validate()
+	err = config.GetConfiguration().Save()
+	if err != nil {
+		return fmt.Errorf("Setup error:  Error saving configuration [%s]", err)
 	}
 	
 	return nil

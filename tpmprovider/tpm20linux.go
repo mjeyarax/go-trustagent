@@ -163,8 +163,8 @@ func (t *Tpm20Linux) IsAikPresent(tpmSecretKey string) (bool, error) {
 	}
 }
 
-func (t *Tpm20Linux) CreateAik(tpmSecretKey string) error {
-	rc := C.CreateAik(t.tpmCtx, C.CString(tpmSecretKey), C.size_t(len(tpmSecretKey)))
+func (t *Tpm20Linux) CreateAik(tpmSecretKey string, aikSecretKey string) error {
+	rc := C.CreateAik(t.tpmCtx, C.CString(tpmSecretKey), C.size_t(len(tpmSecretKey)), C.CString(aikSecretKey), C.size_t(len(aikSecretKey)))
 	if rc != 0 {
 		return fmt.Errorf("CreateAik return 0x%x", rc)
 	}
