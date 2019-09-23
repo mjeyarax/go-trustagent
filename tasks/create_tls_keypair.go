@@ -95,7 +95,7 @@ func (task* CreateTLSKeyPair) Validate(c setup.Context) error {
 		return fmt.Errorf("Validation error: Key file '%s' does not exist", constants.TLSKeyFilePath)
 	}
 
-	log.Info("Setup: TLS files have been successfuly created.")
+	log.Info("Setup: Create TLS keypair was successful.")
 
 	return nil
 }

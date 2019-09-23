@@ -9,7 +9,7 @@
 
     Ex. `yum -y install tpm2-abrmd dmidecode redhat-lsb-core`
 
-## Provisioning Information
+## Provisioning InformationDebug
 The following (example) information needs to be provided in `trustagent.env` file.
 
 ```
@@ -34,6 +34,13 @@ PROVISION_ATTESTATION=y
 3. Change permissions on the installer if needed:`chmod +x trustagent_v1.0.0.bin`.
 4. Run the installer: `./trustagent_v1.0.0.bin`.  With `PROVISION_ATTESTATION=y`, the installer will run `tagent setup` and start the tagent service.
 5. Confirm that the service is up by running `systemctl status tagent.service`.  Additionally, the service can be validated by confirming that `curl --request GET --user <TRUSTAGENT_ADMIN_USERNAME>:< TRUSTAGENT_ADMIN_PASSWORD>password https://<compute-node-ip>:1443/v2/host -k --noproxy "*"` returns valid host json.
+6. Confirm that TPM Provisioning was successful...
+    1. Verify the contents of the aik...
+        1. `openssl x509 -inform der -in /opt/trustagent/configuration/aik.cer -out /tmp/aik.pem`.
+        2. `openssl x509 -in /tmp/aik.pem -text -noout` shows `Issuer: CN = mtwilson-pca-aik`.
+    2. Endorsement authority certificate is present at `/opt/trustagent/configuration/endorsements.pem`.
+    3. TLS certifcates (tls-key.pem and tls-cert.pem) are present in `/opt/trustagent/configuration`.
+    4. HVS' 'privacy-ca.cer' is present in `/opt/trustagent/configuration`.
 
 ## HVS Provisioning
 Once GTA is up and running it can be registered with HVS (TBD)...

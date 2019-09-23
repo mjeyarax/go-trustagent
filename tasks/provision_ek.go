@@ -63,12 +63,12 @@ func (task* ProvisionEndorsementKey) Run(c setup.Context) error {
 	}
 
 	if isEkSigned {
-		log.Info("EC is already issued by endorsement authority; no need to request new EC")
+		log.Debug("EC is already issued by endorsement authority; no need to request new EC")
 		return nil
 	}
 
 	if registered, err = task.isEkRegisteredWithMtWilson(); err != nil {
-		log.Info("EK is already registered with Mt Wilson; no need to request an EC")
+		log.Debug("EK is already registered with Mt Wilson; no need to request an EC")
 		return err
 	}
 
@@ -84,7 +84,7 @@ func (task* ProvisionEndorsementKey) Run(c setup.Context) error {
 func (task* ProvisionEndorsementKey) Validate(c setup.Context) error {
 
 	// assume valid if error did not occur during 'Run'
-	log.Info("Successfully provisioned endorsement key")
+	log.Info("Setup:  Provisioning the endorsement key was successful.")
 	return nil
 }
 

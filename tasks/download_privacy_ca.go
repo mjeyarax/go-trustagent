@@ -61,7 +61,7 @@ func (task *DownloadPrivacyCA) Validate(c setup.Context) error {
 		return err
 	}
 
-	log.Info("Setup: DownloadPrivacyCA was successfull")
+	log.Info("Setup: Download PrivacyCA was successful")
 
 	return nil
 }

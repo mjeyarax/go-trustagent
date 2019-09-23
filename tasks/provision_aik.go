@@ -145,7 +145,7 @@ func (task* ProvisionAttestationIdentityKey) Validate(c setup.Context) error {
 		return fmt.Errorf("The aik certficate was not created")
 	}
 
-	log.Info("Successfully provisioned aik")
+	log.Info("Setup: Provisioning the AIK was successful.")
 	return nil
 }
 
@@ -160,7 +160,8 @@ func (task* ProvisionAttestationIdentityKey) createAik() error {
 		if err != nil {
 			return fmt.Errorf("Setup error:  Error saving config [%s]", err)
 		}
-		log.Info("Generated new AIK secret key")
+
+		log.Debug("Generated new AIK secret key")
 	}
 
 	tpm, err := tpmprovider.NewTpmProvider()
