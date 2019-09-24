@@ -17,7 +17,7 @@
 // during startup, this function reads the contents of the json file and return it to the http
 // writer.
 //
-// curl --request GET --user user:pass https://localhost:1443/v2/host -k --noproxy "*"
+// curl --request GET --user tagentadmin:TAgentAdminPassword https://localhost:1443/v2/host -k --noproxy "*"
 // { 
 // 	"errrCode":0,
 // 	"os_name":"Fedora",
@@ -57,7 +57,7 @@
 //  }
 //
 func GetPlatformInfo(httpWriter http.ResponseWriter, httpRequest *http.Request) {
-	log.Info("GetPlatformInfo")
+	log.Debug("GetPlatformInfo")
 
 	if _, err := os.Stat(constants.PlatformInfoFilePath); os.IsNotExist(err) {
 		log.Errorf("%s does not exist", constants.PlatformInfoFilePath)

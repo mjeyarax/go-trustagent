@@ -41,13 +41,14 @@ func CreateTrustAgentService (port int) (*TrustAgentService, error) {
 	trustAgentService.router = mux.NewRouter()
 	trustAgentService.router.HandleFunc("/v2/aik", basicAuth(GetAik)).Methods("GET")
 	trustAgentService.router.HandleFunc("/v2/host", basicAuth(GetPlatformInfo)).Methods("GET")
+	trustAgentService.router.HandleFunc("/v2/tpm/quote", basicAuth(getTpmQuote)).Methods("POST")
 	
 	return &trustAgentService, nil
 }
 
 func basicAuth(handler http.HandlerFunc) http.HandlerFunc {
 	return func(httpWriter http.ResponseWriter, httpRequest *http.Request) {
-		log.Info("Basic auth")
+
 		user, pass, ok := httpRequest.BasicAuth()
 		
 		if !ok {

@@ -9,23 +9,26 @@
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"os/user"
-
+	"path/filepath"
+	"strconv"
+	"syscall"
 	log "github.com/sirupsen/logrus"
-
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/platforminfo"
 	"intel/isecl/go-trust-agent/resource"
 	"intel/isecl/go-trust-agent/tasks"
 )
- 
+
  func printUsage() {
 	fmt.Println("Tagent Usage:")
  }
  
  func setupLogging() error {
-	logFile, err := os.OpenFile(constants.LogFilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0664)
+
+	logFile, err := os.OpenFile(constants.LogFilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
 		return err
 	}
@@ -35,12 +38,6 @@
 	log.SetLevel(config.GetConfiguration().LogLevel)
 
 	return nil
- }
-
- func initConfiguration() (*config.TrustAgentConfiguration, error) {
-	var cfg config.TrustAgentConfiguration
-
-	return &cfg, nil
  }
 
  func updatePlatformInfo() error {
@@ -80,18 +77,24 @@
  }
 
  func updateMeasureLog() error {
+	cmd:= exec.Command(constants.ModuleAnalysis)
+	cmd.Dir = constants.BinDir
+	results, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("module_analysis_sh error: %s", results)
+	}
 
-	log.Info("Successfully updated measure-log")
+	log.Info("Successfully updated measureLog.xml")
 	return nil
  }
  
  func main() {
+
 	err := setupLogging()
 	if err != nil {
-		//fmt.Printf("Error setting up logging: %s\n", err)
 		panic(err)
 	}
- 
+
 	if len(os.Args) <= 1 {
 		fmt.Printf("Invalid arguments: %s\n\n", os.Args)
 		printUsage()
@@ -99,19 +102,24 @@
 	}
 
 	currentUser, _ := user.Current()
-	if currentUser.Username != constants.RootUserName && currentUser.Username != constants.TagentUserName {
-		fmt.Printf("tagent cannot be run as user '%s'\n", currentUser.Username)
-		os.Exit(1)
-	}
-
 	cmd := os.Args[1]
 	switch cmd {
 	case "start":
 
-		if config.GetConfiguration().TrustAgentService.Port == 0 {
-			panic("The port has not been set, 'tagent setup' must be run before 'start'")
+		// 
+		// The legacy trust agent was a shell script that did work like creating platform-info,
+		// measureLog.xml, etc.  The systemd service ran that script as root.  Now, systemd is
+		// starting tagent (go exec) which shells out to module_anlaysis.sh to create measureLog.xml
+		// (requires root permissions).  So, 'tagent start' is two steps...
+		// 1.) There tagent.service runs as root and calls 'start'.  platform-info and measureLog.xml
+		// are created under that account.
+		// 2.) 'start' option then forks the service running as 'tagent' user.
+		//
+		if currentUser.Username != constants.RootUserName {
+			fmt.Printf("'tagent start' must be run as root, not  user '%s'\n", currentUser.Username)
+			os.Exit(1)
 		}
-
+	
 		err = updatePlatformInfo()
 		if err != nil {
 			log.Printf("There was an error creating platform-info: %s\n", err.Error())
@@ -119,7 +127,60 @@
 
 		err = updateMeasureLog()
 		if err != nil {
-			log.Printf("There was an error creating measure-log: %s\n", err.Error())
+			log.Printf("There was an error creating measureLog.xml: %s\n", err.Error())
+		}
+
+		tagentUser, err := user.Lookup(constants.TagentUserName)
+		if err != nil {
+			log.Errorf("Could not find user '%s'", constants.TagentUserName)
+			os.Exit(1)
+		}
+
+		uid, err := strconv.ParseUint(tagentUser.Uid, 10, 32)
+		if err != nil {
+			log.Errorf("Could not parse tagent user uid '%s'", tagentUser.Uid)
+			os.Exit(1)
+		}
+
+		gid, err := strconv.ParseUint(tagentUser.Gid, 10, 32)
+		if err != nil {
+			log.Errorf("Could not parse tagent user gid '%s'", tagentUser.Gid)
+			os.Exit(1)
+		}
+
+		// take ownership of all of the files in /opt/trusagent before forking the 
+		// tagent service
+		_ = filepath.Walk(constants.HomeDir, func(fileName string, info os.FileInfo, err error) error {
+			//log.Infof("Owning file %s", fileName)
+			err = os.Chown(fileName, int(uid), int(gid))
+			if err != nil {
+				log.Errorf("Could not own file '%s'", fileName)
+				return err
+			}
+
+			return nil
+		})
+
+		// spawn 'tagent startService' as the 'tagent' user
+		cmd := exec.Command(constants.TagentExe, "startService")
+		cmd.SysProcAttr = &syscall.SysProcAttr{}
+		cmd.Dir = constants.BinDir
+		cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
+
+		err = cmd.Start()
+		if err != nil {
+			log.Errorf("%s error: %s", constants.TagentExe, err)
+			os.Exit(1)
+		}
+
+	case "startService":
+		if currentUser.Username != constants.TagentUserName {
+			log.Errorf("'tagent startService' must be run as the agent user, not  user '%s'\n", currentUser.Username)
+			os.Exit(1)
+		}
+
+		if config.GetConfiguration().TrustAgentService.Port == 0 {
+			panic("The port has not been set, 'tagent setup' must be run before 'start'")
 		}
 
 		// create and start webservice
@@ -130,6 +191,11 @@
 
 		service.Start()
 	case "setup":
+		if currentUser.Username != constants.RootUserName {
+			log.Errorf("'tagent setup' must be run as root, not  user '%s'\n", currentUser.Username)
+			os.Exit(1)
+		}
+
 		var setupCommand string
 		if(len(os.Args) > 2) {
 			setupCommand = os.Args[2]

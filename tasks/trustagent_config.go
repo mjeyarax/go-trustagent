@@ -139,28 +139,28 @@ func (task* TrustAgentConfig) Validate(c setup.Context) error {
 	cfg := config.GetConfiguration()
 
 	if cfg.TrustAgentService.Port == 0 || cfg.TrustAgentService.Port > 65535 {
-		return fmt.Errorf("Validation error: Invalid port value: '%d'", cfg.TrustAgentService.Port)
+		return fmt.Errorf("Validation error: Invalid TrustAgent port value: '%d'", cfg.TrustAgentService.Port)
 	}
 
 	err := validation.ValidateAccount(cfg.TrustAgentService.Username, cfg.TrustAgentService.Password)
 	if err != nil {
-		return fmt.Errorf("Validation error: Invalid username or password [%s]", err.Error())
+		return fmt.Errorf("Validation error: Invalid TrustAgent username or password [%s]", err.Error())
 	}
 
 	if cfg.HVS.Url == "" {
-		return fmt.Errorf("Mtwilson api url is required")
+		return fmt.Errorf("Validation error: Mtwilson api url is required")
 	}
 
 	if cfg.HVS.Username == "" {
-		return fmt.Errorf("Mtwilson user is required")
+		return fmt.Errorf("Validation error: Mtwilson user is required")
 	}
 
 	if cfg.HVS.Password == "" {
-		return fmt.Errorf("Mtwilson password is required")
+		return fmt.Errorf("Validation error: Mtwilson password is required")
 	}
 
 	if cfg.HVS.TLS384 == "" {
-		return fmt.Errorf("Mtwilson tls 384 is required")
+		return fmt.Errorf("Validation error: Mtwilson tls 384 is required")
 	}
 
 	return nil

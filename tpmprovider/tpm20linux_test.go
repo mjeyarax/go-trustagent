@@ -40,6 +40,9 @@ func TestTpmTakeOwnership(t *testing.T) {
 }
 
 // To run this test (more of a c debugging tool)...
+// Where:
+// - TPM owner key is: deadbeefdeadbeefdeadbeefdeadbeefdeadbeef
+// - AIK secret key is: beefbeefbeefbeefbeefbeefbeefbeefbeefbeef
 //
 // Reset simulator: cicd/start-tpm-simulator.sh
 // tpm2_takeownership -o hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -e hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -l hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef
@@ -47,8 +50,14 @@ func TestTpmTakeOwnership(t *testing.T) {
 // tpm2_evictcontrol -A o -P  hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -c /tmp/primaryKey.context -S 0x81000000
 // tpm2_getpubek -e hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -o hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -H 0x81010000 -g 0x1 -f /tmp/endorsementKey
 // tpm2_readpublic -H 0x81010000 -o /tmp/endorsementkeyecpub
-// tpm2_getpubak -e hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -o hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -P hex:beeffeedbeeffeedbeeffeedbeeffeedbeeffeed -E 0x81010000 -k 0x81018000 -f /tmp/aik -n /tmp/aikName
-// 
+// tpm2_getpubak -e hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -o hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -P hex:beefbeefbeefbeefbeefbeefbeefbeefbeefbeef -E 0x81010000 -k 0x81018000 -f /tmp/aik -n /tmp/aikName -g 0x1 -D 0x000B -s 0x14
+// Run /tmp/makecredential.sh
+// tpm2_activatecredential -e hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -P hex:beefbeefbeefbeefbeefbeefbeefbeefbeefbeef -H 0x81018000 -k 0x81010000 -f /tmp/makecredential.out -o /tmp/decrypted.out
+// tpm2_create -H 0x81000000 -g 0x0B -G 0x1 -A 0x00020072 -u /tmp/bindingKey.pub -r /tmp/bindingKey.priv
+// tpm2_load -H 0x81000000 -u /tmp/bindingKey.pub -r /tmp/bindingKey.priv -C /tmp/bk.context -n /tmp/bkFilename
+// tpm2_certify -k 0x81018000 -H 0x81000000 -K hex:beefbeefbeefbeefbeefbeefbeefbeefbeefbeef -g 0x0B -a /tmp/out.attest -s /tmp/out.sig -C /tmp/bk.context
+// tpm2_quote -k 0x81018000 -P hex:beefbeefbeefbeefbeefbeefbeefbeefbeefbeef -L 0x04:0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23+0x0B:0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23 -q b4781f450103d7ea58804669ab77590bd38d98109929dc75d0b12b4d9b3593f9
+//
 // cd to /tpmprovider and run 'go test -c' (compiles to tpmprovider/tpmprovider.test)
 // Run gbd unit test against tpmprovider.test (see launch.json)
 //

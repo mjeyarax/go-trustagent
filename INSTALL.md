@@ -6,8 +6,9 @@
     1. tpm2-abrmd (v2.0.x)
     2. dmidecode (v3.x)
     3. redhat-lsb-core (v4.1.x)
+    4. tboot (v1.9.7.x)
 
-    Ex. `yum -y install tpm2-abrmd dmidecode redhat-lsb-core`
+    Ex. `yum -y install tpm2-abrmd dmidecode redhat-lsb-core tboot`
 
 ## Provisioning InformationDebug
 The following (example) information needs to be provided in `trustagent.env` file.
@@ -33,7 +34,7 @@ PROVISION_ATTESTATION=y
 2. Copy the trustagent.env file in the same directory as the installer.
 3. Change permissions on the installer if needed:`chmod +x trustagent_v1.0.0.bin`.
 4. Run the installer: `./trustagent_v1.0.0.bin`.  With `PROVISION_ATTESTATION=y`, the installer will run `tagent setup` and start the tagent service.
-5. Confirm that the service is up by running `systemctl status tagent.service`.  Additionally, the service can be validated by confirming that `curl --request GET --user <TRUSTAGENT_ADMIN_USERNAME>:< TRUSTAGENT_ADMIN_PASSWORD>password https://<compute-node-ip>:1443/v2/host -k --noproxy "*"` returns valid host json.
+5. Confirm that the service is up by running `systemctl status tagent.service`.  Additionally, the service can be validated by confirming that `curl --request GET --user <TRUSTAGENT_ADMIN_USERNAME>:< TRUSTAGENT_ADMIN_PASSWORD> https://<compute-node-ip>:1443/v2/host -k --noproxy "*"` returns valid host json.
 6. Confirm that TPM Provisioning was successful...
     1. Verify the contents of the aik...
         1. `openssl x509 -inform der -in /opt/trustagent/configuration/aik.cer -out /tmp/aik.pem`.

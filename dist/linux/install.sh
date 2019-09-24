@@ -28,12 +28,15 @@ export TRUSTAGENT_HOME=${TRUSTAGENT_HOME:-$DEFAULT_TRUSTAGENT_HOME}
 
 TRUSTAGENT_EXE=tagent
 TRUSTAGENT_ENV_FILE=trustagent.env
+TRUSTAGENT_MODULE_ANALYSIS_SH=module_analysis.sh
+TRUSTAGENT_MODULE_ANALYSIS_DA_SH=module_analysis_da.sh
+TRUSTAGENT_MODULE_ANALYSIS_DA_TCG_SH=module_analysis_da_tcg.sh
 TRUSTAGENT_SERVICE=tagent.service
 TRUSTAGENT_BIN_DIR=$TRUSTAGENT_HOME/bin
 TRUSTAGENT_LOG_DIR=$TRUSTAGENT_HOME/logs
 TRUSTAGENT_CFG_DIR=$TRUSTAGENT_HOME/configuration
 TRUSTAGENT_VAR_DIR=$TRUSTAGENT_HOME/var
-TRUSTAGENT_DEPENDENCIES=('tpm2-abrmd-2.0' 'dmidecode-3' 'redhat-lsb-core-4.1')
+TRUSTAGENT_DEPENDENCIES=('tpm2-abrmd-2.0' 'dmidecode-3' 'redhat-lsb-core-4.1' 'tboot-1.9.7')
 TPM2_ABRMD_SERVICE=tpm2-abrmd.service
 
 #--------------------------------------------------------------------------------------------------
@@ -111,7 +114,13 @@ mkdir -p $TRUSTAGENT_LOG_DIR
 mkdir -p $TRUSTAGENT_VAR_DIR
 mkdir -p $TRUSTAGENT_VAR_DIR/system-info
 
+# copy 'tagent' to bin dir
 cp $TRUSTAGENT_EXE $TRUSTAGENT_BIN_DIR/ 
+
+# copy module analysis scripts to bin dier
+cp $TRUSTAGENT_MODULE_ANALYSIS_SH $TRUSTAGENT_BIN_DIR/ 
+cp $TRUSTAGENT_MODULE_ANALYSIS_DA_SH $TRUSTAGENT_BIN_DIR/ 
+cp $TRUSTAGENT_MODULE_ANALYSIS_DA_TCG_SH $TRUSTAGENT_BIN_DIR/ 
 
 # make a link in /usr/bin to tagent...
 ln -sfT $TRUSTAGENT_BIN_DIR/$TRUSTAGENT_EXE /usr/bin/$TRUSTAGENT_EXE
@@ -130,6 +139,7 @@ chmod 755 $TRUSTAGENT_BIN/*
 # exist when using the tpm simulator, so check for its existence)
 if [ -f /dev/tpm0 ]; then
     chown tss:tss /dev/tpm0
+    chown tss:tss /dev/tpmrm0
 fi
 
 # enable tpm2-abrmd service (start below if automatic provisioning is enabled)
