@@ -84,7 +84,7 @@ func (task* ProvisionEndorsementKey) Run(c setup.Context) error {
 func (task* ProvisionEndorsementKey) Validate(c setup.Context) error {
 
 	// assume valid if error did not occur during 'Run'
-	log.Info("Setup:  Provisioning the endorsement key was successful.")
+	log.Info("Setup: Provisioning the endorsement key was successful.")
 	return nil
 }
 

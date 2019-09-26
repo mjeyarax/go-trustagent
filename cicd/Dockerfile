@@ -80,7 +80,7 @@ RUN yum -y group install "Development Tools"
 RUN yum -y install golang makeself gdb
 
 # platforminfo dependencies
-RUN yum -y install dmidecode redhat-lsb
+RUN yum -y install dmidecode redhat-lsb tboot
 
 # tss2
 RUN yum -y install tpm2-abrmd tpm2-tools tpm2-abrmd-devel 

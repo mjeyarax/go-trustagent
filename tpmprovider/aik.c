@@ -435,21 +435,21 @@ int CreateAik(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char* aik
     // CreatePrimary, with the output in 'handle2048rsa', similar to tpm2-tool command...
     // tpm2_createprimary -H o -P hex:c758af994ac60743fdf1ad5d8186ca216657f99f -g 0x000B -G 0x0001 -C /tmp/primaryKey.context
     // 
-    rval = create_primary(ctx->sys, &ownerAuth, &handle2048rsa);
-    if(rval != TPM2_RC_SUCCESS)
-    {
-        return rval;
-    }
+    // rval = create_primary(ctx->sys, &ownerAuth, &handle2048rsa);
+    // if(rval != TPM2_RC_SUCCESS)
+    // {
+    //     return rval;
+    // }
 
-    //
-    // Use EvitControl to save the output from CreatePrimary to nvram similar to...
-    // tpm2_evictcontrol -A o -P hex:c758af994ac60743fdf1ad5d8186ca216657f99f -c /tmp/primaryKey.context -S 0x81000000
-    //
-    rval = evict_control(ctx->sys, &ownerAuth, handle2048rsa);
-    if(rval != TPM2_RC_SUCCESS)
-    {
-        return rval;
-    }
+    // //
+    // // Use EvitControl to save the output from CreatePrimary to nvram similar to...
+    // // tpm2_evictcontrol -A o -P hex:c758af994ac60743fdf1ad5d8186ca216657f99f -c /tmp/primaryKey.context -S 0x81000000
+    // //
+    // rval = evict_control(ctx->sys, &ownerAuth, handle2048rsa);
+    // if(rval != TPM2_RC_SUCCESS)
+    // {
+    //     return rval;
+    // }
 
     //
     // tpm2_getpubek -e hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -o hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -H 0x81010000 -g 0x1 -f /tmp/endorsementKey
@@ -470,7 +470,133 @@ int CreateAik(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char* aik
         return rval;
     }
 
-    return 0;
+    return TSS2_RC_SUCCESS;
+}
+
+// make_credential is not needed -- it is done by HVS
+// XXX: tpm2_makecredential -Q -e /tmp/endorsementkeyecpub  -s $file_input_data  -n $Loadkeyname -o /tmp/makecredential.out
+// Go code calls 'activate_credential' with HVS nonce
+// XXX: tpm2_activatecredential -e hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -P hex:beefbeefbeefbeefbeefbeefbeefbeefbeefbeef -H 0x81018000 -k 0x81010000 -f /tmp/makecredential.out -o /tmp/decrypted.out
+
+// Gonna wrap the remaining functions into a 'FinalizeAik' fx that just requires teh aikpassword as input
+// tpm2_create -H 0x81000000 -g 0x0B -G 0x1 -A 0x00020072 -u /tmp/bindingKey.pub -r /tmp/bindingKey.priv
+// tpm2_load -H 0x81000000 -u /tmp/bindingKey.pub -r /tmp/bindingKey.priv -C /tmp/bk.context -n /tmp/bkFilename
+// tpm2_certify -k 0x81018000 -H 0x81000000 -K hex:beefbeefbeefbeefbeefbeefbeefbeefbeefbeef -g 0x0B -a /tmp/out.attest -s /tmp/out.sig -C /tmp/bk.context
+int FinalizeAik(tpmCtx* ctx, char* aikSecretKey, size_t aikSecretKeyLength)
+{
+    TSS2_RC                 rval;
+    TSS2L_SYS_AUTH_COMMAND  sessionsData = {0};
+    TSS2L_SYS_AUTH_RESPONSE sessionsDataOut;
+    TPM2B_DATA              outsideInfo = TPM2B_EMPTY_INIT;
+    TPML_PCR_SELECTION      creationPCR;
+    TPM2B_PUBLIC            akPublic = TPM2B_EMPTY_INIT;
+    TPM2B_PRIVATE           akPrivate = TPM2B_TYPE_INIT(TPM2B_PRIVATE, buffer);
+    TPM2B_CREATION_DATA     creationData = TPM2B_EMPTY_INIT;
+    TPM2B_DIGEST            creationHash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
+    TPMT_TK_CREATION        creationTicket = TPMT_TK_CREATION_EMPTY_INIT;
+
+    TPM2B_SENSITIVE_CREATE inSensitive;
+    TPM2B_PUBLIC inPublic = PUBLIC_AREA_TPMA_OBJECT_DEFAULT_INIT;
+
+    // load
+    TPM2_HANDLE handle2048rsa;
+    TPM2B_NAME nameExt = TPM2B_TYPE_INIT(TPM2B_NAME, name);
+
+    // certify
+    TPM2B_AUTH ownerPassword = {0};
+    char* removeMe = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+    rval = str2Tpm2bAuth(removeMe, strlen(removeMe), &ownerPassword);
+    if(rval != 0)
+    {
+        ERROR("There was an error creating the aik password");
+        return rval;
+    }
+
+    TPM2B_AUTH aikPassword = {0};
+    rval = str2Tpm2bAuth(aikSecretKey, aikSecretKeyLength, &aikPassword);
+    if(rval != 0)
+    {
+        ERROR("There was an error creating the aik password");
+        return rval;
+    }
+
+    sessionsData.count = 1;
+    sessionsData.auths[0].sessionHandle = TPM2_RS_PW;
+
+    inPublic.publicArea.type = TPM2_ALG_RSA;            // -G 0x01
+    inPublic.publicArea.nameAlg = TPM2_ALG_SHA256;      // -g 0x0b
+    inPublic.publicArea.objectAttributes = 0x00020072;  // -A 0x00020072 TPMA_OBJECT_FIXEDTPM | TPMA_OBJECT_SIGN;  KWT: Convert to constants
+    inPublic.publicArea.parameters.rsaDetail.symmetric.algorithm = TPM2_ALG_NULL;
+    inPublic.publicArea.parameters.rsaDetail.scheme.scheme = TPM2_ALG_NULL;
+    inPublic.publicArea.parameters.rsaDetail.keyBits = 2048;
+    inPublic.publicArea.parameters.rsaDetail.exponent = 0;
+    inPublic.publicArea.unique.rsa.size = 0;
+
+    //memcpy(&inSensitive.sensitive.userAuth, &aikPassword, sizeof(TPM2B_AUTH));
+    inSensitive.size = inSensitive.sensitive.userAuth.size + sizeof(inSensitive.size);
+
+
+    rval = Tss2_Sys_Create(ctx->sys, TPM_HANDLE_PRIMARY, &sessionsData, &inSensitive,
+                           &inPublic, &outsideInfo, &creationPCR, &akPrivate, &akPublic,
+                           &creationData, &creationHash, &creationTicket, &sessionsDataOut);
+
+    if(rval != TPM2_RC_SUCCESS) 
+    {
+        ERROR("Tss2_Sys_Create error: 0x%0x",rval);
+        return rval;
+    }
+
+    rval = Tss2_Sys_Load(ctx->sys,
+                         TPM_HANDLE_PRIMARY,
+                         &sessionsData,
+                         &akPrivate,
+                         &akPublic,
+                         &handle2048rsa,
+                         &nameExt,
+                         &sessionsDataOut);
+
+    if(rval != TPM2_RC_SUCCESS)
+    {
+        ERROR("Tss2_Sys_Load errror: 0x%0x", rval);
+        return rval;
+    }
+
+
+    TSS2L_SYS_AUTH_COMMAND cmd_auth_array = {0};
+    cmd_auth_array.count = 2;
+    cmd_auth_array.auths[0].sessionHandle = TPM2_RS_PW;
+    memcpy(&cmd_auth_array.auths[0].hmac, &ownerPassword, sizeof(TPM2B_AUTH));
+
+    cmd_auth_array.auths[1].sessionHandle = TPM2_RS_PW;
+    memcpy(&cmd_auth_array.auths[1].hmac, &aikPassword, sizeof(TPM2B_AUTH));
+
+    TPM2B_DATA qualifying_data = {
+        .size = 4,
+        .buffer = { 0x00, 0xff, 0x55,0xaa }
+    };
+
+    TPMT_SIG_SCHEME scheme;
+    scheme.scheme = TPM2_ALG_RSASSA;
+    scheme.details.rsassa.hashAlg = TPM2_ALG_SHA256; // -g 0xb  TPM2_ALG_SHA1;//
+    
+    TPM2B_ATTEST certify_info = {
+        .size = sizeof(certify_info)-2
+    };
+
+    TPMT_SIGNATURE signature;
+    memset(&sessionsDataOut, 0, sizeof(TSS2L_SYS_AUTH_RESPONSE));
+    
+    rval = Tss2_Sys_Certify(ctx->sys, TPM_HANDLE_PRIMARY,
+            TPM_HANDLE_AIK, &cmd_auth_array, &qualifying_data, &scheme,
+            &certify_info, &signature, &sessionsDataOut);
+
+    if (rval != TPM2_RC_SUCCESS) 
+    {
+        ERROR("Tss2_Sys_Certify error: 0x%0x",rval);
+        return rval;
+    }
+
+    return TSS2_RC_SUCCESS;
 }
 
 int GetAikName(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char** aikName, int* aikNameLength)
@@ -520,14 +646,14 @@ int GetAikBytes(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char** 
         return rval;
     }
 
-    if( aikPublic.publicArea.unique.rsa.size > ARRAY_SIZE(aikPublic.publicArea.unique.rsa.buffer))
+    if(aikPublic.publicArea.unique.rsa.size == 0 || aikPublic.publicArea.unique.rsa.size > ARRAY_SIZE(aikPublic.publicArea.unique.rsa.buffer))
     {
-        ERROR("Aik buffer exceeded length %x", ARRAY_SIZE(aikPublic.publicArea.unique.rsa.buffer))
+        ERROR("Incorrect aik buffer length %x", aikPublic.publicArea.unique.rsa.size);
         return -1;   
     }
 
     *aikBytes = calloc(aikPublic.publicArea.unique.rsa.size, 1);
-    if(!*aikBytes)
+    if(!*aikBytes) 
     {
         ERROR("Could not allocate aik public buffer");
         return -1;

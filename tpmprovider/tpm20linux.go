@@ -172,6 +172,40 @@ func (t *Tpm20Linux) CreateAik(tpmSecretKey string, aikSecretKey string) error {
 	return nil
 }
 
+func (t *Tpm20Linux) FinalizeAik(aikSecretKey string) error {
+	rc := C.FinalizeAik(t.tpmCtx, C.CString(aikSecretKey), C.size_t(len(aikSecretKey)))
+	if rc != 0 {
+		return fmt.Errorf("FinalizeAik return 0x%x", rc)
+	}
+
+	return nil
+}
+
+func (t *Tpm20Linux) GetTpmQuote(aikSecretKey string, nonce []byte, pcrBanks []string, pcrs []int) ([]byte, error) {
+	var quoteBytes []byte
+	var cQuote *C.char
+	var cQuoteLength C.int
+
+	rc := C.GetTpmQuote(t.tpmCtx, 
+						C.CString(aikSecretKey),  
+						C.size_t(len(aikSecretKey)),
+						&cQuote, 
+						&cQuoteLength)
+		
+	if rc != 0 {
+		return nil, fmt.Errorf("C.GetTpmQuote returned error code 0x%X", rc)
+	}
+
+	defer C.free(unsafe.Pointer(cQuote))
+
+	if (cQuoteLength <= 0) { // max size is checked in native/c code call to GetAikName
+		return nil, fmt.Errorf("The quote buffer size is incorrect")
+	}
+
+	quoteBytes = C.GoBytes(unsafe.Pointer(cQuote), cQuoteLength)
+	return quoteBytes, nil
+}
+
 func (t *Tpm20Linux) ActivateCredential(tpmSecretKey string, aikSecretKey string, credentialBytes []byte, secretBytes []byte) ([]byte, error) {
 
 	var returnValue []byte

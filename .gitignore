@@ -4,3 +4,4 @@ go.sum
 cover.*
 /builds
 NVChip*
+*.test

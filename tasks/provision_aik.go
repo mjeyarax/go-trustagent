@@ -135,6 +135,12 @@ func (task* ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	// 	return err
 	// }
 
+	// 'finalize' the aik in the tpm....
+	// err = task.finalizeAik()
+	// if err != nil {
+	// 	return err
+	// }
+
 	return nil
 }
 
@@ -182,6 +188,24 @@ func (task* ProvisionAttestationIdentityKey) createAik() error {
 			return err
 		}
 	//}
+
+	return nil
+}
+
+func (task* ProvisionAttestationIdentityKey) finalizeAik() error {
+	var err error
+
+	tpm, err := tpmprovider.NewTpmProvider()
+	if err != nil {
+		return fmt.Errorf("Setup error: finalizeAik not create TpmProvider: %s", err)
+	}
+
+	defer tpm.Close()
+
+	err = tpm.FinalizeAik(config.GetConfiguration().Tpm.AikSecretKey)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

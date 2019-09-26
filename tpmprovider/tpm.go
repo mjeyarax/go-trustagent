@@ -41,7 +41,7 @@ type TpmProvider interface {
 
 
 
-	// Overview of function here
+	// KWT: Overview of functions here
 	TakeOwnership(tpmSecretKey []byte) error
 	IsOwnedWithAuth(ownerAuth []byte) (bool, error)
 	
@@ -49,10 +49,13 @@ type TpmProvider interface {
 
 	IsAikPresent(tpmSecretKey string) (bool, error)
 	CreateAik(tpmSecretKey string, aikSecretKey string) error
+	FinalizeAik(aikSecretKey string) error
 	GetAikBytes(tpmSecretKey string) ([]byte, error)
 	GetAikName(tpmSecretKey string) ([]byte, error)
 
 	ActivateCredential(tpmSecretKey string, aikSecretKey string, credentialBytes []byte, secretBytes []byte) ([]byte, error)
+
+	GetTpmQuote(aikSecretKey string, nonce []byte, pcrBanks []string, pcrs []int) ([]byte, error)
 
 	CreateEndorsementKey(tpmSecretKey string) error
 	NvIndexExists(nvIndex uint32) (bool, error)

@@ -45,8 +45,19 @@ int GetEndorsementKeyCertificate(tpmCtx* ctx, char* tpmSecretKey, size_t secretK
 
 int IsAikPresent(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength);
 int CreateAik(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char* aikSecretKey, size_t aikSecretKeyLength);
+int FinalizeAik(tpmCtx* ctx, char* aikSecretKey, size_t aikSecretKeyLength);
 int GetAikBytes(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char** aikBytes, int* aikBytesLength);
 int GetAikName(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char** aikName, int* aikNameLength);
+
+int GetTpmQuote(tpmCtx* ctx, 
+                char* aikSecretKey, 
+                size_t aikSecretKeyLength, 
+                // char* pcrSelectionString,
+                // size_t pcrSelectionStringLength,
+                // char* qualifyingDataString,
+                // size_t qualifyingDataStringLength
+                char** quoteBytes, 
+                int* quouteBytesLength);
 
 int ActivateCredential(tpmCtx* ctx, 
                        char* tpmSecretKey, 
