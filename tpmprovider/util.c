@@ -1,4 +1,8 @@
+
 #include "tpm20linux.h"
+
+//#include <stdio.h>
+#include <ctype.h>
 
 // Utility function that takes an ascii string and converts it into a TPM2B_AUTH similar
 // to https://raw.githubusercontent.com/tpm2-software/tpm2-tools/3.1.0/lib/tpm2_util.c
@@ -52,6 +56,33 @@ int str2Tpm2bAuth(const char* tpmSecretKey, size_t keyLength, TPM2B_AUTH* tpm2bA
     return 0;
 }
 
+// https://github.com/tpm2-software/tpm2-tools/blob/3.1.0/lib/tpm2_util.c
+int tpm2_util_hex_to_byte_structure(const char *inStr, UINT16 *byteLength, BYTE *byteBuffer) {
+    int strLength; //if the inStr likes "1a2b...", no prefix "0x"
+    int i = 0;
+    if (inStr == NULL || byteLength == NULL || byteBuffer == NULL)
+        return -1;
+    strLength = strlen(inStr);
+    if (strLength % 2)
+        return -2;
+    for (i = 0; i < strLength; i++) {
+        if (!isxdigit(inStr[i]))
+            return -3;
+    }
+
+    if (*byteLength < strLength / 2)
+        return -4;
+
+    *byteLength = strLength / 2;
+
+    for (i = 0; i < *byteLength; i++) {
+        char tmpStr[4] = { 0 };
+        tmpStr[0] = inStr[i * 2];
+        tmpStr[1] = inStr[i * 2 + 1];
+        byteBuffer[i] = strtol(tmpStr, NULL, 16);
+    }
+    return 0;
+}
 
 //
 // Returns 0 if true, -1 for false, all other values are error codes

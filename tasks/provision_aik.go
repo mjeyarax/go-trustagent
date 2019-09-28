@@ -32,6 +32,26 @@ import (
 //-------------------------------------------------------------------------------------------------
 // P R O V I S I O N   A I K 
 //-------------------------------------------------------------------------------------------------
+// The goal of ProvisionAttestationIdentityKey task is to create an aik that can be used to support
+// tpm quotes.  This includes a number of 'handshakes' with HVS where nonces are exchanged to make 
+// sure the TPM/aik is valid.
+//
+// The handshake steps are...
+// 1.) Send HVS an IdentityChallengeRequest that contains aik data and encrypted EK data (using HVS'
+// privacy-ca) in niarl binary format.
+// 2.) Receive back an IdentityProofRequest that includes an encrypted nonce that is decrypted by 
+// the TPM/aik ('ActivateCredential'). 
+// 3.) Send the nonce back to HVS (encrypted by the HVS privacy-ca). If the nonce checks out, HVS
+// responds with an (encrypted) aik cert that is saved to /opt/trustagent/configuration/aik.cer.
+//
+// The 'aik.cer' is served via the /v2/aik endpoint and included in /tpm/quote.  
+// 
+// Throughout this process, the TPM is being provisioned with the aik so that calls to /tpm/quote
+// will be successful.  QUOTES WILL NOT WORK IF THE TPM IS NO PROVISIONED CORRECTLY.
+//-------------------------------------------------------------------------------------------------
+
+
+
 // ==> POST IdentityChallengeRequest to https://server.com:8443/mtwilson/v2/privacyca/identity-challenge-request
 // 	  RETURNS --> IdentityProofRequest
 //
@@ -192,23 +212,23 @@ func (task* ProvisionAttestationIdentityKey) createAik() error {
 	return nil
 }
 
-func (task* ProvisionAttestationIdentityKey) finalizeAik() error {
-	var err error
+// func (task* ProvisionAttestationIdentityKey) finalizeAik() error {
+// 	var err error
 
-	tpm, err := tpmprovider.NewTpmProvider()
-	if err != nil {
-		return fmt.Errorf("Setup error: finalizeAik not create TpmProvider: %s", err)
-	}
+// 	tpm, err := tpmprovider.NewTpmProvider()
+// 	if err != nil {
+// 		return fmt.Errorf("Setup error: finalizeAik not create TpmProvider: %s", err)
+// 	}
 
-	defer tpm.Close()
+// 	defer tpm.Close()
 
-	err = tpm.FinalizeAik(config.GetConfiguration().Tpm.AikSecretKey)
-	if err != nil {
-		return err
-	}
+// 	err = tpm.FinalizeAik(config.GetConfiguration().Tpm.AikSecretKey)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func (task* ProvisionAttestationIdentityKey) getTpmSymetricKey(key []byte) ([]byte, error) {
 	privacyCa, err := GetPrivacyCA()

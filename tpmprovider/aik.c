@@ -7,109 +7,109 @@
 // return zero if aik is present
 // positive is error code from tss2
 // -1 is false
-int IsAikPresent(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength)
-{
-    TSS2_RC rval;
-    TPM2B_PUBLIC aikPublic = TPM2B_EMPTY_INIT;
-    TPM2B_NAME name = TPM2B_TYPE_INIT(TPM2B_NAME, name);
-    TSS2L_SYS_AUTH_RESPONSE sessionsData;
-    TPM2B_NAME qualifiedName = TPM2B_TYPE_INIT(TPM2B_NAME, name);
+// int IsAikPresent(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength)
+// {
+//     TSS2_RC rval;
+//     TPM2B_PUBLIC aikPublic = TPM2B_EMPTY_INIT;
+//     TPM2B_NAME name = TPM2B_TYPE_INIT(TPM2B_NAME, name);
+//     TSS2L_SYS_AUTH_RESPONSE sessionsData;
+//     TPM2B_NAME qualifiedName = TPM2B_TYPE_INIT(TPM2B_NAME, name);
 
-    rval = Tss2_Sys_ReadPublic(ctx->sys, (TPM_HANDLE_AIK+1), NULL, &aikPublic, &name, &qualifiedName, &sessionsData);
-    if (aikPublic.size == 0 || rval == 0x18b)
-    {
-        rval = -1;   // empty results, no aik so false
-    }
-    else if (rval != TSS2_RC_SUCCESS)
-    {
-        ERROR("Tss2_Sys_ReadPublic return %x", rval);
-    }
-    else
-    {
-        rval = 0;
-    }
+//     rval = Tss2_Sys_ReadPublic(ctx->sys, (TPM_HANDLE_AIK+1), NULL, &aikPublic, &name, &qualifiedName, &sessionsData);
+//     if (aikPublic.size == 0 || rval == 0x18b)
+//     {
+//         rval = -1;   // empty results, no aik so false
+//     }
+//     else if (rval != TSS2_RC_SUCCESS)
+//     {
+//         ERROR("Tss2_Sys_ReadPublic return %x", rval);
+//     }
+//     else
+//     {
+//         rval = 0;
+//     }
     
     
-    return rval;
-}
+//     return rval;
+// }
 
 //-------------------------------------------------------------------------------------------------
 // E V I C T   C O N T R O L
 // From https://raw.githubusercontent.com/tpm2-software/tpm2-tools/3.1.0/tools/tpm2_evictcontrol.c
 //-------------------------------------------------------------------------------------------------
-static int evict_control(TSS2_SYS_CONTEXT* sys, TPM2B_AUTH* newSecretKey, TPM2_HANDLE handle2048rsa) 
-{
-    TSS2_RC                 rval;
-    TPMI_DH_OBJECT          persist = TPM_HANDLE_PRIMARY;
-    TSS2L_SYS_AUTH_COMMAND  sessionsData = {0};
-    TSS2L_SYS_AUTH_RESPONSE sessionsDataOut;
+// static int evict_control(TSS2_SYS_CONTEXT* sys, TPM2B_AUTH* newSecretKey, TPM2_HANDLE handle2048rsa) 
+// {
+//     TSS2_RC                 rval;
+//     TPMI_DH_OBJECT          persist = TPM_HANDLE_PRIMARY;
+//     TSS2L_SYS_AUTH_COMMAND  sessionsData = {0};
+//     TSS2L_SYS_AUTH_RESPONSE sessionsDataOut;
 
-    sessionsData.count = 1;
-    sessionsData.auths[0].sessionHandle = TPM2_RS_PW;
-    memcpy(&sessionsData.auths[0].hmac, newSecretKey, sizeof(TPM2B_AUTH));
-    sessionsData.auths[0].sessionAttributes = 0;
+//     sessionsData.count = 1;
+//     sessionsData.auths[0].sessionHandle = TPM2_RS_PW;
+//     memcpy(&sessionsData.auths[0].hmac, newSecretKey, sizeof(TPM2B_AUTH));
+//     sessionsData.auths[0].sessionAttributes = 0;
 
-    rval = Tss2_Sys_EvictControl(sys, TPM2_RH_OWNER, handle2048rsa, &sessionsData, persist, &sessionsDataOut);
-    if (rval != TPM2_RC_SUCCESS) 
-    {
-        ERROR("Evict Control failed: 0x%x", rval);
-    }
+//     rval = Tss2_Sys_EvictControl(sys, TPM2_RH_OWNER, handle2048rsa, &sessionsData, persist, &sessionsDataOut);
+//     if (rval != TPM2_RC_SUCCESS) 
+//     {
+//         ERROR("Evict Control failed: 0x%x", rval);
+//     }
 
-    return rval;
-}
+//     return rval;
+// }
 
 
 //-------------------------------------------------------------------------------------------------
 // C R E A T E   P R I M A R Y
 // from https://github.com/tpm2-software/tpm2-tools/blob/3.1.0/tools/tpm2_createprimary.c
 //-------------------------------------------------------------------------------------------------
-static int create_primary(TSS2_SYS_CONTEXT *sys, TPM2B_AUTH* secretKey, TPM2_HANDLE* handle2048rsa) 
-{
+// static int create_primary(TSS2_SYS_CONTEXT *sys, TPM2B_AUTH* secretKey, TPM2_HANDLE* handle2048rsa) 
+// {
 
-    TSS2_RC                 rval;
-    TSS2L_SYS_AUTH_COMMAND  sessionsData = {0};
-    TPM2B_SENSITIVE_CREATE  inSensitive = TPM2B_SENSITIVE_CREATE_EMPTY_INIT;
-    TPM2B_PUBLIC            inPublic = PUBLIC_AREA_TPMA_OBJECT_DEFAULT_INIT;
-    TSS2L_SYS_AUTH_RESPONSE sessionsDataOut;
-    TPM2B_DATA              outsideInfo = TPM2B_EMPTY_INIT;
-    TPML_PCR_SELECTION      creationPCR;
-    TPM2B_NAME              name = TPM2B_TYPE_INIT(TPM2B_NAME, name);
-    TPM2B_PUBLIC            outPublic = TPM2B_EMPTY_INIT;
-    TPM2B_CREATION_DATA     creationData = TPM2B_EMPTY_INIT;
-    TPM2B_DIGEST            creationHash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
-    TPMT_TK_CREATION        creationTicket = TPMT_TK_CREATION_EMPTY_INIT;
+//     TSS2_RC                 rval;
+//     TSS2L_SYS_AUTH_COMMAND  sessionsData = {0};
+//     TPM2B_SENSITIVE_CREATE  inSensitive = TPM2B_SENSITIVE_CREATE_EMPTY_INIT;
+//     TPM2B_PUBLIC            inPublic = PUBLIC_AREA_TPMA_OBJECT_DEFAULT_INIT;
+//     TSS2L_SYS_AUTH_RESPONSE sessionsDataOut;
+//     TPM2B_DATA              outsideInfo = TPM2B_EMPTY_INIT;
+//     TPML_PCR_SELECTION      creationPCR;
+//     TPM2B_NAME              name = TPM2B_TYPE_INIT(TPM2B_NAME, name);
+//     TPM2B_PUBLIC            outPublic = TPM2B_EMPTY_INIT;
+//     TPM2B_CREATION_DATA     creationData = TPM2B_EMPTY_INIT;
+//     TPM2B_DIGEST            creationHash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
+//     TPMT_TK_CREATION        creationTicket = TPMT_TK_CREATION_EMPTY_INIT;
  
-    sessionsData.count = 1;
-    sessionsData.auths[0].sessionHandle = TPM2_RS_PW;
-    memcpy(&sessionsData.auths[0].hmac, secretKey, sizeof(TPM2B_AUTH));
-    sessionsData.auths[0].sessionAttributes = 0;
+//     sessionsData.count = 1;
+//     sessionsData.auths[0].sessionHandle = TPM2_RS_PW;
+//     memcpy(&sessionsData.auths[0].hmac, secretKey, sizeof(TPM2B_AUTH));
+//     sessionsData.auths[0].sessionAttributes = 0;
 
-    inSensitive.size = inSensitive.sensitive.userAuth.size + sizeof(inSensitive.size);
+//     inSensitive.size = inSensitive.sensitive.userAuth.size + sizeof(inSensitive.size);
 
-    inPublic.publicArea.type = TPM2_ALG_RSA;           // -G 0x0001
-    inPublic.publicArea.nameAlg = TPM2_ALG_SHA256;     // -g 0x000B
-    inPublic.publicArea.parameters.rsaDetail.symmetric.algorithm = TPM2_ALG_AES;
-    inPublic.publicArea.parameters.rsaDetail.symmetric.keyBits.aes = 128;
-    inPublic.publicArea.parameters.rsaDetail.symmetric.mode.aes = TPM2_ALG_CFB;
-    inPublic.publicArea.parameters.rsaDetail.scheme.scheme = TPM2_ALG_NULL;
-    inPublic.publicArea.parameters.rsaDetail.keyBits = 2048;
-    inPublic.publicArea.parameters.rsaDetail.exponent = 0;
-    inPublic.publicArea.unique.rsa.size = 0;
+//     inPublic.publicArea.type = TPM2_ALG_RSA;           // -G 0x0001
+//     inPublic.publicArea.nameAlg = TPM2_ALG_SHA256;     // -g 0x000B
+//     inPublic.publicArea.parameters.rsaDetail.symmetric.algorithm = TPM2_ALG_AES;
+//     inPublic.publicArea.parameters.rsaDetail.symmetric.keyBits.aes = 128;
+//     inPublic.publicArea.parameters.rsaDetail.symmetric.mode.aes = TPM2_ALG_CFB;
+//     inPublic.publicArea.parameters.rsaDetail.scheme.scheme = TPM2_ALG_NULL;
+//     inPublic.publicArea.parameters.rsaDetail.keyBits = 2048;
+//     inPublic.publicArea.parameters.rsaDetail.exponent = 0;
+//     inPublic.publicArea.unique.rsa.size = 0;
 
-    creationPCR.count = 0;
+//     creationPCR.count = 0;
 
-    rval = Tss2_Sys_CreatePrimary(sys, TPM2_RH_OWNER, &sessionsData,
-                                  &inSensitive, &inPublic, &outsideInfo, &creationPCR,
-                                  handle2048rsa, &outPublic, &creationData, &creationHash,
-                                  &creationTicket, &name, &sessionsDataOut);
+//     rval = Tss2_Sys_CreatePrimary(sys, TPM2_RH_OWNER, &sessionsData,
+//                                   &inSensitive, &inPublic, &outsideInfo, &creationPCR,
+//                                   handle2048rsa, &outPublic, &creationData, &creationHash,
+//                                   &creationTicket, &name, &sessionsDataOut);
 
-    if(rval != TPM2_RC_SUCCESS) 
-    {
-        ERROR("Tss2_Sys_CreatePrimary Failed: 0x%0x\n", rval);
-    }
+//     if(rval != TPM2_RC_SUCCESS) 
+//     {
+//         ERROR("Tss2_Sys_CreatePrimary Failed: 0x%0x\n", rval);
+//     }
 
-    return rval;
-}
+//     return rval;
+// }
 
 //-------------------------------------------------------------------------------------------------
 // G E T   P U B   A K
@@ -396,11 +396,6 @@ static int getpubek(TSS2_SYS_CONTEXT *sys, TPM2B_AUTH* secretKey)
 
 
 //-------------------------------------------------------------------------------------------------
-// tpm2_takeownership -o hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -e hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -l hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef
-//
-// tpm2_createprimary -H o -P hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -g 0x000B -G 0x0001 -C /tmp/primaryKey.context
-//
-// tpm2_evictcontrol -A o -P  hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -c /tmp/primaryKey.context -S 0x81000000
 //
 // tpm2_getpubek -e hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -o hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -H 0x81010000 -g 0x1 -f /tmp/endorsementKey
 //
@@ -461,7 +456,6 @@ int CreateAik(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char* aik
     }
 
     //
-    // tpm2_readpublic -H 0x81010000 -o /tmp/endorsementkeyecpub
     // tpm2_getpubak -e hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -o hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -P hex:beeffeedbeeffeedbeeffeedbeeffeedbeeffeed -E 0x81010000 -k 0x81018000 -f /tmp/aik -n /tmp/aikName
     //
     rval = getpubak(ctx->sys, &ownerAuth, &aikAuth);
@@ -473,131 +467,131 @@ int CreateAik(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char* aik
     return TSS2_RC_SUCCESS;
 }
 
-// make_credential is not needed -- it is done by HVS
-// XXX: tpm2_makecredential -Q -e /tmp/endorsementkeyecpub  -s $file_input_data  -n $Loadkeyname -o /tmp/makecredential.out
-// Go code calls 'activate_credential' with HVS nonce
-// XXX: tpm2_activatecredential -e hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -P hex:beefbeefbeefbeefbeefbeefbeefbeefbeefbeef -H 0x81018000 -k 0x81010000 -f /tmp/makecredential.out -o /tmp/decrypted.out
+// // make_credential is not needed -- it is done by HVS
+// // XXX: tpm2_makecredential -Q -e /tmp/endorsementkeyecpub  -s $file_input_data  -n $Loadkeyname -o /tmp/makecredential.out
+// // Go code calls 'activate_credential' with HVS nonce
+// // XXX: tpm2_activatecredential -e hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -P hex:beefbeefbeefbeefbeefbeefbeefbeefbeefbeef -H 0x81018000 -k 0x81010000 -f /tmp/makecredential.out -o /tmp/decrypted.out
 
-// Gonna wrap the remaining functions into a 'FinalizeAik' fx that just requires teh aikpassword as input
-// tpm2_create -H 0x81000000 -g 0x0B -G 0x1 -A 0x00020072 -u /tmp/bindingKey.pub -r /tmp/bindingKey.priv
-// tpm2_load -H 0x81000000 -u /tmp/bindingKey.pub -r /tmp/bindingKey.priv -C /tmp/bk.context -n /tmp/bkFilename
-// tpm2_certify -k 0x81018000 -H 0x81000000 -K hex:beefbeefbeefbeefbeefbeefbeefbeefbeefbeef -g 0x0B -a /tmp/out.attest -s /tmp/out.sig -C /tmp/bk.context
-int FinalizeAik(tpmCtx* ctx, char* aikSecretKey, size_t aikSecretKeyLength)
-{
-    TSS2_RC                 rval;
-    TSS2L_SYS_AUTH_COMMAND  sessionsData = {0};
-    TSS2L_SYS_AUTH_RESPONSE sessionsDataOut;
-    TPM2B_DATA              outsideInfo = TPM2B_EMPTY_INIT;
-    TPML_PCR_SELECTION      creationPCR;
-    TPM2B_PUBLIC            akPublic = TPM2B_EMPTY_INIT;
-    TPM2B_PRIVATE           akPrivate = TPM2B_TYPE_INIT(TPM2B_PRIVATE, buffer);
-    TPM2B_CREATION_DATA     creationData = TPM2B_EMPTY_INIT;
-    TPM2B_DIGEST            creationHash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
-    TPMT_TK_CREATION        creationTicket = TPMT_TK_CREATION_EMPTY_INIT;
+// // Gonna wrap the remaining functions into a 'FinalizeAik' fx that just requires teh aikpassword as input
+// // tpm2_create -H 0x81000000 -g 0x0B -G 0x1 -A 0x00020072 -u /tmp/bindingKey.pub -r /tmp/bindingKey.priv
+// // tpm2_load -H 0x81000000 -u /tmp/bindingKey.pub -r /tmp/bindingKey.priv -C /tmp/bk.context -n /tmp/bkFilename
+// // tpm2_certify -k 0x81018000 -H 0x81000000 -K hex:beefbeefbeefbeefbeefbeefbeefbeefbeefbeef -g 0x0B -a /tmp/out.attest -s /tmp/out.sig -C /tmp/bk.context
+// int FinalizeAik(tpmCtx* ctx, char* aikSecretKey, size_t aikSecretKeyLength)
+// {
+//     TSS2_RC                 rval;
+//     TSS2L_SYS_AUTH_COMMAND  sessionsData = {0};
+//     TSS2L_SYS_AUTH_RESPONSE sessionsDataOut;
+//     TPM2B_DATA              outsideInfo = TPM2B_EMPTY_INIT;
+//     TPML_PCR_SELECTION      creationPCR;
+//     TPM2B_PUBLIC            akPublic = TPM2B_EMPTY_INIT;
+//     TPM2B_PRIVATE           akPrivate = TPM2B_TYPE_INIT(TPM2B_PRIVATE, buffer);
+//     TPM2B_CREATION_DATA     creationData = TPM2B_EMPTY_INIT;
+//     TPM2B_DIGEST            creationHash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
+//     TPMT_TK_CREATION        creationTicket = TPMT_TK_CREATION_EMPTY_INIT;
 
-    TPM2B_SENSITIVE_CREATE inSensitive;
-    TPM2B_PUBLIC inPublic = PUBLIC_AREA_TPMA_OBJECT_DEFAULT_INIT;
+//     TPM2B_SENSITIVE_CREATE inSensitive;
+//     TPM2B_PUBLIC inPublic = PUBLIC_AREA_TPMA_OBJECT_DEFAULT_INIT;
 
-    // load
-    TPM2_HANDLE handle2048rsa;
-    TPM2B_NAME nameExt = TPM2B_TYPE_INIT(TPM2B_NAME, name);
+//     // load
+//     TPM2_HANDLE handle2048rsa;
+//     TPM2B_NAME nameExt = TPM2B_TYPE_INIT(TPM2B_NAME, name);
 
-    // certify
-    TPM2B_AUTH ownerPassword = {0};
-    char* removeMe = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
-    rval = str2Tpm2bAuth(removeMe, strlen(removeMe), &ownerPassword);
-    if(rval != 0)
-    {
-        ERROR("There was an error creating the aik password");
-        return rval;
-    }
+//     // certify
+//     TPM2B_AUTH ownerPassword = {0};
+//     char* removeMe = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+//     rval = str2Tpm2bAuth(removeMe, strlen(removeMe), &ownerPassword);
+//     if(rval != 0)
+//     {
+//         ERROR("There was an error creating the aik password");
+//         return rval;
+//     }
 
-    TPM2B_AUTH aikPassword = {0};
-    rval = str2Tpm2bAuth(aikSecretKey, aikSecretKeyLength, &aikPassword);
-    if(rval != 0)
-    {
-        ERROR("There was an error creating the aik password");
-        return rval;
-    }
+//     TPM2B_AUTH aikPassword = {0};
+//     rval = str2Tpm2bAuth(aikSecretKey, aikSecretKeyLength, &aikPassword);
+//     if(rval != 0)
+//     {
+//         ERROR("There was an error creating the aik password");
+//         return rval;
+//     }
 
-    sessionsData.count = 1;
-    sessionsData.auths[0].sessionHandle = TPM2_RS_PW;
+//     sessionsData.count = 1;
+//     sessionsData.auths[0].sessionHandle = TPM2_RS_PW;
 
-    inPublic.publicArea.type = TPM2_ALG_RSA;            // -G 0x01
-    inPublic.publicArea.nameAlg = TPM2_ALG_SHA256;      // -g 0x0b
-    inPublic.publicArea.objectAttributes = 0x00020072;  // -A 0x00020072 TPMA_OBJECT_FIXEDTPM | TPMA_OBJECT_SIGN;  KWT: Convert to constants
-    inPublic.publicArea.parameters.rsaDetail.symmetric.algorithm = TPM2_ALG_NULL;
-    inPublic.publicArea.parameters.rsaDetail.scheme.scheme = TPM2_ALG_NULL;
-    inPublic.publicArea.parameters.rsaDetail.keyBits = 2048;
-    inPublic.publicArea.parameters.rsaDetail.exponent = 0;
-    inPublic.publicArea.unique.rsa.size = 0;
+//     inPublic.publicArea.type = TPM2_ALG_RSA;            // -G 0x01
+//     inPublic.publicArea.nameAlg = TPM2_ALG_SHA256;      // -g 0x0b
+//     inPublic.publicArea.objectAttributes = 0x00020072;  // -A 0x00020072 TPMA_OBJECT_FIXEDTPM | TPMA_OBJECT_SIGN;  KWT: Convert to constants
+//     inPublic.publicArea.parameters.rsaDetail.symmetric.algorithm = TPM2_ALG_NULL;
+//     inPublic.publicArea.parameters.rsaDetail.scheme.scheme = TPM2_ALG_NULL;
+//     inPublic.publicArea.parameters.rsaDetail.keyBits = 2048;
+//     inPublic.publicArea.parameters.rsaDetail.exponent = 0;
+//     inPublic.publicArea.unique.rsa.size = 0;
 
-    //memcpy(&inSensitive.sensitive.userAuth, &aikPassword, sizeof(TPM2B_AUTH));
-    inSensitive.size = inSensitive.sensitive.userAuth.size + sizeof(inSensitive.size);
-
-
-    rval = Tss2_Sys_Create(ctx->sys, TPM_HANDLE_PRIMARY, &sessionsData, &inSensitive,
-                           &inPublic, &outsideInfo, &creationPCR, &akPrivate, &akPublic,
-                           &creationData, &creationHash, &creationTicket, &sessionsDataOut);
-
-    if(rval != TPM2_RC_SUCCESS) 
-    {
-        ERROR("Tss2_Sys_Create error: 0x%0x",rval);
-        return rval;
-    }
-
-    rval = Tss2_Sys_Load(ctx->sys,
-                         TPM_HANDLE_PRIMARY,
-                         &sessionsData,
-                         &akPrivate,
-                         &akPublic,
-                         &handle2048rsa,
-                         &nameExt,
-                         &sessionsDataOut);
-
-    if(rval != TPM2_RC_SUCCESS)
-    {
-        ERROR("Tss2_Sys_Load errror: 0x%0x", rval);
-        return rval;
-    }
+//     //memcpy(&inSensitive.sensitive.userAuth, &aikPassword, sizeof(TPM2B_AUTH));
+//     inSensitive.size = inSensitive.sensitive.userAuth.size + sizeof(inSensitive.size);
 
 
-    TSS2L_SYS_AUTH_COMMAND cmd_auth_array = {0};
-    cmd_auth_array.count = 2;
-    cmd_auth_array.auths[0].sessionHandle = TPM2_RS_PW;
-    memcpy(&cmd_auth_array.auths[0].hmac, &ownerPassword, sizeof(TPM2B_AUTH));
+//     rval = Tss2_Sys_Create(ctx->sys, TPM_HANDLE_PRIMARY, &sessionsData, &inSensitive,
+//                            &inPublic, &outsideInfo, &creationPCR, &akPrivate, &akPublic,
+//                            &creationData, &creationHash, &creationTicket, &sessionsDataOut);
 
-    cmd_auth_array.auths[1].sessionHandle = TPM2_RS_PW;
-    memcpy(&cmd_auth_array.auths[1].hmac, &aikPassword, sizeof(TPM2B_AUTH));
+//     if(rval != TPM2_RC_SUCCESS) 
+//     {
+//         ERROR("Tss2_Sys_Create error: 0x%0x",rval);
+//         return rval;
+//     }
 
-    TPM2B_DATA qualifying_data = {
-        .size = 4,
-        .buffer = { 0x00, 0xff, 0x55,0xaa }
-    };
+//     rval = Tss2_Sys_Load(ctx->sys,
+//                          TPM_HANDLE_PRIMARY,
+//                          &sessionsData,
+//                          &akPrivate,
+//                          &akPublic,
+//                          &handle2048rsa,
+//                          &nameExt,
+//                          &sessionsDataOut);
 
-    TPMT_SIG_SCHEME scheme;
-    scheme.scheme = TPM2_ALG_RSASSA;
-    scheme.details.rsassa.hashAlg = TPM2_ALG_SHA256; // -g 0xb  TPM2_ALG_SHA1;//
+//     if(rval != TPM2_RC_SUCCESS)
+//     {
+//         ERROR("Tss2_Sys_Load errror: 0x%0x", rval);
+//         return rval;
+//     }
+
+
+//     TSS2L_SYS_AUTH_COMMAND cmd_auth_array = {0};
+//     cmd_auth_array.count = 2;
+//     cmd_auth_array.auths[0].sessionHandle = TPM2_RS_PW;
+//     memcpy(&cmd_auth_array.auths[0].hmac, &ownerPassword, sizeof(TPM2B_AUTH));
+
+//     cmd_auth_array.auths[1].sessionHandle = TPM2_RS_PW;
+//     memcpy(&cmd_auth_array.auths[1].hmac, &aikPassword, sizeof(TPM2B_AUTH));
+
+//     TPM2B_DATA qualifying_data = {
+//         .size = 4,
+//         .buffer = { 0x00, 0xff, 0x55,0xaa }
+//     };
+
+//     TPMT_SIG_SCHEME scheme;
+//     scheme.scheme = TPM2_ALG_RSASSA;
+//     scheme.details.rsassa.hashAlg = TPM2_ALG_SHA256; // -g 0xb  TPM2_ALG_SHA1;//
     
-    TPM2B_ATTEST certify_info = {
-        .size = sizeof(certify_info)-2
-    };
+//     TPM2B_ATTEST certify_info = {
+//         .size = sizeof(certify_info)-2
+//     };
 
-    TPMT_SIGNATURE signature;
-    memset(&sessionsDataOut, 0, sizeof(TSS2L_SYS_AUTH_RESPONSE));
+//     TPMT_SIGNATURE signature;
+//     memset(&sessionsDataOut, 0, sizeof(TSS2L_SYS_AUTH_RESPONSE));
     
-    rval = Tss2_Sys_Certify(ctx->sys, TPM_HANDLE_PRIMARY,
-            TPM_HANDLE_AIK, &cmd_auth_array, &qualifying_data, &scheme,
-            &certify_info, &signature, &sessionsDataOut);
+//     rval = Tss2_Sys_Certify(ctx->sys, TPM_HANDLE_PRIMARY,
+//             TPM_HANDLE_AIK, &cmd_auth_array, &qualifying_data, &scheme,
+//             &certify_info, &signature, &sessionsDataOut);
 
-    if (rval != TPM2_RC_SUCCESS) 
-    {
-        ERROR("Tss2_Sys_Certify error: 0x%0x",rval);
-        return rval;
-    }
+//     if (rval != TPM2_RC_SUCCESS) 
+//     {
+//         ERROR("Tss2_Sys_Certify error: 0x%0x",rval);
+//         return rval;
+//     }
 
-    return TSS2_RC_SUCCESS;
-}
+//     return TSS2_RC_SUCCESS;
+// }
 
 int GetAikName(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char** aikName, int* aikNameLength)
 {

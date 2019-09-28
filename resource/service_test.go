@@ -58,8 +58,12 @@ func TestQuoteService(t *testing.T) {
 
 	jsonData, err := json.Marshal(&tpmQuoteRequest)
 	assert.NoError(err)
+	fmt.Printf("json: %s", jsonData)
 
-	request, err := http.NewRequest("POST", "/v2/tpm/quote", bytes.NewBuffer(jsonData))
+	jsonString := "{ \"nonce\":\"VfZ5QjqFfD2yajuuxLcKrzKa7IE=\", \"pcrs\": [0,1,2,3,18,19,22] , \"pcrbanks\" : [\"SHA1\", \"SHA256\"]}"
+
+	request, err := http.NewRequest("POST", "/v2/tpm/quote", bytes.NewBuffer([]byte(jsonString)))
+//	request, err := http.NewRequest("POST", "/v2/tpm/quote", bytes.NewBuffer(jsonData))
 	assert.NoError(err)
 
 	request.Header.Set("Content-Type", "application/json")

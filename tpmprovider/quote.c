@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) 2019 Intel Corporation
  * SPDX-License-Identifier: BSD-3-Clause
@@ -120,24 +119,91 @@
 //     return TRUE;
 // }
 
+// from: https://github.com/tpm2-software/tpm2-tools/blob/3.1.0/tools/tpm2_pcrlist.c
+static int unset_pcr_sections(TPML_PCR_SELECTION *s) {
+
+    UINT32 i, j;
+    for (i = 0; i < s->count; i++) {
+        for (j = 0; j < s->pcrSelections[i].sizeofSelect; j++) {
+            if (s->pcrSelections[i].pcrSelect[j]) {
+                return FALSE;
+            }
+        }
+    }
+
+    return TRUE;
+}
+
+// from: https://github.com/tpm2-software/tpm2-tools/blob/3.1.0/tools/tpm2_pcrlist.c
+static void update_pcr_selections(TPML_PCR_SELECTION *s1, TPML_PCR_SELECTION *s2) 
+{
+
+    UINT32 i1, i2, j;
+    for (i2 = 0; i2 < s2->count; i2++) {
+        for (i1 = 0; i1 < s1->count; i1++) {
+            if (s2->pcrSelections[i2].hash != s1->pcrSelections[i1].hash)
+                continue;
+
+            for (j = 0; j < s1->pcrSelections[i1].sizeofSelect; j++)
+                s1->pcrSelections[i1].pcrSelect[j] &=
+                        ~s2->pcrSelections[i2].pcrSelect[j];
+        }
+    }
+}
+
+// from: https://github.com/tpm2-software/tpm2-tools/blob/3.1.0/tools/tpm2_pcrlist.c
+static int getPcrs(TSS2_SYS_CONTEXT* sys, TPML_PCR_SELECTION* requestedPcrs, TPML_DIGEST pcrResults[24], size_t* pcrCount)
+{
+    TSS2_RC rval;
+    TPML_PCR_SELECTION pcr_selection_tmp;
+    TPML_PCR_SELECTION pcr_selection_out;
+    UINT32 pcr_update_counter;
+    size_t count = 0;
+
+    //1. prepare pcrSelectionIn with g_pcrSelections
+    memcpy(&pcr_selection_tmp, requestedPcrs, sizeof(pcr_selection_tmp));
+
+    do {
+        DEBUG("PCR COUNT: %d", count);
+        rval = Tss2_Sys_PCR_Read(sys, NULL, &pcr_selection_tmp,
+                &pcr_update_counter, &pcr_selection_out,
+                &pcrResults[count], 0);
+
+        if (rval != TPM2_RC_SUCCESS) 
+        {
+            ERROR("Tss2_Sys_PCR_Read error: 0x%0x", rval);
+            return rval;
+        }
+
+        //3. unmask pcrSelectionOut bits from pcrSelectionIn
+        update_pcr_selections(&pcr_selection_tmp, &pcr_selection_out);
+
+        //4. goto step 2 if pcrSelctionIn still has bits set
+    } while (++count < 24 && !unset_pcr_sections(&pcr_selection_tmp));
+
+    *pcrCount = count;
+    return TPM2_RC_SUCCESS;
+}
+
+
 // from https://github.com/tpm2-software/tpm2-tools/blob/3.1.0/tools/tpm2_quote.c
 static int getQuote(TSS2_SYS_CONTEXT* sys, 
-                 TPM2B_AUTH* akPassword,
-                 TPM2_HANDLE akHandle, 
-                 TPML_PCR_SELECTION *pcrSelection, 
-                 TPM2B_DATA* qualifyingData, 
-                 TPM2B_ATTEST* quote, 
-                 TPMT_SIGNATURE* signature)
+                    TPM2B_AUTH* akPassword,
+                    TPM2_HANDLE akHandle, 
+                    TPML_PCR_SELECTION *pcrSelection, 
+                    TPM2B_DATA* qualifyingData, 
+                    TPM2B_ATTEST* quote, 
+                    TPMT_SIGNATURE* signature)
 {
     TSS2_RC rval;
     TPMT_SIG_SCHEME inScheme;
     TSS2L_SYS_AUTH_COMMAND sessionsData = { 1, {{.sessionHandle=TPM2_RS_PW}}};
     TSS2L_SYS_AUTH_RESPONSE sessionsDataOut;
-    // TPM2B_ATTEST quoted = TPM2B_TYPE_INIT(TPM2B_ATTEST, attestationData);
-    // TPMT_SIGNATURE signature;
 
     inScheme.scheme = TPM2_ALG_NULL;
 
+    // neded for tpm2-tss-2.0.0-4.el8.x86_64 (rhel8)
+    // not needed tpm2-tss-2.1.2-1.fc29.x86_64 (fedora 29)
     memcpy(&sessionsData.auths[0].hmac, akPassword, sizeof(TPM2B_AUTH));
 
     memset( (void *)signature, 0, sizeof(TPMT_SIGNATURE) );
@@ -148,7 +214,7 @@ static int getQuote(TSS2_SYS_CONTEXT* sys,
 
     if(rval != TPM2_RC_SUCCESS)
     {
-        ERROR("Quote Failed ! ErrorCode: 0x%0x", rval);
+        ERROR("Tss2_Sys_Quote failed: 0x%0x", rval);
         return rval;
     }
 
@@ -168,19 +234,29 @@ static int getQuote(TSS2_SYS_CONTEXT* sys,
 int GetTpmQuote(tpmCtx* ctx, 
                 char* aikSecretKey, 
                 size_t aikSecretKeyLength, 
-                // char* pcrSelectionString,
-                // size_t pcrSelectionStringLength,
-                // char* qualifyingDataString,
-                // size_t qualifyingDataStringLength
+                void* pcrSelectionBytes,
+                size_t pcrSelectionBytesLength,
+                void* qualifyingDataBytes,
+                size_t qualifyingDataBytesLength,
                 char** quoteBytes, 
                 int* quoteBytesLength)
 {
     TSS2_RC             rval;
-    TPM2B_AUTH          aikPassword = {0};
-    TPM2B_ATTEST        quote = {0}; 
-    TPMT_SIGNATURE      signature = {0};
-    TPML_PCR_SELECTION  pcrSelection = {0};
-    TPM2B_DATA          qualifyingData;
+    TPM2B_AUTH          aikPassword = {0};          // KWT: remove
+    TPM2B_ATTEST        quote = TPM2B_TYPE_INIT(TPM2B_ATTEST, attestationData);                // quote data from TPM
+    TPMT_SIGNATURE      signature = {0};            // signature data from TPM
+    TPML_PCR_SELECTION* pcrSelection;               // which banks/pcrs to collect (from HVS request)
+    TPM2B_DATA          qualifyingData = {0};       // basically the 'nonce' from HVS
+    TPML_DIGEST         pcrMeasurements[24];        // pcr measurments
+    size_t              pcrsCollectedCount = 0;     // number of pcr measurements collected
+
+    // TPML_PCR_SELECTION test = {0};
+    // test.count = 1;
+    // test.pcrSelections[0].hash = 0x04;
+    // test.pcrSelections[0].sizeofSelect = 3;
+    // test.pcrSelections[0].pcrSelect[0] = 0xff;
+    // test.pcrSelections[0].pcrSelect[1] = 0xff;
+    // test.pcrSelections[0].pcrSelect[2] = 0xff;
 
     rval = str2Tpm2bAuth(aikSecretKey, aikSecretKeyLength, &aikPassword);
     if(rval != 0)
@@ -189,57 +265,47 @@ int GetTpmQuote(tpmCtx* ctx,
         return rval;
     }
 
-    // if (pcrSelectionString == NULL || pcrSelectionStringLength == 0 || pcrSelectionStringLength > 140)
-    // {
-    //     ERROR("Invalid qualifyingDataString parameter");
-    //     return -1;
-    // }
+    if (pcrSelectionBytes == NULL || pcrSelectionBytesLength == 0 || pcrSelectionBytesLength > sizeof(TPML_PCR_SELECTION))
+    {
+        ERROR("Invalid pcrselection parameter");
+        return -1;
+    }
 
-    // // if(!pcr_parse_selections(pcrSelectionString, &pcrSelection))
-    // // {
-    // //     ERROR("Could not parse pcr selection string %s", pcrSelectionString)
-    // //     return -1;
-    // // }
+    pcrSelection = (TPML_PCR_SELECTION*)pcrSelectionBytes;
 
-    // if (qualifyingDataString == NULL || qualifyingDataStringLength == 0 || qualifyingDataStringLength > ARRAY_SIZE(qualifyingData.buffer))
-    // {
-    //     ERROR("Invalid qualifyingDataString parameter");
-    //     return -1;
-    // }
+    if (qualifyingDataBytes == NULL || qualifyingDataBytesLength == 0 || qualifyingDataBytesLength > ARRAY_SIZE(qualifyingData.buffer))
+    {
+        ERROR("Invalid qualifying data parameter");
+        return -1;
+    }
 
-    pcrSelection.count = 2;
-    pcrSelection.pcrSelections[0].hash = 0x04;
-    pcrSelection.pcrSelections[0].sizeofSelect = 3;
-    pcrSelection.pcrSelections[0].pcrSelect[0] = 0xff;
-    pcrSelection.pcrSelections[0].pcrSelect[1] = 0xff;
-    pcrSelection.pcrSelections[0].pcrSelect[2] = 0xff;
+    qualifyingData.size = qualifyingDataBytesLength;
+    memcpy(&qualifyingData.buffer, qualifyingDataBytes, qualifyingDataBytesLength);
 
-    pcrSelection.pcrSelections[1].hash = 0x0b;
-    pcrSelection.pcrSelections[1].sizeofSelect = 3;
-    pcrSelection.pcrSelections[1].pcrSelect[0] = 0xff;
-    pcrSelection.pcrSelections[1].pcrSelect[1] = 0xff;
-    pcrSelection.pcrSelections[1].pcrSelect[2] = 0xff;
+//    qualifyingData.size = 20;
 
-
-    qualifyingData.size = sizeof(qualifyingData) - 2;     // less two is for uint16 size --> using what ever is on the stack for now
-    // // if(tpm2_util_hex_to_byte_structure(qualifyingDataString, &qualifyingData.size, qualifyingData.buffer) != 0)
-    // // {
-    // //     ERROR("Could not convert \"%s\" from a hex string to byte array!", qualifyingDataString);
-    // //     return -1;
-    // }
-
+    //
+    // get the quote and signature information.  check results
+    //
     rval = getQuote(ctx->sys, 
-                 &aikPassword,
-                 TPM_HANDLE_AIK, 
-                 &pcrSelection, 
-                 &qualifyingData, 
-                 &quote, 
-                 &signature);
+                    &aikPassword,       // KWT:  remove (confirm on hardware that not needed)
+                    TPM_HANDLE_AIK,     // don't pass, move to getQuote
+                    pcrSelection, 
+                    &qualifyingData, 
+                    &quote, 
+                    &signature);
 
     if (rval != TSS2_RC_SUCCESS)
     {
         return rval;
     }
+
+    FILE* f;
+    if((f = fopen("/tmp/quote.bin", "wb")) != NULL)
+    {
+        fwrite(&quote, (quote.size + 2), 1, f);
+    }
+    fclose(f);
 
     // validate size before allocating a new buffer
     if(signature.signature.rsassa.sig.size == 0 || signature.signature.rsassa.sig.size > ARRAY_SIZE(signature.signature.rsassa.sig.buffer)) 
@@ -254,14 +320,60 @@ int GetTpmQuote(tpmCtx* ctx,
          return -1;   
     }
 
-    // TpmV20.java uses https://github.com/microsoft/TSS.MSR/blob/master/TSS.Java/src/tss/tpm/QuoteResponse.java
-    // buffer returned to hvs needs to be...
-    // 4 bytes: int size of quote
-    // n bytes: quote buf
-    // 4 bytes: int size of signature
-    // n bytes: signature buf
-    // (base64 encoded in go)
-    size_t bufferSize = sizeof(uint32_t) + quote.size + sizeof(uint32_t) + signature.signature.rsassa.sig.size;
+    // //
+    // // get the pcr measurements
+    // //
+    // rval = getPcrs(ctx->sys, 
+    //                pcrSelection,      
+    //                pcrMeasurements,
+    //                &pcrsCollectedCount);
+
+    // if (rval != TSS2_RC_SUCCESS)
+    // {
+    //     return rval;
+    // }
+
+    // if (pcrsCollectedCount <=0 || pcrsCollectedCount > 24)
+    // {
+    //      ERROR("Incorrect amount of pcrs collected: x", pcrsCollectedCount)
+    //      return -1;   
+    // }
+
+    // HVS wants a custom blob of data (format documented below based on) 
+    // - TpmV20.java::getQuote() (where the bytes are created)
+    // - 'QuoteResponse': https://github.com/microsoft/TSS.MSR/blob/master/TSS.Java/src/tss/tpm/QuoteResponse.java
+    // - AikQuoteVerifier2.verifyAIKQuote() (where the bytes are consumed)
+    //
+    // 
+    // TpmV20.java::getQuote(): Creates TpmQuote.quoteData bytes 'combined' from...
+    //  - QuoteResponse.toTpm()
+    //     - Quote...
+    //       - 2 byte int of length of quote size
+    //       - bytes from TPMS_ATTEST (this struture contains the selected pcrs in TPMU_ATTEST)
+    //       ==> JUST WRITE TPM2B_ATTEST structure
+    //     - Signature...
+    //       - 2 bytes for signature algorithm
+    //       - TPMU_SIGNATURE structure
+    //       ==> JUST WRITE TPMT_SIGNATURE structure
+    //  - pcrResults (concatentated buffers from TPM2B_DIGEST (TpmV20.java::getPcrs())).  Going to 
+    //    assume full size of buffers (not using size)
+    // 
+    // ==> TPM2B_ATTEST
+    //   - short of TPMS_ATTEST size
+    //   - TPMS_ATTEST structure
+    // ? ==> TPMT_SIGNATURE (QuoteResponse appears to include signature but it doesn't seem to be parsed in AikQuoteVerifier)
+    // ?   - short of signature type
+    // ?   - TPMU_SIGNATURE structure
+    // ==> Selected PCRS
+    //   - int32 of total number of pcr values
+    //   - 'n' TPMS_PCR_SELECTION --> just buffer
+    //
+    // (all bytes are base64 encoded in go)
+
+    TPMS_ATTEST* att = (TPMS_ATTEST*)&quote.attestationData;
+
+    size_t bufferSize = sizeof(uint16_t) + quote.size + (sizeof(uint16_t)*3) + signature.signature.rsassa.sig.size;
+
     *quoteBytes = calloc(bufferSize, 1);
     if(!*quoteBytes) 
     {
@@ -270,17 +382,25 @@ int GetTpmQuote(tpmCtx* ctx,
     }
 
     size_t off = 0;
-    memcpy((*quoteBytes + off), &quote.size, sizeof(uint32_t));
-    off += sizeof(uint32_t);
+    uint16_t tmp = __builtin_bswap16(quote.size);
+    memcpy((*quoteBytes + off), &tmp, sizeof(uint16_t));
+    off += sizeof(uint16_t);
 
-    memcpy((*quoteBytes + off), &quote.attestationData, quote.size);
-    off += quote.size;
+     memcpy((*quoteBytes + off), &quote.attestationData, quote.size);
+     off += quote.size;
 
-    memcpy((*quoteBytes + off), &signature.signature.rsassa.sig.size, sizeof(uint32_t));
-    off += sizeof(uint32_t);
+    memcpy((*quoteBytes + off), &signature.sigAlg, sizeof(uint16_t));
+    off += sizeof(uint16_t);
+
+    memcpy((*quoteBytes + off), &signature.signature.rsassa.hash, sizeof(uint16_t));
+    off += sizeof(uint16_t);
+
+    tmp = __builtin_bswap16(signature.signature.rsassa.sig.size);
+    memcpy((*quoteBytes + off), &tmp, sizeof(uint16_t));
+    off += sizeof(uint16_t);
 
     memcpy((*quoteBytes + off), &signature.signature.rsassa.sig.buffer, signature.signature.rsassa.sig.size);
-    off += sizeof(uint32_t);
+    off += signature.signature.rsassa.sig.size;
 
     *quoteBytesLength = bufferSize;
     return TSS2_RC_SUCCESS;

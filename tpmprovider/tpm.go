@@ -41,23 +41,48 @@ type TpmProvider interface {
 
 
 
-	// KWT: Overview of functions here
-	TakeOwnership(tpmSecretKey []byte) error
-	IsOwnedWithAuth(ownerAuth []byte) (bool, error)
+	//
+	//
+	//
+	TakeOwnership(tpmOwnerSecretKey []byte) error
+
+	//
+	//
+	// 
+	IsOwnedWithAuth(tpmOwnerSecretKey []byte) (bool, error)
 	
-	GetEndorsementKeyCertificate(tpmSecretKey string) ([]byte, error)
+	GetEndorsementKeyCertificate(tpmOwnerSecretKey string) ([]byte, error)
 
-	IsAikPresent(tpmSecretKey string) (bool, error)
-	CreateAik(tpmSecretKey string, aikSecretKey string) error
-	FinalizeAik(aikSecretKey string) error
-	GetAikBytes(tpmSecretKey string) ([]byte, error)
-	GetAikName(tpmSecretKey string) ([]byte, error)
+	// Probably a keeper for error checking (TBD)
+//	IsAikPresent(tpmOwnerSecretKey string) (bool, error)
 
-	ActivateCredential(tpmSecretKey string, aikSecretKey string, credentialBytes []byte, secretBytes []byte) ([]byte, error)
+	//
+	// Used in tasks.provision_aik.go
+	//
+	CreateAik(tpmOwnerSecretKey string, aikSecretKey string) error
+
+//	FinalizeAik(aikSecretKey string) error
+
+	//
+	// Used in tasks.provision_aik.go to facilitate handshakes with HVS
+	//
+	GetAikBytes(tpmOwnerSecretKey string) ([]byte, error)
+
+	//
+	// Used in tasks.provision_aik.go to facilitate handshakes with HVS
+	//
+	GetAikName(tpmOwnerSecretKey string) ([]byte, error)
+
+	//
+	// ActivateCredential uses the TPM to decrypt 'secretBytes'. 
+	//
+	// Used in tasks.provision_aik.go to decrypt HVS data.
+	//
+	ActivateCredential(tpmOwnerSecretKey string, aikSecretKey string, credentialBytes []byte, secretBytes []byte) ([]byte, error)
 
 	GetTpmQuote(aikSecretKey string, nonce []byte, pcrBanks []string, pcrs []int) ([]byte, error)
 
-	CreateEndorsementKey(tpmSecretKey string) error
+//	CreateEndorsementKey(tpmOwnerSecretKey string) error
 	NvIndexExists(nvIndex uint32) (bool, error)
 	PublicKeyExists(handle uint32) (bool, error)
 	ReadPublic(secretKey string, handle uint32) ([]byte, error)

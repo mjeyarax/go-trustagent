@@ -57,7 +57,10 @@
 //  }
 //
 func GetPlatformInfo(httpWriter http.ResponseWriter, httpRequest *http.Request) {
+
 	log.Debug("GetPlatformInfo")
+
+	httpWriter.Header().Set("Content-Type", "application/json") 
 
 	if _, err := os.Stat(constants.PlatformInfoFilePath); os.IsNotExist(err) {
 		log.Errorf("%s does not exist", constants.PlatformInfoFilePath)

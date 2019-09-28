@@ -6,12 +6,14 @@
 
  import (
 	"bytes"
-	"crypto/x509"
+	// "crypto/x509"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
+	// "encoding/pem"
 	"encoding/xml"
+	"errors"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -72,6 +74,47 @@ type TpmQuoteRequest struct {
 	PcrBanks			[]string	`json:"pcrbanks"`
 }
 
+func (tpmQuoteResponse *TpmQuoteResponse) getLocalIpAddress() (string, error) {
+
+	var localIp string
+	
+	localHost := "127.0.0.1"
+
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
+
+	for i, iface := range ifaces {
+		addrs, err := iface.Addrs()
+		if err != nil {
+			log.Warnf("Error reading interface index %d: %s", i, err)
+		} else {
+			for _, addr := range addrs {
+				var ip net.IP
+				switch v := addr.(type) {
+				case *net.IPNet:
+						ip = v.IP
+				case *net.IPAddr:
+						ip = v.IP
+				}
+
+				// only assign an Ip if it's not local host
+				if ip.String() != localHost {
+					localIp = ip.String()
+					break
+				}
+			}
+		}
+	}
+
+	if localIp == "" {
+		return "", errors.New("Could not get local ip address")
+	}
+
+	return localIp, nil
+}
+
 func (tpmQuoteResponse *TpmQuoteResponse) readAikAsPem() error {
 	if _, err := os.Stat(constants.AikCert); os.IsNotExist(err) {
 		return err
@@ -82,22 +125,23 @@ func (tpmQuoteResponse *TpmQuoteResponse) readAikAsPem() error {
 		return err
 	}
 
-	cert, err := x509.ParseCertificate(aikBytes)
-	if err != nil {
-		return err
-	}
+	// cert, err := x509.ParseCertificate(aikBytes)
+	// if err != nil {
+	// 	return err
+	// }
 
-	publicKeyDer, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
-	if err != nil {
-		return err
-	}
+	// publicKeyDer, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
+	// if err != nil {
+	// 	return err
+	// }
 
-	publicKeyBlock := pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: publicKeyDer,
-	}
+	// publicKeyBlock := pem.Block{
+	// 	Type:  "PUBLIC KEY",
+	// 	Bytes: publicKeyDer,
+	// }
 
-	tpmQuoteResponse.Aik = string(pem.EncodeToMemory(&publicKeyBlock))
+//	tpmQuoteResponse.Aik = base64.StdEncoding.EncodeToString((pem.EncodeToMemory(&publicKeyBlock)))
+	tpmQuoteResponse.Aik = base64.StdEncoding.EncodeToString(aikBytes)
 	return nil
 }
 
@@ -154,7 +198,17 @@ func createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) (*TpmQuoteResponse, error)
 	tpmQuoteResponse := TpmQuoteResponse {}
 	tpmQuoteResponse.TimeStamp = time.Now().Unix()
 
+	// get the quote from tpmprovider
+	err = tpmQuoteResponse.getQuote(tpmQuoteRequest)
+	if err != nil {
+		return nil, err
+	}
+
 	// clientIp
+	tpmQuoteResponse.ClientIp, err = tpmQuoteResponse.getLocalIpAddress()
+	if err != nil {
+		return nil, err
+	}
 
 	// aik --> read from disk and convert to PEM string
 	err = tpmQuoteResponse.readAikAsPem()
@@ -162,12 +216,6 @@ func createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) (*TpmQuoteResponse, error)
 		return nil, err
 	}
 	
-	// get the quote from tpmprovider
-	err = tpmQuoteResponse.getQuote(tpmQuoteRequest)
-	if err != nil {
-		return nil, err
-	}
-
 	// eventlog: read /opt/trustagent/var/measureLog.xml (created during ) --> needs to integrate with module_analysis.sh
 	err = tpmQuoteResponse.readEventLog()
 	if err != nil {
@@ -196,6 +244,8 @@ func getTpmQuote(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 
 	log.Debug("getTpmQuote")
 
+	httpWriter.Header().Set("Content-Type", "application/xml") 
+
 	var tpmQuoteRequest TpmQuoteRequest
 
 	data, err := ioutil.ReadAll(httpRequest.Body)
@@ -204,6 +254,8 @@ func getTpmQuote(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 		httpWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	log.Infof("Received TpmQuoteResponse: %s", string(data))
 
 	err = json.Unmarshal(data, &tpmQuoteRequest)
 	if err != nil {
@@ -228,7 +280,7 @@ func getTpmQuote(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 		return
 	}
 
-	log.Debug(string(xmlOutput))
+	//log.Debug(string(xmlOutput))
 
 	if _, err := bytes.NewBuffer(xmlOutput).WriteTo(httpWriter); err != nil {
 		log.Errorf("There was an error writing tpm quote: %s", err)

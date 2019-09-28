@@ -118,16 +118,16 @@ func TestTpmActivateCredential(t *testing.T) {
 // Update launch.json 'GTA: (gdb) Unit Test to call this unit test (TestTpmFinalizeAik)
 //
 // Run this unit test
-func TestTpmFinalizeAik(t *testing.T) {
-	assert := assert.New(t)
+// func TestTpmFinalizeAik(t *testing.T) {
+// 	assert := assert.New(t)
 
-	tpmProvider, err := NewTpmProvider()
-	assert.NoError(err)
-	defer tpmProvider.Close()
+// 	tpmProvider, err := NewTpmProvider()
+// 	assert.NoError(err)
+// 	defer tpmProvider.Close()
 
-	err = tpmProvider.FinalizeAik("beefbeefbeefbeefbeefbeefbeefbeefbeefbeef")
-	assert.NoError(err)
-}
+// 	err = tpmProvider.FinalizeAik("beefbeefbeefbeefbeefbeefbeefbeefbeefbeef")
+// 	assert.NoError(err)
+// }
 
 func TestTpmQuote(t *testing.T) {
 	assert := assert.New(t)
@@ -139,10 +139,43 @@ func TestTpmQuote(t *testing.T) {
 	nonce := []byte {1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0}
 	pcrs := []int {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23}
 	pcrBanks := []string {"SHA1", "SHA256"}
+	
 
+//	quoteBytes, err := tpmProvider.GetTpmQuote("66ac6e73e910bdba42d2197a20ab2e91590c5498", nonce, pcrBanks, pcrs)
 	quoteBytes, err := tpmProvider.GetTpmQuote("beefbeefbeefbeefbeefbeefbeefbeefbeefbeef", nonce, pcrBanks, pcrs)
 	assert.NoError(err)
 
 	log.Infof("Quote[%x]: %s\n\n", len(quoteBytes), hex.EncodeToString(quoteBytes))
 
+}
+
+func TestPcrSelectionParsing(t *testing.T) {
+	assert := assert.New(t)
+
+	// common
+	pcrSelectionBytes, err := getPcrSelectionBytes([]string{"SHA1", "SHA256"}, []int {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23})
+	assert.NoError(err)
+	log.Infof("pcrSelectionBytes[%x]: %s", len(pcrSelectionBytes), hex.EncodeToString(pcrSelectionBytes))
+	assert.Equal(len(pcrSelectionBytes), 132)
+	
+	// minimal
+	pcrSelectionBytes, err = getPcrSelectionBytes([]string{"SHA1"}, []int {0})
+	assert.NoError(err)
+	log.Infof("pcrSelectionBytes[%x]: %s", len(pcrSelectionBytes), hex.EncodeToString(pcrSelectionBytes))
+	assert.Equal(len(pcrSelectionBytes), 132)
+
+	// max
+	pcrSelectionBytes, err = getPcrSelectionBytes([]string{"SHA1", "SHA256", "SHA384"}, []int {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31})
+	assert.NoError(err)
+	log.Infof("pcrSelectionBytes[%x]: %s", len(pcrSelectionBytes), hex.EncodeToString(pcrSelectionBytes))
+	assert.Equal(len(pcrSelectionBytes), 132)
+
+	// bank error
+	pcrSelectionBytes, err = getPcrSelectionBytes([]string{"SHA7"}, []int {0})
+	assert.Error(err)
+
+	// pcr range error
+	pcrSelectionBytes, err = getPcrSelectionBytes([]string{"SHA1"}, []int {32})
+	assert.Error(err)
+	
 }

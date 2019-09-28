@@ -58,9 +58,10 @@ type PlatformInfo struct {
 	OSVersion string				`json:"os_version"`
 	BiosVersion string				`json:"bios_version"`
 	VMMName string					`json:"vmm_name"`
-	VMMVersion string				`json:vmm_version"`
+	VMMVersion string				`json:"vmm_version"`
 	ProcessorInfo string			`json:"processor_info"`
 	HostName string					`json:"host_name"`
+	BiosName string					`json:"bios_name"`
 	HardwareUUID string				`json:"hardware_uuid"`
 	ProcessorFlags string			`json:"process_flags"`
 	TPMVersion string				`json:"tpm_version"`
@@ -79,7 +80,7 @@ type PlatformInfo struct {
 			Meta struct {
 				TPMVersion string	`json:"tpm_version"`
 				PCRBanks string 	`json:"pcr_banks"`
-			}
+			}						`json:"meta"`
 		}							`json:"TPM"`
 	}								`json:"hardware_features"`
 	InstalledComponents []string	`json:"installed_components"`
@@ -96,7 +97,8 @@ func GetPlatformInfo() (PlatformInfo, error) {
     platformInfo.VMMName, _ = VMMName()
     platformInfo.VMMVersion, _ = VMMVersion()
     platformInfo.ProcessorInfo, _  = ProcessorID()
-    platformInfo.HostName, _ = HostName()
+	platformInfo.HostName, _ = HostName()
+	platformInfo.BiosName, _ = BiosName()
 	platformInfo.HardwareUUID, _ = HardwareUUID()
 	
 	processorFlags, _ := ProcessorFlags()

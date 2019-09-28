@@ -28,7 +28,7 @@ typedef enum TPM_HANDLE
 {
     TPM_HANDLE_EK_CERT  = 0x81010000,
     TPM_HANDLE_AIK      = 0x81018000,
-    TPM_HANDLE_PRIMARY  = 0x81000000,
+//    TPM_HANDLE_PRIMARY  = 0x81000000,
 } TPM_HANDLE;
 
 tpmCtx* TpmCreate();
@@ -40,22 +40,22 @@ TPM_VERSION Version(tpmCtx* ctx);
 //int Sign(ck *CertifiedKey, char* keyAuth []byte, alg crypto.Hash, hashed []byte) ([]byte, error)
 int TakeOwnership(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength);
 int IsOwnedWithAuth(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength);
-int CreateEndorsementKey(const tpmCtx* ctx, const char* tpmSecretKey, size_t secretKeyLength);
+//int CreateEndorsementKey(const tpmCtx* ctx, const char* tpmSecretKey, size_t secretKeyLength);
 int GetEndorsementKeyCertificate(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char** ekBytes, int* ekBytesLength);
 
-int IsAikPresent(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength);
+//int IsAikPresent(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength);
 int CreateAik(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char* aikSecretKey, size_t aikSecretKeyLength);
-int FinalizeAik(tpmCtx* ctx, char* aikSecretKey, size_t aikSecretKeyLength);
+//int FinalizeAik(tpmCtx* ctx, char* aikSecretKey, size_t aikSecretKeyLength);
 int GetAikBytes(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char** aikBytes, int* aikBytesLength);
 int GetAikName(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char** aikName, int* aikNameLength);
 
 int GetTpmQuote(tpmCtx* ctx, 
                 char* aikSecretKey, 
                 size_t aikSecretKeyLength, 
-                // char* pcrSelectionString,
-                // size_t pcrSelectionStringLength,
-                // char* qualifyingDataString,
-                // size_t qualifyingDataStringLength
+                void* pcrSelectionBytes,
+                size_t pcrSelectionBytesLength,
+                void* qualifyingDataString,
+                size_t qualifyingDataStringLength,
                 char** quoteBytes, 
                 int* quouteBytesLength);
 

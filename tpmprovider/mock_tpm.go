@@ -73,17 +73,17 @@ func (t *MockTpm) GetAikName(tpmSecretKey string) ([]byte, error) {
 	return nil, fmt.Errorf("MockTpm.GetAikName is not implemented")
 }
 
-func (t *MockTpm) IsAikPresent(tpmSecretKey string) (bool, error) {
-	return false, fmt.Errorf("MockTpm.IsAikPresent is not implemented")
-}
+// func (t *MockTpm) IsAikPresent(tpmSecretKey string) (bool, error) {
+// 	return false, fmt.Errorf("MockTpm.IsAikPresent is not implemented")
+// }
 
 func (t *MockTpm) CreateAik(tpmSecretKey string, aikSecretKey string) error {
 	return fmt.Errorf("MockTpm.CreateAik is not implemented")
 }
 
-func (t *MockTpm) FinalizeAik(aikSecretKey string) error {
-	return fmt.Errorf("MockTpm.FinalizeAik is not implemented")
-}
+// func (t *MockTpm) FinalizeAik(aikSecretKey string) error {
+// 	return fmt.Errorf("MockTpm.FinalizeAik is not implemented")
+// }
 
 func (t *MockTpm) GetTpmQuote(aikSecretKey string, nonce []byte, pcrBanks []string, pcrs []int)([]byte, error) {
 	return nil, fmt.Errorf("MockTpm.GetTpmQuote is not implemented")
@@ -93,9 +93,9 @@ func (t *MockTpm) ActivateCredential(tpmSecretKey string, aikSecretKey string, c
 	return nil, fmt.Errorf("MockTpm.ActivateIdentity is not implemented")
 }
 
-func (t *MockTpm) CreateEndorsementKey(tpmSecretKey string) error {
-	return fmt.Errorf("MockTpm.CreateEndorsementKey is not implemented")
-}
+// func (t *MockTpm) CreateEndorsementKey(tpmSecretKey string) error {
+// 	return fmt.Errorf("MockTpm.CreateEndorsementKey is not implemented")
+// }
 
 func (t *MockTpm) NvIndexExists(handle uint32) (bool, error) {
 	return false, fmt.Errorf("MockTpm.NvIndexExists is not implemented")

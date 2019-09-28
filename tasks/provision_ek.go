@@ -30,14 +30,9 @@ import (
 // The endorsement key (and cert) are embedded into the TPM by the manurfacturer.
 // NOTE:  This code does not currently support the scenario when the TPM does not have an EK and cert.
 //
-// The goal of provisioning the endorsement key is...
-// 1. To register the EK with mtwilson (not exactly sure what feature that supports).
-// 2. Used to generate the AIK for reports.
-//
-// 'ProvisionEndorsementKey'...
-// 1. Pulls the ek cert from the tpm (an error occurs if it cannot be retreived or parsed into x509).
-// 2. Registers the cert with mtwilson.
-//
+// The goal of provisioning the endorsement key is to make sure the EK is validated against the
+// list of manufacturer ca certs stored in HVS.  If the EK does not verify against the list of 
+// certs from HVS, the EK is registered (added) to HVS.
 //-------------------------------------------------------------------------------------------------
 type ProvisionEndorsementKey struct {
 	Flags 					[]string
@@ -177,12 +172,9 @@ func (task* ProvisionEndorsementKey) downloadEndorsementAuthorities() error {
 func (task* ProvisionEndorsementKey) isEkSignedByEndorsementAuthority() (bool, error) {
 	isEkSigned := false
 
-
 	opts := x509.VerifyOptions {
 		Roots:   task.endorsementAuthorities,
 	}
-
-
 
 	_, err := task.ekCert.Verify(opts);
 
@@ -200,6 +192,7 @@ func (task* ProvisionEndorsementKey) isEkSignedByEndorsementAuthority() (bool, e
 		log.Warnf("Failed to verify endorsement authorities: " + err.Error())
 	}
 
+// THIS WAS AN ATTEMPT TO READ THE EK FROM THE HANDLE GENERATED DURING AIK PROVISIONING.
 
 // 	eaBytes, err := ioutil.ReadFile(constants.EndorsementAuthoritiesFile)
 // 	if err != nil {

@@ -5,90 +5,92 @@
 #include "tpm20linux.h"
 #include <tss2/tss2_mu.h>
 
+// RENAME THIS FILE TO get_endorsement_key.c
+
 // This code is working, but not currently called by go.  It attempts to replicate...
 // tpm2_getpubek -e hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -o hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -H 0x81010000 -g 0x1 -f /tmp/endorsementKey
 //
 // From: https://github.com/tpm2-software/tpm2-tools/blob/3.1.0/tools/tpm2_getpubek.c
-int CreateEndorsementKey(const tpmCtx* ctx, const char* tpmSecretKey, size_t keyLength)
-{
-    TSS2_RC                 rval;
-    TSS2L_SYS_AUTH_RESPONSE sessionsDataOut = {0};
-    TSS2L_SYS_AUTH_COMMAND  sessionsData = {0};
-    TPML_PCR_SELECTION      creationPCR;
-    TPM2B_SENSITIVE_CREATE  inSensitive = TPM2B_SENSITIVE_CREATE_EMPTY_INIT;
-    TPM2B_PUBLIC            inPublic = PUBLIC_AREA_TPMA_OBJECT_DEFAULT_INIT;
-    TPM2B_DATA              outsideInfo = TPM2B_EMPTY_INIT;
-    TPM2B_NAME              name = TPM2B_TYPE_INIT(TPM2B_NAME, name);
-    TPM2B_PUBLIC            outPublic = TPM2B_EMPTY_INIT;
-    TPM2B_CREATION_DATA     creationData = TPM2B_EMPTY_INIT;
-    TPM2B_DIGEST            creationHash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
-    TPMT_TK_CREATION        creationTicket = TPMT_TK_CREATION_EMPTY_INIT;
-    TPM2_HANDLE             handle2048ek;
-    TPM2_HANDLE             persistentHandle = NV_IDX_ENDORSEMENT_KEY;
-    TPM2B_AUTH              secretKey = {0};
+// int CreateEndorsementKey(const tpmCtx* ctx, const char* tpmSecretKey, size_t keyLength)
+// {
+//     TSS2_RC                 rval;
+//     TSS2L_SYS_AUTH_RESPONSE sessionsDataOut = {0};
+//     TSS2L_SYS_AUTH_COMMAND  sessionsData = {0};
+//     TPML_PCR_SELECTION      creationPCR;
+//     TPM2B_SENSITIVE_CREATE  inSensitive = TPM2B_SENSITIVE_CREATE_EMPTY_INIT;
+//     TPM2B_PUBLIC            inPublic = PUBLIC_AREA_TPMA_OBJECT_DEFAULT_INIT;
+//     TPM2B_DATA              outsideInfo = TPM2B_EMPTY_INIT;
+//     TPM2B_NAME              name = TPM2B_TYPE_INIT(TPM2B_NAME, name);
+//     TPM2B_PUBLIC            outPublic = TPM2B_EMPTY_INIT;
+//     TPM2B_CREATION_DATA     creationData = TPM2B_EMPTY_INIT;
+//     TPM2B_DIGEST            creationHash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
+//     TPMT_TK_CREATION        creationTicket = TPMT_TK_CREATION_EMPTY_INIT;
+//     TPM2_HANDLE             handle2048ek;
+//     TPM2_HANDLE             persistentHandle = NV_IDX_ENDORSEMENT_KEY;
+//     TPM2B_AUTH              secretKey = {0};
 
-    rval = str2Tpm2bAuth(tpmSecretKey, keyLength, &secretKey);
-    if (rval != 0) 
-    {
-        return rval;
-    }
+//     rval = str2Tpm2bAuth(tpmSecretKey, keyLength, &secretKey);
+//     if (rval != 0) 
+//     {
+//         return rval;
+//     }
 
-// KWT:  Refactor similar to GetEndorsementCertificate?
-    sessionsData.count = 1;
-    sessionsData.auths[0].sessionHandle = TPM2_RS_PW;
-    memcpy(&sessionsData.auths[0].hmac, &secretKey, sizeof(TPM2B_AUTH));
-    sessionsData.auths[0].sessionAttributes = 0;
+// // KWT:  Refactor similar to GetEndorsementCertificate?
+//     sessionsData.count = 1;
+//     sessionsData.auths[0].sessionHandle = TPM2_RS_PW;
+//     memcpy(&sessionsData.auths[0].hmac, &secretKey, sizeof(TPM2B_AUTH));
+//     sessionsData.auths[0].sessionAttributes = 0;
 
-    inSensitive.size = inSensitive.sensitive.userAuth.size + sizeof(inSensitive.size);
+//     inSensitive.size = inSensitive.sensitive.userAuth.size + sizeof(inSensitive.size);
 
-    inPublic.publicArea.type = TPM2_ALG_RSA;           // -G 0x0001
-    inPublic.publicArea.nameAlg = TPM2_ALG_SHA256;     // -g 0x000B
-    inPublic.publicArea.parameters.rsaDetail.symmetric.algorithm = TPM2_ALG_AES;
-    inPublic.publicArea.parameters.rsaDetail.symmetric.keyBits.aes = 128;
-    inPublic.publicArea.parameters.rsaDetail.symmetric.mode.aes = TPM2_ALG_CFB;
-    inPublic.publicArea.parameters.rsaDetail.scheme.scheme = TPM2_ALG_NULL;
-    inPublic.publicArea.parameters.rsaDetail.keyBits = 2048;
-    inPublic.publicArea.parameters.rsaDetail.exponent = 0;
-    inPublic.publicArea.unique.rsa.size = 0;
+//     inPublic.publicArea.type = TPM2_ALG_RSA;           // -G 0x0001
+//     inPublic.publicArea.nameAlg = TPM2_ALG_SHA256;     // -g 0x000B
+//     inPublic.publicArea.parameters.rsaDetail.symmetric.algorithm = TPM2_ALG_AES;
+//     inPublic.publicArea.parameters.rsaDetail.symmetric.keyBits.aes = 128;
+//     inPublic.publicArea.parameters.rsaDetail.symmetric.mode.aes = TPM2_ALG_CFB;
+//     inPublic.publicArea.parameters.rsaDetail.scheme.scheme = TPM2_ALG_NULL;
+//     inPublic.publicArea.parameters.rsaDetail.keyBits = 2048;
+//     inPublic.publicArea.parameters.rsaDetail.exponent = 0;
+//     inPublic.publicArea.unique.rsa.size = 0;
 
-    creationPCR.count = 0;
+//     creationPCR.count = 0;
 
-    rval = Tss2_Sys_CreatePrimary(ctx->sys, TPM2_RH_ENDORSEMENT,
-            &sessionsData, &inSensitive, &inPublic, &outsideInfo, &creationPCR,
-            &handle2048ek, &outPublic, &creationData, &creationHash,
-            &creationTicket, &name, &sessionsDataOut);
+//     rval = Tss2_Sys_CreatePrimary(ctx->sys, TPM2_RH_ENDORSEMENT,
+//             &sessionsData, &inSensitive, &inPublic, &outsideInfo, &creationPCR,
+//             &handle2048ek, &outPublic, &creationData, &creationHash,
+//             &creationTicket, &name, &sessionsDataOut);
 
-    if (rval != TPM2_RC_SUCCESS) 
-    {
-        ERROR("Tss2_Sys_CreatePrimary Error. TPM Error:0x%x", rval);
-        return rval;
-    }
+//     if (rval != TPM2_RC_SUCCESS) 
+//     {
+//         ERROR("Tss2_Sys_CreatePrimary Error. TPM Error:0x%x", rval);
+//         return rval;
+//     }
 
-    DEBUG("EK create success. Got handle: 0x%8.8x", handle2048ek);
+//     DEBUG("EK create success. Got handle: 0x%8.8x", handle2048ek);
 
-    memcpy(&sessionsData.auths[0].hmac, &secretKey, sizeof(TPM2B_AUTH));
+//     memcpy(&sessionsData.auths[0].hmac, &secretKey, sizeof(TPM2B_AUTH));
 
-    rval = Tss2_Sys_EvictControl(ctx->sys, TPM2_RH_OWNER, handle2048ek,
-            &sessionsData, persistentHandle, &sessionsDataOut);
+//     rval = Tss2_Sys_EvictControl(ctx->sys, TPM2_RH_OWNER, handle2048ek,
+//             &sessionsData, persistentHandle, &sessionsDataOut);
 
-    if (rval != TPM2_RC_SUCCESS) 
-    {
-        ERROR("EvictControl failed. Could not make EK persistent. TPM Error:0x%x", rval);
-        return rval;
-    }
+//     if (rval != TPM2_RC_SUCCESS) 
+//     {
+//         ERROR("EvictControl failed. Could not make EK persistent. TPM Error:0x%x", rval);
+//         return rval;
+//     }
 
-    DEBUG("EvictControl EK persistent successfull.");
+//     DEBUG("EvictControl EK persistent successfull.");
 
-    rval = Tss2_Sys_FlushContext(ctx->sys, handle2048ek);
-    if (rval != TPM2_RC_SUCCESS) 
-    {
-        ERROR("Flush transient EK failed. TPM Error:0x%x", rval);
-        return rval;
-    }
+//     rval = Tss2_Sys_FlushContext(ctx->sys, handle2048ek);
+//     if (rval != TPM2_RC_SUCCESS) 
+//     {
+//         ERROR("Flush transient EK failed. TPM Error:0x%x", rval);
+//         return rval;
+//     }
 
-    DEBUG("Flush transient EK successfull.");
-    return rval;
-}
+//     DEBUG("Flush transient EK successfull.");
+//     return rval;
+// }
 
 int GetEndorsementKeyCertificate(tpmCtx* ctx, char* tpmSecretKey, size_t keyLength, char** ekCertBytes, int* ekCertBytesLength)
 {
