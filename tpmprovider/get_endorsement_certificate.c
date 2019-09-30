@@ -35,7 +35,7 @@
 //         return rval;
 //     }
 
-// // KWT:  Refactor similar to GetEndorsementCertificate?
+// // ???:  Refactor similar to GetEndorsementCertificate?
 //     sessionsData.count = 1;
 //     sessionsData.auths[0].sessionHandle = TPM2_RS_PW;
 //     memcpy(&sessionsData.auths[0].hmac, &secretKey, sizeof(TPM2B_AUTH));
@@ -117,13 +117,6 @@ int GetEndorsementKeyCertificate(tpmCtx* ctx, char* tpmSecretKey, size_t keyLeng
     sessionsData.auths[0].sessionHandle = TPM2_RS_PW;
     memcpy(&sessionsData.auths[0].hmac, &secretKey, sizeof(TPM2B_AUTH));
     sessionsData.auths[0].sessionAttributes = 0;
-
-    // KWT: Working?
-    // rval = str2Tpm2bAuth(tpmSecretKey, keyLength, &sessionsData.auths[0].hmac);
-    // if (rval != 0) 
-    // {
-    //     return rval;
-    // }
 
     rval = GetMaxNVBufferSize(ctx->sys, &maxNvBufferSize);
     if (rval != TSS2_RC_SUCCESS) 

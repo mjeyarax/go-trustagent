@@ -519,7 +519,7 @@ int CreateAik(tpmCtx* ctx, char* tpmSecretKey, size_t secretKeyLength, char* aik
 
 //     inPublic.publicArea.type = TPM2_ALG_RSA;            // -G 0x01
 //     inPublic.publicArea.nameAlg = TPM2_ALG_SHA256;      // -g 0x0b
-//     inPublic.publicArea.objectAttributes = 0x00020072;  // -A 0x00020072 TPMA_OBJECT_FIXEDTPM | TPMA_OBJECT_SIGN;  KWT: Convert to constants
+//     inPublic.publicArea.objectAttributes = 0x00020072;  // -A 0x00020072 TPMA_OBJECT_FIXEDTPM | TPMA_OBJECT_SIGN;  : Convert to constants
 //     inPublic.publicArea.parameters.rsaDetail.symmetric.algorithm = TPM2_ALG_NULL;
 //     inPublic.publicArea.parameters.rsaDetail.scheme.scheme = TPM2_ALG_NULL;
 //     inPublic.publicArea.parameters.rsaDetail.keyBits = 2048;

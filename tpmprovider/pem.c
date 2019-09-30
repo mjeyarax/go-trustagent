@@ -5,6 +5,9 @@
 #include <openssl/bn.h>
 #include <openssl/err.h>
 
+// KWT:  Can probably remove this file unless we need to turn the EK modulus
+// into PEM.
+
 // from https://github.com/tpm2-software/tpm2-tools/blob/3.1.0/lib/conversion.c
 int Tpm2bPublic2PemBuffer(TPMT_PUBLIC* public, char** out, int outLength)
 {

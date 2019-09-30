@@ -300,8 +300,8 @@ int GetTpmQuote(tpmCtx* ctx,
     // get the quote and signature information.  check results
     //
     rval = getQuote(ctx->sys, 
-                    &aikPassword,       // KWT:  remove (confirm on hardware that not needed)
-                    TPM_HANDLE_AIK,     // don't pass, move to getQuote
+                    &aikPassword,       
+                    TPM_HANDLE_AIK,     // KWT: don't pass, move to getQuote
                     pcrSelection, 
                     &qualifyingData, 
                     &quote, 

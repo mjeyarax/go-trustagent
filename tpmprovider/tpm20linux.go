@@ -61,15 +61,6 @@ func (t* Tpm20Linux) Sign(ck *CertifiedKey, keyAuth []byte, alg crypto.Hash, has
 	return b, nil
 }
 
-// These don't touch the TPM --> Should they be in the interface...?
-//func (t* TpmShim) GetModuleLog() (string, error) {
-//	return `modulelog`, nil
-//}
-
-//func (t* TpmShim) GetTcbMeasurement() (string, error) {
-//	return `tcbmeasurment`, nil
-//}
-
 func (t* Tpm20Linux) TakeOwnership(secretKey []byte) error {
 
 	rc := C.TakeOwnership(t.tpmCtx, C.CString(string(secretKey)), C.size_t(len(secretKey)))
@@ -172,14 +163,6 @@ func (t *Tpm20Linux) CreateAik(tpmSecretKey string, aikSecretKey string) error {
 	return nil
 }
 
-// func (t *Tpm20Linux) FinalizeAik(aikSecretKey string) error {
-// 	rc := C.FinalizeAik(t.tpmCtx, C.CString(aikSecretKey), C.size_t(len(aikSecretKey)))
-// 	if rc != 0 {
-// 		return fmt.Errorf("FinalizeAik return 0x%x", rc)
-// 	}
-
-// 	return nil
-// }
 
 // This is the pcr selection structure that tss2 wants when performing a quote...
 //
@@ -227,9 +210,6 @@ func (t *Tpm20Linux) CreateAik(tpmSecretKey string, aikSecretKey string) error {
 // (translation of raw buffers to tss structures) -> tss2 call.
 func getPcrSelectionBytes(pcrBanks []string, pcrs []int) ([]byte, error) {
 
-//	buf := bytes.NewBuffer(make([]byte, 128)) // create a fixed size buffer for TPML_PCR_SELECTION
-//	binary.Write(buf, binary.LittleEndian, uint32(len(pcrBanks)))	// TPML_PCR_SELECTION.count
-//	buf.Write()
 	buf := make([]byte, 132) // create a fixed size buffer for TPML_PCR_SELECTION
 	offset := 0
 
@@ -256,8 +236,8 @@ func getPcrSelectionBytes(pcrBanks []string, pcrs []int) ([]byte, error) {
 		binary.LittleEndian.PutUint16(buf[offset:], uint16(hash))
 		offset += 2	// uint16
 
-		buf[offset] = 0x03 // KWT: 3 for 24 bits of pcrs
-		offset += 1	// byte
+		buf[offset] = 0x03 // 3 for 24 bits of pcrs (tss2 does not like '4')
+		offset += 1		   // byte
 
 		// build a 32bit bit mask that will be applied to TPMS_PCR_SELECTION.pcrSelect
 		pcrBitMask = 0
@@ -269,12 +249,10 @@ func getPcrSelectionBytes(pcrBanks []string, pcrs []int) ([]byte, error) {
 			pcrBitMask |= (1 << uint32(pcr))
 		}
 
-		//binary.Write(buf, binary.LittleEndian, pcrBitMask)	// TPMS_PCR_SELECTION.pcrSelect
 		binary.LittleEndian.PutUint32(buf[offset:], pcrBitMask)
 		offset += 5 // uint32
 	}
 
-//	return buf.Bytes(), nil
 	return buf, nil
 }
 
@@ -405,16 +383,6 @@ func (tpm *Tpm20Linux) ReadPublic(secretKey string, handle uint32) ([]byte, erro
 
 }
 
-func (t* Tpm20Linux) SetCredential(authHandle uint, ownerAuth []byte, credentialBlob []byte) error {
-	return nil
-}
-
-func (t* Tpm20Linux) GetCredential(authHandle uint) ([]byte, error) {
-	var b[] byte
-	b = make([]byte, 20, 20)
-	return b, nil
-}
-
 func (t* Tpm20Linux) GetAssetTag(authHandle uint) ([]byte, error) {
 	var b[] byte
 	b = make([]byte, 20, 20)
@@ -424,11 +392,3 @@ func (t* Tpm20Linux) GetAssetTag(authHandle uint) ([]byte, error) {
 func (t* Tpm20Linux) GetAssetTagIndex() (uint, error) {
 	return 0, nil
 }
-
-//func (t* Tpm20Linux) GetPcrBanks() ([]constants.PcrBank, error) {
-////
-//}
-
-//func (t* Tpm20Linux) Getquote(pcrBanks []constants.PcrBank, pcrs []constants.Pcr, aikBlob []byte, aikAuth []byte, nonce []byte) {
-//	
-//}
