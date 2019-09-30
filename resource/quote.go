@@ -6,16 +6,16 @@
 
  import (
 	"bytes"
-	// "crypto/x509"
+	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
-	// "encoding/pem"
 	"encoding/xml"
 	"errors"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
@@ -115,7 +115,58 @@ func (tpmQuoteResponse *TpmQuoteResponse) getLocalIpAddress() (string, error) {
 	return localIp, nil
 }
 
-func (tpmQuoteResponse *TpmQuoteResponse) readAikAsPem() error {
+//
+// This function attempts to create a byte array from the host's ip address.  This
+// is used to create a sha1 digest of the nonce that will make HVS happpy.
+//
+func getLocalIpAsBytes() ([]byte, error) {
+
+	var ipBytes []byte
+
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				// ipnet.IP is padded with 0's, trim the last four bytes
+				ipBytes = ipnet.IP[(len(ipnet.IP) - 4):len(ipnet.IP)]
+				break
+			}
+		}
+	}
+
+	if ipBytes == nil {
+		return nil, errors.New("Did not find an ip address")
+	}
+
+	return ipBytes, nil
+}
+
+// get's the local ip address in bytes and hashes the nonce/ip in a fashion acceptable
+// to HVS's quote verifier.
+func getIpHashedNonce(nonce []byte) ([]byte, error) {
+
+	ipBytes, err := getLocalIpAsBytes()
+	if err != nil {
+		return nil, err
+	}
+
+    hash := sha1.New()
+    hash.Write(nonce)
+    b1 := hash.Sum(nil)
+
+    hash = sha1.New()
+    hash.Write(b1)
+    hash.Write(ipBytes)
+    b2 := hash.Sum(nil)
+
+    return b2, nil
+}
+
+func (tpmQuoteResponse *TpmQuoteResponse) readAikAsBase64() error {
 	if _, err := os.Stat(constants.AikCert); os.IsNotExist(err) {
 		return err
 	}
@@ -125,22 +176,6 @@ func (tpmQuoteResponse *TpmQuoteResponse) readAikAsPem() error {
 		return err
 	}
 
-	// cert, err := x509.ParseCertificate(aikBytes)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// publicKeyDer, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// publicKeyBlock := pem.Block{
-	// 	Type:  "PUBLIC KEY",
-	// 	Bytes: publicKeyDer,
-	// }
-
-//	tpmQuoteResponse.Aik = base64.StdEncoding.EncodeToString((pem.EncodeToMemory(&publicKeyBlock)))
 	tpmQuoteResponse.Aik = base64.StdEncoding.EncodeToString(aikBytes)
 	return nil
 }
@@ -155,13 +190,33 @@ func (tpmQuoteResponse *TpmQuoteResponse) readEventLog() error {
 		return err
 	}
 
-	tpmQuoteResponse.EventLog = base64.StdEncoding.EncodeToString(eventLogBytes)
+	// make sure the bytes are valid xml
+	err = xml.Unmarshal(eventLogBytes, new(interface{}))
+	if err != nil {
+		return err
+	}
+
+	// this was needed to avoid an error in HVS parsing...
+	// 'Current state not START_ELEMENT, END_ELEMENT or ENTITY_REFERENCE'
+	xml := string(eventLogBytes)
+	xml = strings.Replace(xml, " ", "", -1)
+	xml = strings.Replace(xml, "\t", "", -1)
+	xml = strings.Replace(xml, "\n", "", -1)
+
+	tpmQuoteResponse.EventLog = base64.StdEncoding.EncodeToString([]byte(xml))
 	return nil
 }
 
 func (tpmQuoteResponse *TpmQuoteResponse) getQuote(tpmQuoteRequest *TpmQuoteRequest) error {
 
-	// KWT: Validate tpmquote request values (nonce cannot be null, etc.)
+	// HVS generates a 20 byte random nonce that is sent in the tpmQuoteRequest.  However,
+	// HVS expects a nonce (in the TpmQuoteResponse.Quote binary) is that nonce hashed with the bytes
+	// of local ip address.  If this isn't performed, HVS will throw an error when the
+	// response is received.
+	ipHashedNonce, err := getIpHashedNonce(tpmQuoteRequest.Nonce)
+	if err != nil {
+		return err
+	}
 
 	tpmProvider, err := tpmprovider.NewTpmProvider()
 	if err != nil {
@@ -170,26 +225,20 @@ func (tpmQuoteResponse *TpmQuoteResponse) getQuote(tpmQuoteRequest *TpmQuoteRequ
 
 	defer tpmProvider.Close()
 
-	quoteBytes, err := tpmProvider.GetTpmQuote(config.GetConfiguration().Tpm.AikSecretKey, tpmQuoteRequest.Nonce, tpmQuoteRequest.PcrBanks, tpmQuoteRequest.Pcrs)
+	quoteBytes, err := tpmProvider.GetTpmQuote(config.GetConfiguration().Tpm.AikSecretKey, ipHashedNonce, tpmQuoteRequest.PcrBanks, tpmQuoteRequest.Pcrs)
 	if err != nil {
 		return err
 	}
 
-	//log.Infof("Quote[%x]: %s\n\n", len(quoteBytes), hex.EncodeToString(quoteBytes))
 	tpmQuoteResponse.Quote = base64.StdEncoding.EncodeToString(quoteBytes)
 
 	return nil
 }
 
-// func (tpmQuoteResponse *TpmQuoteResponse) getSelectedPcrBanks(tpmQuoteRequest *TpmQuoteRequest) error {
-// 	// TODO:  return what was requested
-// 	tpmQuoteResponse.SelectedPcrBanks.SelectedPcrBanks = []string {"SHA1", "SHA256"}
-// 	return nil // TBD
-// }
-
+// TBD: Application Integrity
 func (tpmQuoteResponse *TpmQuoteResponse) getTcbMeasurements() error {
-	tpmQuoteResponse.TcbMeasurements.TcbMeasurements = []string {"",}
-	return nil // TBD
+	//tpmQuoteResponse.TcbMeasurements.TcbMeasurements = []string {"",}
+	return nil 
 }
 
 func createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) (*TpmQuoteResponse, error) {
@@ -211,7 +260,7 @@ func createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) (*TpmQuoteResponse, error)
 	}
 
 	// aik --> read from disk and convert to PEM string
-	err = tpmQuoteResponse.readAikAsPem()
+	err = tpmQuoteResponse.readAikAsBase64()
 	if err != nil {
 		return nil, err
 	}
@@ -255,8 +304,6 @@ func getTpmQuote(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 		return
 	}
 
-	log.Infof("Received TpmQuoteResponse: %s", string(data))
-
 	err = json.Unmarshal(data, &tpmQuoteRequest)
 	if err != nil {
 		log.Errorf("Error marshaling json data: %s...\n%s", err, string(data))
@@ -264,7 +311,7 @@ func getTpmQuote(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 		return
 	}
 
-	// TODO:  Validate tpmQuoteRequest (nonce can't be empty, etc.)
+	// KWT:  Validate tpmQuoteRequest (nonce can't be empty, etc.)
 
 	tpmQuoteResonse, err := createTpmQuote(&tpmQuoteRequest) 
 	if err != nil {
@@ -279,8 +326,6 @@ func getTpmQuote(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 		httpWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-	//log.Debug(string(xmlOutput))
 
 	if _, err := bytes.NewBuffer(xmlOutput).WriteTo(httpWriter); err != nil {
 		log.Errorf("There was an error writing tpm quote: %s", err)

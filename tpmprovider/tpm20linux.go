@@ -12,13 +12,11 @@ package tpmprovider
 import "C"
 
 import (
-//	"bytes"
 	"crypto"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"unsafe"
-//	log "github.com/sirupsen/logrus"
 )
 
 type Tpm20Linux struct {

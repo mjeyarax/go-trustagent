@@ -163,8 +163,8 @@ static int getPcrs(TSS2_SYS_CONTEXT* sys, TPML_PCR_SELECTION* requestedPcrs, TPM
     //1. prepare pcrSelectionIn with g_pcrSelections
     memcpy(&pcr_selection_tmp, requestedPcrs, sizeof(pcr_selection_tmp));
 
-    do {
-        DEBUG("PCR COUNT: %d", count);
+    do 
+    {
         rval = Tss2_Sys_PCR_Read(sys, NULL, &pcr_selection_tmp,
                 &pcr_update_counter, &pcr_selection_out,
                 &pcrResults[count], 0);
@@ -231,6 +231,152 @@ static int getQuote(TSS2_SYS_CONTEXT* sys,
     return TSS2_RC_SUCCESS;
 }
 
+#define DEFAULT_PCR_MEASURMENT_COUNT 24
+
+
+// HVS wants a custom blob of data (format documented below based on) 
+// - TpmV20.java::getQuote() (where the bytes are created)
+// - 'QuoteResponse': https://github.com/microsoft/TSS.MSR/blob/master/TSS.Java/src/tss/tpm/QuoteResponse.java
+// - AikQuoteVerifier2.verifyAIKQuote() (where the bytes are consumed)
+//
+// 
+// TpmV20.java::getQuote(): Creates TpmQuote.quoteData bytes 'combined' from...
+//  - QuoteResponse.toTpm()
+//     - Quote...
+//       - 2 byte int of length of quote size
+//       - bytes from TPMS_ATTEST (this struture contains the selected pcrs in TPMU_ATTEST)
+//       ==> THIS SHOULD BE A TPM2B_ATTEST structure
+//     - Signature...
+//       - 2 bytes for signature algorithm
+//       - TPMU_SIGNATURE structure
+//       ==> THIS SHOULD BE A TPMT_SIGNATURE structure
+//  - pcrResults (concatentated buffers from TPM2B_DIGEST (TpmV20.java::getPcrs())).  Going to 
+//    assume full size of buffers (not using size)
+// 
+// (all bytes are base64 encoded in go)
+static int CreateQuoteBuffer(TPM2B_ATTEST* quote, 
+                             TPMT_SIGNATURE* signature, 
+                             TPML_PCR_SELECTION* pcrSelection, 
+                             TPML_DIGEST* pcrMeasurements,
+                             char** quoteBytes, 
+                             int* quoteBytesLength) 
+{
+    size_t      off = 0;            // offset in 'quoteBytes' to help with writing quote
+    uint16_t    tmp = 0;            // tmp var for bswap
+    size_t      bufferSize = 0;     // total size of buffer to allocate
+    size_t      pcrSize = 0;        // for calculating buffer sizes of pcr measurments
+    uint32_t    pcrSelectBitMask;   // tmp variable for pcr selection
+    
+    //
+    // First determine the size of the buffer (see notes above)
+    //
+    bufferSize = sizeof(uint16_t) + quote->size + (sizeof(uint16_t)*3) + signature->signature.rsassa.sig.size;
+
+    // Use pcrSelection to determine the number of bytes needed to store the pcr measurments.
+    // KWT:  Use the data in the quote for pcr selection and drop 'pcrSelection' parameter...
+    for (int i = 0; i < pcrSelection->count; i++)
+    {
+        switch(pcrSelection->pcrSelections[i].hash)
+        {
+        case TPM2_ALG_SHA1:
+            pcrSize = 20;
+            break;
+        case TPM2_ALG_SHA256:
+            pcrSize = 32;
+            break;
+        case TPM2_ALG_SHA384:
+            pcrSize = 48;
+            break;
+        case TPM2_ALG_SHA512:
+            pcrSize = 64;
+            break;
+        default:
+            ERROR("Unknown pcr selection hash: %x", pcrSelection->pcrSelections[i].hash);
+            return -1;
+        }        
+
+        // pcr selection is a 4 byte bit map 
+        pcrSelectBitMask = 0;
+        memcpy(&pcrSelectBitMask, pcrSelection->pcrSelections[i].pcrSelect, pcrSelection->pcrSelections[i].sizeofSelect);
+
+        for(int j = 0; j < 32; j++)
+        {
+            int mask = 1 << j;
+            if ((pcrSelectBitMask & mask) == mask)
+            {
+                DEBUG("SELECTED PCR: %d, %d, %x", j, pcrSize, bufferSize);
+                bufferSize += pcrSize;
+            }
+        }
+    }
+
+    *quoteBytes = calloc(bufferSize, 1);
+    if(!*quoteBytes) 
+    {
+        ERROR("Could not allocate quote buffer");
+        return -1;
+    }
+
+    // write to the buffer
+    // HVS chokes on using types tss types like 'TPM2B_ATTEST' for this due to endianess.  We 
+    // have to hand marshal certain bits (using bswap16)...
+    //
+    // first the quote information
+    tmp = __builtin_bswap16(quote->size);
+    memcpy((*quoteBytes + off), &tmp, sizeof(uint16_t));
+    off += sizeof(uint16_t);
+
+    memcpy((*quoteBytes + off), &quote->attestationData, quote->size);
+    off += quote->size;
+
+    //
+    // now the signature
+    //
+    tmp = __builtin_bswap16(signature->sigAlg);  
+    memcpy((*quoteBytes + off), &tmp, sizeof(uint16_t));
+    off += sizeof(uint16_t);
+
+    tmp = __builtin_bswap16(signature->signature.rsassa.hash);  
+    memcpy((*quoteBytes + off), &tmp, sizeof(uint16_t));
+    off += sizeof(uint16_t);
+
+    tmp = __builtin_bswap16(signature->signature.rsassa.sig.size);
+    memcpy((*quoteBytes + off), &tmp, sizeof(uint16_t));
+    off += sizeof(uint16_t);
+
+    memcpy((*quoteBytes + off), &signature->signature.rsassa.sig.buffer, signature->signature.rsassa.sig.size);
+    off += signature->signature.rsassa.sig.size;
+
+    //
+    // copy pcr measurements to output buffer.  Just concatenate the measurements, HVS will
+    // use the pcr selections in the quote to determine theyr lengths.
+    //
+    for(int i = 0; i < DEFAULT_PCR_MEASURMENT_COUNT; i++)
+    {
+        for (int j = 0; j < pcrMeasurements[i].count; j++)
+        {
+            if (pcrMeasurements[i].digests[j].size == 0)
+            {
+                continue;
+            }
+            else if(pcrMeasurements[i].digests[j].size > 0 && pcrMeasurements[i].digests[j].size <= 64)
+            {
+                DEBUG("Copying measurement %d, digest %d, length %d at %x", i, j, pcrMeasurements[i].digests[j].size, off);
+                memcpy((*quoteBytes + off), pcrMeasurements[i].digests[j].buffer, pcrMeasurements[i].digests[j].size);
+                off += pcrMeasurements[i].digests[j].size;
+            }
+            else
+            {
+                ERROR("Invalid pcr measurement size %x at measurement %d, digest %d", pcrMeasurements[i].digests[j].size, i, j);
+                return -1;
+            }
+        }
+    }
+
+    *quoteBytesLength = bufferSize;
+    return TSS2_RC_SUCCESS;
+}
+
 int GetTpmQuote(tpmCtx* ctx, 
                 char* aikSecretKey, 
                 size_t aikSecretKeyLength, 
@@ -242,22 +388,15 @@ int GetTpmQuote(tpmCtx* ctx,
                 int* quoteBytesLength)
 {
     TSS2_RC             rval;
-    TPM2B_AUTH          aikPassword = {0};          // KWT: remove
-    TPM2B_ATTEST        quote = TPM2B_TYPE_INIT(TPM2B_ATTEST, attestationData);                // quote data from TPM
-    TPMT_SIGNATURE      signature = {0};            // signature data from TPM
-    TPML_PCR_SELECTION* pcrSelection;               // which banks/pcrs to collect (from HVS request)
-    TPM2B_DATA          qualifyingData = {0};       // basically the 'nonce' from HVS
-    TPML_DIGEST         pcrMeasurements[24];        // pcr measurments
-    size_t              pcrsCollectedCount = 0;     // number of pcr measurements collected
+    TPM2B_AUTH          aikPassword = {0};                                      // For getting the qoute 
+    TPM2B_ATTEST        quote = TPM2B_TYPE_INIT(TPM2B_ATTEST, attestationData); // quote data from TPM
+    TPMT_SIGNATURE      signature = {0};                                        // signature data from TPM
+    TPML_PCR_SELECTION* pcrSelection;                                           // which banks/pcrs to collect (from HVS request)
+    TPM2B_DATA          qualifyingData = {0};                                   // the 'nonce' from HVS
+    TPML_DIGEST         pcrMeasurements[DEFAULT_PCR_MEASURMENT_COUNT] = {0};    // pcr measurements from TPM
+    size_t              pcrsCollectedCount = 0;                                 // number of pcr measurements collected
 
-    // TPML_PCR_SELECTION test = {0};
-    // test.count = 1;
-    // test.pcrSelections[0].hash = 0x04;
-    // test.pcrSelections[0].sizeofSelect = 3;
-    // test.pcrSelections[0].pcrSelect[0] = 0xff;
-    // test.pcrSelections[0].pcrSelect[1] = 0xff;
-    // test.pcrSelections[0].pcrSelect[2] = 0xff;
-
+    // KWT: the aik is required on rhel8, but fails when set in the simulator
     rval = str2Tpm2bAuth(aikSecretKey, aikSecretKeyLength, &aikPassword);
     if(rval != 0)
     {
@@ -282,8 +421,6 @@ int GetTpmQuote(tpmCtx* ctx,
     qualifyingData.size = qualifyingDataBytesLength;
     memcpy(&qualifyingData.buffer, qualifyingDataBytes, qualifyingDataBytesLength);
 
-//    qualifyingData.size = 20;
-
     //
     // get the quote and signature information.  check results
     //
@@ -300,108 +437,165 @@ int GetTpmQuote(tpmCtx* ctx,
         return rval;
     }
 
-    FILE* f;
-    if((f = fopen("/tmp/quote.bin", "wb")) != NULL)
-    {
-        fwrite(&quote, (quote.size + 2), 1, f);
-    }
-    fclose(f);
-
-    // validate size before allocating a new buffer
-    if(signature.signature.rsassa.sig.size == 0 || signature.signature.rsassa.sig.size > ARRAY_SIZE(signature.signature.rsassa.sig.buffer)) 
-    {
-         ERROR("Incorrect signature buffer size: x", signature.signature.rsassa.sig.size)
-         return -1;   
-    }
-
+    // validate the quote data returned from getQuote
     if(quote.size == 0 || quote.size > ARRAY_SIZE(quote.attestationData)) 
     {
          ERROR("Incorrect quote buffer size: x", quote.size)
          return -1;   
     }
 
-    // //
-    // // get the pcr measurements
-    // //
-    // rval = getPcrs(ctx->sys, 
-    //                pcrSelection,      
-    //                pcrMeasurements,
-    //                &pcrsCollectedCount);
-
-    // if (rval != TSS2_RC_SUCCESS)
-    // {
-    //     return rval;
-    // }
-
-    // if (pcrsCollectedCount <=0 || pcrsCollectedCount > 24)
-    // {
-    //      ERROR("Incorrect amount of pcrs collected: x", pcrsCollectedCount)
-    //      return -1;   
-    // }
-
-    // HVS wants a custom blob of data (format documented below based on) 
-    // - TpmV20.java::getQuote() (where the bytes are created)
-    // - 'QuoteResponse': https://github.com/microsoft/TSS.MSR/blob/master/TSS.Java/src/tss/tpm/QuoteResponse.java
-    // - AikQuoteVerifier2.verifyAIKQuote() (where the bytes are consumed)
-    //
-    // 
-    // TpmV20.java::getQuote(): Creates TpmQuote.quoteData bytes 'combined' from...
-    //  - QuoteResponse.toTpm()
-    //     - Quote...
-    //       - 2 byte int of length of quote size
-    //       - bytes from TPMS_ATTEST (this struture contains the selected pcrs in TPMU_ATTEST)
-    //       ==> JUST WRITE TPM2B_ATTEST structure
-    //     - Signature...
-    //       - 2 bytes for signature algorithm
-    //       - TPMU_SIGNATURE structure
-    //       ==> JUST WRITE TPMT_SIGNATURE structure
-    //  - pcrResults (concatentated buffers from TPM2B_DIGEST (TpmV20.java::getPcrs())).  Going to 
-    //    assume full size of buffers (not using size)
-    // 
-    // ==> TPM2B_ATTEST
-    //   - short of TPMS_ATTEST size
-    //   - TPMS_ATTEST structure
-    // ? ==> TPMT_SIGNATURE (QuoteResponse appears to include signature but it doesn't seem to be parsed in AikQuoteVerifier)
-    // ?   - short of signature type
-    // ?   - TPMU_SIGNATURE structure
-    // ==> Selected PCRS
-    //   - int32 of total number of pcr values
-    //   - 'n' TPMS_PCR_SELECTION --> just buffer
-    //
-    // (all bytes are base64 encoded in go)
-
-    TPMS_ATTEST* att = (TPMS_ATTEST*)&quote.attestationData;
-
-    size_t bufferSize = sizeof(uint16_t) + quote.size + (sizeof(uint16_t)*3) + signature.signature.rsassa.sig.size;
-
-    *quoteBytes = calloc(bufferSize, 1);
-    if(!*quoteBytes) 
+    // validate the signature data returned from getQuote
+    if(signature.signature.rsassa.sig.size == 0 || signature.signature.rsassa.sig.size > ARRAY_SIZE(signature.signature.rsassa.sig.buffer)) 
     {
-        ERROR("Could not allocate quote buffer");
-        return -1;
+         ERROR("Incorrect signature buffer size: x", signature.signature.rsassa.sig.size)
+         return -1;   
     }
 
-    size_t off = 0;
-    uint16_t tmp = __builtin_bswap16(quote.size);
-    memcpy((*quoteBytes + off), &tmp, sizeof(uint16_t));
-    off += sizeof(uint16_t);
+    //
+    // get the pcr measurements
+    //
+    rval = getPcrs(ctx->sys, 
+                   pcrSelection,      
+                   pcrMeasurements,
+                   &pcrsCollectedCount);
 
-     memcpy((*quoteBytes + off), &quote.attestationData, quote.size);
-     off += quote.size;
+    if (rval != TSS2_RC_SUCCESS)
+    {
+        return rval;
+    }
 
-    memcpy((*quoteBytes + off), &signature.sigAlg, sizeof(uint16_t));
-    off += sizeof(uint16_t);
+    // validate the number or pcrs collected from getPcrs
+    if (pcrsCollectedCount <=0 || pcrsCollectedCount > 24)
+    {
+         ERROR("Unexpected amount of pcrs collected: x", pcrsCollectedCount)
+         return -1;   
+    }
 
-    memcpy((*quoteBytes + off), &signature.signature.rsassa.hash, sizeof(uint16_t));
-    off += sizeof(uint16_t);
-
-    tmp = __builtin_bswap16(signature.signature.rsassa.sig.size);
-    memcpy((*quoteBytes + off), &tmp, sizeof(uint16_t));
-    off += sizeof(uint16_t);
-
-    memcpy((*quoteBytes + off), &signature.signature.rsassa.sig.buffer, signature.signature.rsassa.sig.size);
-    off += signature.signature.rsassa.sig.size;
-
-    *quoteBytesLength = bufferSize;
-    return TSS2_RC_SUCCESS;
+    return CreateQuoteBuffer(&quote, &signature, pcrSelection, pcrMeasurements, quoteBytes, quoteBytesLength);
 }
+
+
+//     // HVS wants a custom blob of data (format documented below based on) 
+//     // - TpmV20.java::getQuote() (where the bytes are created)
+//     // - 'QuoteResponse': https://github.com/microsoft/TSS.MSR/blob/master/TSS.Java/src/tss/tpm/QuoteResponse.java
+//     // - AikQuoteVerifier2.verifyAIKQuote() (where the bytes are consumed)
+//     //
+//     // 
+//     // TpmV20.java::getQuote(): Creates TpmQuote.quoteData bytes 'combined' from...
+//     //  - QuoteResponse.toTpm()
+//     //     - Quote...
+//     //       - 2 byte int of length of quote size
+//     //       - bytes from TPMS_ATTEST (this struture contains the selected pcrs in TPMU_ATTEST)
+//     //       ==> JUST WRITE TPM2B_ATTEST structure
+//     //     - Signature...
+//     //       - 2 bytes for signature algorithm
+//     //       - TPMU_SIGNATURE structure
+//     //       ==> JUST WRITE TPMT_SIGNATURE structure
+//     //  - pcrResults (concatentated buffers from TPM2B_DIGEST (TpmV20.java::getPcrs())).  Going to 
+//     //    assume full size of buffers (not using size)
+//     // 
+//     // (all bytes are base64 encoded in go)
+//     size_t bufferSize = sizeof(uint16_t) + quote.size + (sizeof(uint16_t)*3) + signature.signature.rsassa.sig.size;
+
+//     size_t pcrSize = 0;
+//     uint32_t pcrSelectBitMask;
+//     for (int i = 0; i < pcrSelection->count; i++)
+//     {
+//         switch(pcrSelection->pcrSelections[i].hash)
+//         {
+//         case TPM2_ALG_SHA1:
+//             pcrSize = 20;
+//             break;
+//         case TPM2_ALG_SHA256:
+//             pcrSize = 32;
+//             break;
+//         case TPM2_ALG_SHA384:
+//             pcrSize = 48;
+//             break;
+//         case TPM2_ALG_SHA512:
+//             pcrSize = 64;
+//             break;
+//         default:
+//             ERROR("Unknown pcr selection hash: %x", pcrSelection->pcrSelections[i].hash);
+//             return -1;
+//         }        
+
+//         pcrSelectBitMask = 0;
+//         memcpy(&pcrSelectBitMask, pcrSelection->pcrSelections[i].pcrSelect, pcrSelection->pcrSelections[i].sizeofSelect);
+
+//         for(int j = 0; j < 32; j++)
+//         {
+//             int mask = 1 << j;
+//             if ((pcrSelectBitMask & mask) == mask)
+//             {
+//                 DEBUG("SELECTED PCR: %d, %d, %x", j, pcrSize, bufferSize);
+//                 bufferSize += pcrSize;
+//             }
+//         }
+//     }
+
+//     *quoteBytes = calloc(bufferSize, 1);
+//     if(!*quoteBytes) 
+//     {
+//         ERROR("Could not allocate quote buffer");
+//         return -1;
+//     }
+
+//     tmp = __builtin_bswap16(quote.size);
+//     memcpy((*quoteBytes + off), &tmp, sizeof(uint16_t));
+//     off += sizeof(uint16_t);
+
+//     memcpy((*quoteBytes + off), &quote.attestationData, quote.size);
+//     off += quote.size;
+
+//     tmp = __builtin_bswap16(signature.sigAlg);  
+//     memcpy((*quoteBytes + off), &tmp, sizeof(uint16_t));
+//     off += sizeof(uint16_t);
+
+//     tmp = __builtin_bswap16(signature.signature.rsassa.hash);  
+//     memcpy((*quoteBytes + off), &tmp, sizeof(uint16_t));
+//     off += sizeof(uint16_t);
+
+//     tmp = __builtin_bswap16(signature.signature.rsassa.sig.size);
+//     memcpy((*quoteBytes + off), &tmp, sizeof(uint16_t));
+//     off += sizeof(uint16_t);
+
+//     memcpy((*quoteBytes + off), &signature.signature.rsassa.sig.buffer, signature.signature.rsassa.sig.size);
+//     off += signature.signature.rsassa.sig.size;
+
+//     //
+//     // Copy pcr measurements to output buffer
+//     //
+//     for(int i = 0; i < ARRAY_SIZE(pcrMeasurements); i++)
+//     {
+//         for (int j = 0; j < pcrMeasurements[i].count; j++)
+//         {
+//             if (pcrMeasurements[i].digests[j].size == 0)
+//             {
+//                 continue;
+//             }
+//             else if(pcrMeasurements[i].digests[j].size > 0 && pcrMeasurements[i].digests[j].size <= 64)
+//             {
+//                 DEBUG("Copying measurement %d, digest %d, length %d at %x", i, j, pcrMeasurements[i].digests[j].size, off);
+//                 memcpy((*quoteBytes + off), pcrMeasurements[i].digests[j].buffer, pcrMeasurements[i].digests[j].size);
+//                 off += pcrMeasurements[i].digests[j].size;
+//             }
+//             else
+//             {
+//                 ERROR("Invalid pcr measurement size %x at measurement %d, digest %d", pcrMeasurements[i].digests[j].size, i, j);
+//                 return -1;
+//             }
+//         }
+//     }
+
+//     FILE* f;
+//     if((f = fopen("/tmp/quote.bin", "w")) != NULL)
+//     {
+//         fwrite(*quoteBytes, bufferSize, 1, f);
+//     }
+//     fclose(f);
+
+
+//     *quoteBytesLength = bufferSize;
+//     return TSS2_RC_SUCCESS;
+// }

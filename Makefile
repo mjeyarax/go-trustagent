@@ -21,6 +21,10 @@ installer: gta
 	cp out/tagent out/installer/tagent
 	makeself out/installer out/trustagent-$(VERSION).bin "TrustAgent $(VERSION)" ./install.sh
 
+build_test: gta
+	cd resource && go test -c
+	cd tpmprovider && go test -c
+
 all: gta
 
 clean:
