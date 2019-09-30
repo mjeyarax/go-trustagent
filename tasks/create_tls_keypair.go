@@ -24,7 +24,7 @@ type CreateTLSKeyPair struct {
 	Flags 	[]string
 }
 
-// For now, create a self signed cert based on code from
+// Create a self signed cert based on code from
 // https://golang.org/src/crypto/tls/generate_cert.go?m=text.
 // This will be revamped when integrated into CMS/AAS.
 func createTLSKeyPair() (key []byte, cert []byte, err error) { 

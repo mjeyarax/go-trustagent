@@ -23,6 +23,7 @@ installer: gta
 
 build_test: gta
 	cd resource && go test -c
+	cd tasks && go test -c
 	cd tpmprovider && go test -c
 
 all: gta

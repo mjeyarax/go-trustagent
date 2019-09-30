@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) 2019 Intel Corporation
  * SPDX-License-Identifier: BSD-3-Clause
@@ -28,6 +27,8 @@ import (
 	"intel/isecl/lib/common/crypt"
 	"intel/isecl/lib/common/setup"
 )
+
+// KWT:  This file needs TLC
 
 //-------------------------------------------------------------------------------------------------
 // P R O V I S I O N   A I K 

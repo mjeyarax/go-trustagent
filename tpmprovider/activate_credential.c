@@ -14,14 +14,6 @@ int Tss2ActivateCredential(TSS2_SYS_CONTEXT* sys, TPMS_AUTH_COMMAND* endorsePass
     TSS2L_SYS_AUTH_COMMAND cmd_auth_array_password = {0};
     cmd_auth_array_password.count = 2;
     memcpy(&cmd_auth_array_password.auths[0], aikPassword, sizeof(TPMS_AUTH_COMMAND));
-    // cmd_auth_array_password.auths[1].nonce = { .size = 0 };
-    // cmd_auth_array_password.auths[1].hmac = { .size = 0 };
-    // cmd_auth_array_password.auths[1].sessionHandle = 0;
-    // cmd_auth_array_password.auths[1].sessionAttributes = 0;
- 
-    // TSS2L_SYS_AUTH_COMMAND cmd_auth_array_endorse = {
-    //     1, {*endorsePassword}
-    // };
 
     TSS2L_SYS_AUTH_COMMAND cmd_auth_array_endorse = {0};
     cmd_auth_array_endorse.count = 1;

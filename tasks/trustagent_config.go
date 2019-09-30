@@ -19,8 +19,6 @@ type TrustAgentConfig struct {
 	Flags 	[]string
 }
 
-// WEEK2:  create 'config' task that parses env vars and updates config.yml
-
 func (task* TrustAgentConfig) Run(c setup.Context) error {
 
 	var err error

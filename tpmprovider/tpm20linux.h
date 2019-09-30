@@ -2,6 +2,9 @@
  * Copyright (C) 2019 Intel Corporation
  * SPDX-License-Identifier: BSD-3-Clause
  */
+
+// This file contains all of the tss2 specific functions, defines, etc.
+
 #ifndef __TPM_20_LINUX__
 #define __TPM_20_LINUX__
 

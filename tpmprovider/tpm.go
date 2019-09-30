@@ -29,28 +29,30 @@ const (
 	TPM_HANDLE_EK		   = C.TPM_HANDLE_EK_CERT
 )
 
+// KWT: Document interface 
+
 type TpmProvider interface {
 	Close()
 
+	// KWT:  These functions need to be implemented to support VM-C/WLA
 	Version() C.TPM_VERSION
 	CreateCertifiedKey(/*usage constants.Usage, */ keyAuth []byte, aikAuth []byte) (*CertifiedKey, error)
 	Unbind(ck *CertifiedKey, keyAuth []byte, encData []byte) ([]byte, error)
 	Sign(ck *CertifiedKey, keyAuth []byte, alg crypto.Hash, hashed []byte) ([]byte, error)
-//	GetModuleLog() (string, error)
-//	GetTcbMeasurement() (string, error)
-
-
 
 	//
-	//
+	// TODO
 	//
 	TakeOwnership(tpmOwnerSecretKey []byte) error
 
 	//
+	// TODO
 	//
-	// 
 	IsOwnedWithAuth(tpmOwnerSecretKey []byte) (bool, error)
 	
+	//
+	// TODO
+	//
 	GetEndorsementKeyCertificate(tpmOwnerSecretKey string) ([]byte, error)
 
 	// Probably a keeper for error checking (TBD)
@@ -60,8 +62,6 @@ type TpmProvider interface {
 	// Used in tasks.provision_aik.go
 	//
 	CreateAik(tpmOwnerSecretKey string, aikSecretKey string) error
-
-//	FinalizeAik(aikSecretKey string) error
 
 	//
 	// Used in tasks.provision_aik.go to facilitate handshakes with HVS
@@ -80,18 +80,17 @@ type TpmProvider interface {
 	//
 	ActivateCredential(tpmOwnerSecretKey string, aikSecretKey string, credentialBytes []byte, secretBytes []byte) ([]byte, error)
 
+	//
+	// TODO
+	//
 	GetTpmQuote(aikSecretKey string, nonce []byte, pcrBanks []string, pcrs []int) ([]byte, error)
 
-//	CreateEndorsementKey(tpmOwnerSecretKey string) error
+	// KWT:  These are not being used (clean up)
 	NvIndexExists(nvIndex uint32) (bool, error)
 	PublicKeyExists(handle uint32) (bool, error)
 	ReadPublic(secretKey string, handle uint32) ([]byte, error)
-	
-	
-	SetCredential(authHandle uint, ownerAuth []byte, /*credentialType constants.CredentialType,*/ credentialBlob []byte) error
-	GetCredential(authHandle uint, /*credentialType constants.CredentialType*/) ([]byte, error)
+		
+	// TODO: Asset tags
 	GetAssetTag(authHandle uint) ([]byte, error)
 	GetAssetTagIndex() (uint, error)
-	//GetPcrBanks() ([]constants.PcrBank, error)
-	//Getquote(pcrBanks []constants.PcrBank, pcrs []constants.Pcr, aikBlob []byte, aikAuth []byte, nonce []byte)
 }

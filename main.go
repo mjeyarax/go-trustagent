@@ -22,11 +22,11 @@
 	"intel/isecl/go-trust-agent/tasks"
 )
 
- func printUsage() {
+func printUsage() {
 	fmt.Println("Tagent Usage:")
- }
+}
  
- func setupLogging() error {
+func setupLogging() error {
 
 	logFile, err := os.OpenFile(constants.LogFilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
 	if err != nil {
@@ -38,9 +38,9 @@
 	log.SetLevel(config.GetConfiguration().LogLevel)
 
 	return nil
- }
+}
 
- func updatePlatformInfo() error {
+func updatePlatformInfo() error {
 
 	// make sure the system-info directory exists
 	_, err := os.Stat(constants.SystemInfoDir)
@@ -74,9 +74,9 @@
 
 	log.Info("Successfully updated platform-info")
 	return nil
- }
+}
 
- func updateMeasureLog() error {
+func updateMeasureLog() error {
 	cmd:= exec.Command(constants.ModuleAnalysis)
 	cmd.Dir = constants.BinDir
 	results, err := cmd.Output()
@@ -86,9 +86,9 @@
 
 	log.Info("Successfully updated measureLog.xml")
 	return nil
- }
+}
  
- func main() {
+func main() {
 
 	err := setupLogging()
 	if err != nil {
@@ -216,4 +216,4 @@
 	default:
 		printUsage()
 	}
- }
+}

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script will start (or restar) the simulator and tpm2-abrm service on a 'gta-devel' container.
+# This script will start (or restart) the simulator and tpm2-abrm service on a 'gta-devel' container.
 # Note:  The simulator is reset when started using the '-rm' option.
 
 # stop tpm2-abrmd if running
