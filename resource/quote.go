@@ -8,6 +8,7 @@
 	"bytes"
 	"crypto/sha1"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -74,45 +75,22 @@ type TpmQuoteRequest struct {
 	PcrBanks			[]string	`json:"pcrbanks"`
 }
 
-func (tpmQuoteResponse *TpmQuoteResponse) getLocalIpAddress() (string, error) {
+func getLocalIpAsString() (string, error) {
 
-	var localIp string
-	
-	localHost := "127.0.0.1"
-
-	ifaces, err := net.Interfaces()
+	addr, err := getLocalIpAddr()
 	if err != nil {
 		return "", err
 	}
 
-	for i, iface := range ifaces {
-		addrs, err := iface.Addrs()
-		if err != nil {
-			log.Warnf("Error reading interface index %d: %s", i, err)
-		} else {
-			for _, addr := range addrs {
-				var ip net.IP
-				switch v := addr.(type) {
-				case *net.IPNet:
-						ip = v.IP
-				case *net.IPAddr:
-						ip = v.IP
-				}
+	// trim "/24" from addr if present
+	ipString := addr.String()
 
-				// only assign an Ip if it's not local host
-				if ip.String() != localHost {
-					localIp = ip.String()
-					break
-				}
-			}
-		}
+	idx := strings.Index(ipString, "/")
+	if(idx > -1) {
+		ipString = ipString[:idx]
 	}
 
-	if localIp == "" {
-		return "", errors.New("Could not get local ip address")
-	}
-
-	return localIp, nil
+	return ipString, nil
 }
 
 //
@@ -121,7 +99,21 @@ func (tpmQuoteResponse *TpmQuoteResponse) getLocalIpAddress() (string, error) {
 //
 func getLocalIpAsBytes() ([]byte, error) {
 
-	var ipBytes []byte
+	addr, err := getLocalIpAddr()
+	if err != nil {
+		return nil, err
+	}
+
+	if ipnet, ok := addr.(*net.IPNet); ok {
+		return ipnet.IP[(len(ipnet.IP) - 4):len(ipnet.IP)], nil
+	}
+
+	return nil, errors.New("Could not collect local ip bytes")
+}
+
+func getLocalIpAddr() (net.Addr, error) {
+
+	var addr net.Addr
 
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
@@ -131,18 +123,20 @@ func getLocalIpAsBytes() ([]byte, error) {
 	for _, address := range addrs {
 		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
-				// ipnet.IP is padded with 0's, trim the last four bytes
-				ipBytes = ipnet.IP[(len(ipnet.IP) - 4):len(ipnet.IP)]
-				break
+				if !strings.HasPrefix(ipnet.String(), "192.") {
+					log.Debugf("Found local ip address %s", ipnet.String())
+					addr = ipnet
+					break
+				}
 			}
 		}
 	}
 
-	if ipBytes == nil {
-		return nil, errors.New("Did not find an ip address")
+	if addr == nil {
+		return nil, errors.New("Did not find the local ip address")
 	}
 
-	return ipBytes, nil
+	return addr, nil
 }
 
 // get's the local ip address in bytes and hashes the nonce/ip in a fashion acceptable
@@ -218,6 +212,9 @@ func (tpmQuoteResponse *TpmQuoteResponse) getQuote(tpmQuoteRequest *TpmQuoteRequ
 		return err
 	}
 
+	log.Debugf("Nonce received: %s", hex.EncodeToString(tpmQuoteRequest.Nonce))
+	log.Debugf("Nonce hashed: %s", hex.EncodeToString(ipHashedNonce))
+
 	tpmProvider, err := tpmprovider.NewTpmProvider()
 	if err != nil {
 		return err
@@ -254,7 +251,7 @@ func createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) (*TpmQuoteResponse, error)
 	}
 
 	// clientIp
-	tpmQuoteResponse.ClientIp, err = tpmQuoteResponse.getLocalIpAddress()
+	tpmQuoteResponse.ClientIp, err = getLocalIpAsString()
 	if err != nil {
 		return nil, err
 	}
