@@ -8,11 +8,13 @@ package resource
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"testing"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"github.com/stretchr/testify/assert"
 	"intel/isecl/go-trust-agent/config"
 )
@@ -74,4 +76,25 @@ func TestQuoteService(t *testing.T) {
 	response := recorder.Result()
 	fmt.Printf("StatusCode: %d\n", response.StatusCode)
 	assert.Equal(response.StatusCode, http.StatusOK)
+}
+
+
+func TestLocalIpAddress(t *testing.T) {
+	assert := assert.New(t)
+
+	ipString,err := getLocalIpAsString()
+	assert.NoError(err)
+
+	// not local ip address or private address
+	assert.False(strings.HasPrefix(ipString, "127"))
+	assert.False(strings.HasPrefix(ipString, "192"))
+	assert.Equal(strings.Index(ipString, "/"), -1)	// does not have /24 or /16
+
+	fmt.Printf("Local ip string %s\n", ipString)
+
+	ipBytes,err := getLocalIpAsBytes()
+	assert.NoError(err)
+	assert.Equal(len(ipBytes), 4)
+
+	fmt.Printf("Local ip bytes: %s\n", hex.EncodeToString(ipBytes))
 }
