@@ -53,7 +53,7 @@
 //     ]
 // }
 type PlatformInfo struct {
-	ErrorCode int   				`json:"errrCode"`
+	ErrorCode int   				`json:"errorCode"`
 	OSName string 					`json:"os_name"`
 	OSVersion string				`json:"os_version"`
 	BiosVersion string				`json:"bios_version"`
