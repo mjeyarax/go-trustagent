@@ -24,46 +24,45 @@ type Tpm20Linux struct {
 }
 
 func NewTpmProvider() (TpmProvider, error) {
-	var ctx* C.tpmCtx
+	var ctx *C.tpmCtx
 	ctx = C.TpmCreate()
 
-	if(ctx == nil) {
+	if ctx == nil {
 		return nil, errors.New("Could not create tpm context")
 	}
 
-	tpmProvider := Tpm20Linux {tpmCtx: ctx}
+	tpmProvider := Tpm20Linux{tpmCtx: ctx}
 	return &tpmProvider, nil
 }
 
-func (t* Tpm20Linux) Close() {
+func (t *Tpm20Linux) Close() {
 	C.TpmDelete(t.tpmCtx)
 	t.tpmCtx = nil
 }
 
-func (t* Tpm20Linux) Version() C.TPM_VERSION {
+func (t *Tpm20Linux) Version() C.TPM_VERSION {
 	return C.Version(t.tpmCtx)
 }
 
-func (t* Tpm20Linux) CreateCertifiedKey(keyAuth []byte, aikAuth []byte) (*CertifiedKey, error) {
-	var ck CertifiedKey
-	return &ck, nil
+func (t *Tpm20Linux) CreateCertifiedKey(keyAuth []byte, aikAuth []byte) (*CertifiedKey, error) {
+	//	var ck CertifiedKey
+	return nil, errors.New("CreateCertifiedKey is not implemented")
 }
 
-func (t* Tpm20Linux) Unbind(ck *CertifiedKey, keyAuth []byte, encData []byte) ([]byte, error) {
-	var b[] byte
-	b = make([]byte, 20, 20)
-	return b, nil
+func (t *Tpm20Linux) Unbind(ck *CertifiedKey, keyAuth []byte, encData []byte) ([]byte, error) {
+	return nil, errors.New("Unbind is not implemented")
 }
 
-func (t* Tpm20Linux) Sign(ck *CertifiedKey, keyAuth []byte, alg crypto.Hash, hashed []byte) ([]byte, error) {
-	var b[] byte
-	b = make([]byte, 20, 20)
-	return b, nil
+func (t *Tpm20Linux) Sign(ck *CertifiedKey, keyAuth []byte, alg crypto.Hash, hashed []byte) ([]byte, error) {
+	return nil, errors.New("Sign is not implemented")
 }
 
-func (t* Tpm20Linux) TakeOwnership(secretKey []byte) error {
+func (t *Tpm20Linux) TakeOwnership(tpmOwnerSecretKey string) error {
 
-	rc := C.TakeOwnership(t.tpmCtx, C.CString(string(secretKey)), C.size_t(len(secretKey)))
+	cTpmOwnerSecretKey := C.CString(tpmOwnerSecretKey)
+	defer C.free(unsafe.Pointer(cTpmOwnerSecretKey))
+
+	rc := C.TakeOwnership(t.tpmCtx, cTpmOwnerSecretKey, C.size_t(len(tpmOwnerSecretKey)))
 	if rc != 0 {
 		return fmt.Errorf("TakeOwnership returned error code 0x%X", rc)
 	}
@@ -71,10 +70,13 @@ func (t* Tpm20Linux) TakeOwnership(secretKey []byte) error {
 	return nil
 }
 
-func (t* Tpm20Linux) IsOwnedWithAuth(secretKey []byte) (bool, error) {
+func (t *Tpm20Linux) IsOwnedWithAuth(tpmOwnerSecretKey string) (bool, error) {
+
+	cTpmOwnerSecretKey := C.CString(tpmOwnerSecretKey)
+	defer C.free(unsafe.Pointer(cTpmOwnerSecretKey))
 
 	// IsOwnedWithAuth returns 0 (true) if 'owned', false/error if not zero
-	rc := C.IsOwnedWithAuth(t.tpmCtx, C.CString(string(secretKey)), C.size_t(len(secretKey)))
+	rc := C.IsOwnedWithAuth(t.tpmCtx, cTpmOwnerSecretKey, C.size_t(len(tpmOwnerSecretKey)))
 
 	if rc != 0 {
 		return false, fmt.Errorf("IsOwnedWithAuth returned error code 0x%X", rc)
@@ -83,39 +85,22 @@ func (t* Tpm20Linux) IsOwnedWithAuth(secretKey []byte) (bool, error) {
 	return true, nil
 }
 
-func (t* Tpm20Linux) GetEndorsementKeyCertificate(tpmSecretKey string) ([]byte, error) {
-	var returnValue []byte
-	var ekBytes *C.char
-	var ekBytesLength C.int
-	
-	rc := C.GetEndorsementKeyCertificate(t.tpmCtx, C.CString(tpmSecretKey), C.size_t(len(tpmSecretKey)), &ekBytes, &ekBytesLength)
-	if rc != 0 {
-		return nil, fmt.Errorf("GetEndorsementKeyCertificate returned error code 0x%X", rc)
-	}
-
-	defer C.free(unsafe.Pointer(ekBytes))
-
-	if ekBytesLength <= 0 || ekBytesLength > 4000 {	// KWT max?
-		return nil, fmt.Errorf("The buffer size is incorrect")
-	}
-
-	returnValue = C.GoBytes(unsafe.Pointer(ekBytes), ekBytesLength)
-	return returnValue, nil
-}
-
-func (t *Tpm20Linux) GetAikBytes(tpmSecretKey string) ([]byte, error) {
+func (t *Tpm20Linux) GetAikBytes(tpmOwnerSecretKey string) ([]byte, error) {
 	var returnValue []byte
 	var aikPublicBytes *C.char
 	var aikPublicBytesLength C.int
-	
-	rc := C.GetAikBytes(t.tpmCtx, C.CString(tpmSecretKey), C.size_t(len(tpmSecretKey)), &aikPublicBytes, &aikPublicBytesLength)
+
+	cTpmOwnerSecretKey := C.CString(tpmOwnerSecretKey)
+	defer C.free(unsafe.Pointer(cTpmOwnerSecretKey))
+
+	rc := C.GetAikBytes(t.tpmCtx, cTpmOwnerSecretKey, C.size_t(len(tpmOwnerSecretKey)), &aikPublicBytes, &aikPublicBytesLength)
 	if rc != 0 {
 		return nil, fmt.Errorf("GetAikBytes returned error code 0x%X", rc)
 	}
 
 	defer C.free(unsafe.Pointer(aikPublicBytes))
 
-	if (aikPublicBytesLength <= 0)  { // max size is checked in native/c code call to GetAikBytes
+	if aikPublicBytesLength <= 0 { // max size is checked in native/c code call to GetAikBytes
 		return nil, fmt.Errorf("The buffer size is incorrect")
 	}
 
@@ -123,19 +108,22 @@ func (t *Tpm20Linux) GetAikBytes(tpmSecretKey string) ([]byte, error) {
 	return returnValue, nil
 }
 
-func (t *Tpm20Linux) GetAikName(tpmSecretKey string) ([]byte, error) {
+func (t *Tpm20Linux) GetAikName(tpmOwnerSecretKey string) ([]byte, error) {
 	var returnValue []byte
 	var aikName *C.char
 	var aikNameLength C.int
-	
-	rc := C.GetAikName(t.tpmCtx, C.CString(tpmSecretKey), C.size_t(len(tpmSecretKey)), &aikName, &aikNameLength)
+
+	cTpmOwnerSecretKey := C.CString(tpmOwnerSecretKey)
+	defer C.free(unsafe.Pointer(cTpmOwnerSecretKey))
+
+	rc := C.GetAikName(t.tpmCtx, cTpmOwnerSecretKey, C.size_t(len(tpmOwnerSecretKey)), &aikName, &aikNameLength)
 	if rc != 0 {
 		return nil, fmt.Errorf("GetAikName returned error code 0x%X", rc)
 	}
 
 	defer C.free(unsafe.Pointer(aikName))
 
-	if (aikNameLength <= 0) { // max size is checked in native/c code call to GetAikName
+	if aikNameLength <= 0 { // max size is checked in native/c code call to GetAikName
 		return nil, fmt.Errorf("The buffer size is incorrect")
 	}
 
@@ -143,26 +131,21 @@ func (t *Tpm20Linux) GetAikName(tpmSecretKey string) ([]byte, error) {
 	return returnValue, nil
 }
 
-// func (t *Tpm20Linux) IsAikPresent(tpmSecretKey string) (bool, error) {
-// 	rval := C.IsAikPresent(t.tpmCtx, C.CString(tpmSecretKey), C.size_t(len(tpmSecretKey)))
-// 	if rval == 0 {
-// 		return true, nil
-// 	} else if rval < 0 {
-// 		return false, nil
-// 	} else {
-// 		return false, fmt.Errorf("IsAikPresent returned error code 0x%x", rval)
-// 	}
-// }
+func (t *Tpm20Linux) CreateAik(tpmOwnerSecretKey string, aikSecretKey string) error {
 
-func (t *Tpm20Linux) CreateAik(tpmSecretKey string, aikSecretKey string) error {
-	rc := C.CreateAik(t.tpmCtx, C.CString(tpmSecretKey), C.size_t(len(tpmSecretKey)), C.CString(aikSecretKey), C.size_t(len(aikSecretKey)))
+	cTpmOwnerSecretKey := C.CString(tpmOwnerSecretKey)
+	defer C.free(unsafe.Pointer(cTpmOwnerSecretKey))
+
+	cAikSecretKey := C.CString(aikSecretKey)
+	defer C.free(unsafe.Pointer(cAikSecretKey))
+
+	rc := C.CreateAik(t.tpmCtx, cTpmOwnerSecretKey, C.size_t(len(tpmOwnerSecretKey)), cAikSecretKey, C.size_t(len(aikSecretKey)))
 	if rc != 0 {
 		return fmt.Errorf("CreateAik return 0x%x", rc)
 	}
 
 	return nil
 }
-
 
 // This is the pcr selection structure that tss2 wants when performing a quote...
 //
@@ -187,26 +170,26 @@ func (t *Tpm20Linux) CreateAik(tpmSecretKey string, aikSecretKey string) error {
 // #define TPM2_ALG_SHA256              0x000B											[["SHA256"]]
 // #define TPM2_ALG_SHA384              0x000C											[["SHA384"]]
 //
-// Design goals were to keep the go code 'application specific' (i.e. fx that 
+// Design goals were to keep the go code 'application specific' (i.e. fx that
 // were needed by GTA -- no a general use TPM library).  So, we're keeping this function's
 // parameters similar to the /tpm/quote endpoint (it receives a string array of pcrBanks
 // and int array of pcrs).
 //
-// Provided it's easier to adapt those parameters to what Tss2 wants, let's do the conversion 
-// here.  
-// 
+// Provided it's easier to adapt those parameters to what Tss2 wants, let's do the conversion
+// here.
+//
 // Yes, we could reference tss2_tpm2_types.h and build those structures directly
 // in go.  But, this is the only application specific function that requires structured
 // parameters -- the intent was to hide the Tss2 dependencies in tpm20linux.h (not tpm.h)
 // so that we could plug in other native implementations (ex. tpm20windows.h could use
 // TSS MSR c++).
-// 
+//
 // Is it the right approach for layering? Maybe not, but we're in the red zone and we're
 // gonna stick with it.  Let's build the TPML_PCR_SELECTION structure and pass it in as
 // bytes, c will cast it to the structure.
 //
 // KWT:  Reevaluate layering.  Could be tpm.go (interface) -> tpm20linux.go (translates go
-// parameters tss2 structures) -> tss2 call. Right now it is tpm.go -> tpm20linux.go -> c code 
+// parameters tss2 structures) -> tss2 call. Right now it is tpm.go -> tpm20linux.go -> c code
 // (translation of raw buffers to tss structures) -> tss2 call.
 func getPcrSelectionBytes(pcrBanks []string, pcrs []int) ([]byte, error) {
 
@@ -231,13 +214,11 @@ func getPcrSelectionBytes(pcrBanks []string, pcrs []int) ([]byte, error) {
 			return nil, fmt.Errorf("Invalid pcr bank type: %s", pcrBanks[i])
 		}
 
-		// binary.Write(buf, binary.LittleEndian, hash)		// TPMS_PCR_SELECTION.hash
-		// binary.Write(buf, binary.LittleEndian, uint8(4))	// TPMS_PCR_SELECTION.sizeofSelect (going to stick with 4 that acomodates pcrs 1 through 32, 24 is common)
 		binary.LittleEndian.PutUint16(buf[offset:], uint16(hash))
-		offset += 2	// uint16
+		offset += 2 // uint16
 
 		buf[offset] = 0x03 // 3 for 24 bits of pcrs (tss2 does not like '4')
-		offset += 1		   // byte
+		offset += 1        // byte
 
 		// build a 32bit bit mask that will be applied to TPMS_PCR_SELECTION.pcrSelect
 		pcrBitMask = 0
@@ -262,31 +243,39 @@ func (t *Tpm20Linux) GetTpmQuote(aikSecretKey string, nonce []byte, pcrBanks []s
 	var cQuote *C.char
 	var cQuoteLength C.int
 
+	cAikSecretKey := C.CString(aikSecretKey)
+	defer C.free(unsafe.Pointer(cAikSecretKey))
+
 	cNonceBytes := C.CBytes(nonce)
 	defer C.free(cNonceBytes)
 
+	// create a buffer that describes the pcr selction that can be
+	// used by tss2
 	pcrSelectionBytes, err := getPcrSelectionBytes(pcrBanks, pcrs)
 	if err != nil {
 		return nil, err
 	}
 
-	rc := C.GetTpmQuote(t.tpmCtx, 
-						C.CString(aikSecretKey),  
-						C.size_t(len(aikSecretKey)),
-						C.CBytes(pcrSelectionBytes),
-						C.size_t(len(pcrSelectionBytes)),
-						cNonceBytes,
-						C.size_t(len(nonce)),
-						&cQuote, 
-						&cQuoteLength)
-		
+	cPcrSelectionBytes := C.CBytes(pcrSelectionBytes)
+	defer C.free(cPcrSelectionBytes)
+
+	rc := C.GetTpmQuote(t.tpmCtx,
+		cAikSecretKey,
+		C.size_t(len(aikSecretKey)),
+		cPcrSelectionBytes,
+		C.size_t(len(pcrSelectionBytes)),
+		cNonceBytes,
+		C.size_t(len(nonce)),
+		&cQuote,
+		&cQuoteLength)
+
 	if rc != 0 {
 		return nil, fmt.Errorf("C.GetTpmQuote returned error code 0x%X", rc)
 	}
 
 	defer C.free(unsafe.Pointer(cQuote))
 
-	if (cQuoteLength <= 0) { // max size is checked in native/c code call to GetAikName
+	if cQuoteLength <= 0 { // max size is checked in native/c code call to GetAikName
 		return nil, fmt.Errorf("The quote buffer size is incorrect")
 	}
 
@@ -294,30 +283,42 @@ func (t *Tpm20Linux) GetTpmQuote(aikSecretKey string, nonce []byte, pcrBanks []s
 	return quoteBytes, nil
 }
 
-func (t *Tpm20Linux) ActivateCredential(tpmSecretKey string, aikSecretKey string, credentialBytes []byte, secretBytes []byte) ([]byte, error) {
+func (t *Tpm20Linux) ActivateCredential(tpmOwnerSecretKey string, aikSecretKey string, credentialBytes []byte, secretBytes []byte) ([]byte, error) {
 
 	var returnValue []byte
 	var decrypted *C.char
 	var decryptedLength C.int
-	
-	rc := C.ActivateCredential(t.tpmCtx, 
-							   C.CString(tpmSecretKey),  
-							   C.size_t(len(tpmSecretKey)), 
-							   C.CString(aikSecretKey),  
-							   C.size_t(len(aikSecretKey)),
-							   C.CString(string(credentialBytes)),
-							   C.size_t(len(credentialBytes)),
-							   C.CString(string(secretBytes)),
-							   C.size_t(len(secretBytes)),
-							   &decrypted, 
-							   &decryptedLength)
+
+	cTpmOwnerSecretKey := C.CString(tpmOwnerSecretKey)
+	defer C.free(unsafe.Pointer(cTpmOwnerSecretKey))
+
+	cAikSecretKey := C.CString(aikSecretKey)
+	defer C.free(unsafe.Pointer(cAikSecretKey))
+
+	cCredentialBytes := C.CBytes(credentialBytes)
+	defer C.free(cCredentialBytes)
+
+	cSecretBytes := C.CBytes(secretBytes)
+	defer C.free(cSecretBytes)
+
+	rc := C.ActivateCredential(t.tpmCtx,
+		cTpmOwnerSecretKey,
+		C.size_t(len(tpmOwnerSecretKey)),
+		cAikSecretKey,
+		C.size_t(len(aikSecretKey)),
+		cCredentialBytes,
+		C.size_t(len(credentialBytes)),
+		cSecretBytes,
+		C.size_t(len(secretBytes)),
+		&decrypted,
+		&decryptedLength)
 	if rc != 0 {
 		return nil, fmt.Errorf("C.ActivateCredential returned error code 0x%X", rc)
 	}
 
 	defer C.free(unsafe.Pointer(decrypted))
 
-	if (decryptedLength <= 0) { // max size is checked in native/c code call to GetAikName
+	if decryptedLength <= 0 { // max size is checked in native/c code call to GetAikName
 		return nil, fmt.Errorf("The buffer size is incorrect")
 	}
 
@@ -325,19 +326,97 @@ func (t *Tpm20Linux) ActivateCredential(tpmSecretKey string, aikSecretKey string
 	return returnValue, nil
 }
 
-// func (tpm *Tpm20Linux) CreateEndorsementKey(tpmSecretKey string) error {
-// 	rc := C.CreateEndorsementKey(tpm.tpmCtx, C.CString(tpmSecretKey), C.size_t(len(tpmSecretKey)))
-// 	if rc != 0 {
-// 		return fmt.Errorf("CreateEndorsementKey returned error code 0x%X", rc)
-// 	}
+func (t *Tpm20Linux) NvDefine(tpmOwnerSecretKey string, nvIndex uint32, indexSize uint16) error {
 
-// 	return nil
-// }
+	cTpmOwnerSecret := C.CString(tpmOwnerSecretKey)
+	defer C.free(unsafe.Pointer(cTpmOwnerSecret))
+
+	rc := C.NvDefine(t.tpmCtx,
+		cTpmOwnerSecret,
+		C.size_t(len(tpmOwnerSecretKey)),
+		C.uint32_t(nvIndex),
+		C.uint16_t(indexSize))
+
+	if rc != 0 {
+		return fmt.Errorf("C.NvRead returned error code 0x%X", rc)
+	}
+
+	return nil
+}
+
+func (t *Tpm20Linux) NvRelease(tpmOwnerSecretKey string, nvIndex uint32) error {
+
+	cTpmOwnerSecret := C.CString(tpmOwnerSecretKey)
+	defer C.free(unsafe.Pointer(cTpmOwnerSecret))
+
+	rc := C.NvRelease(t.tpmCtx,
+		cTpmOwnerSecret,
+		C.size_t(len(tpmOwnerSecretKey)),
+		C.uint32_t(nvIndex))
+
+	if rc != 0 {
+		return fmt.Errorf("C.NvRelease returned error code 0x%X", rc)
+	}
+
+	return nil
+}
+
+func (t *Tpm20Linux) NvRead(tpmOwnerSecretKey string, nvIndex uint32) ([]byte, error) {
+
+	var returnValue []byte
+	var nvData *C.char
+	var nvDataLength C.int
+
+	cTpmOwnerSecret := C.CString(tpmOwnerSecretKey)
+	defer C.free(unsafe.Pointer(cTpmOwnerSecret))
+
+	rc := C.NvRead(t.tpmCtx,
+		cTpmOwnerSecret,
+		C.size_t(len(tpmOwnerSecretKey)),
+		C.uint32_t(nvIndex),
+		&nvData,
+		&nvDataLength)
+
+	if rc != 0 {
+		return nil, fmt.Errorf("C.NvRead returned error code 0x%X", rc)
+	}
+
+	defer C.free(unsafe.Pointer(nvData))
+
+	if nvDataLength <= 0 { // max size is checked in native/c code call to GetAikName
+		return nil, fmt.Errorf("The nv data size is incorrect")
+	}
+
+	returnValue = C.GoBytes(unsafe.Pointer(nvData), nvDataLength)
+	return returnValue, nil
+}
+
+func (t *Tpm20Linux) NvWrite(tpmOwnerSecretKey string, handle uint32, data []byte) error {
+
+	cData := C.CBytes(data)
+	defer C.free(unsafe.Pointer(cData))
+
+	cTpmOwnerSecret := C.CString(tpmOwnerSecretKey)
+	defer C.free(unsafe.Pointer(cTpmOwnerSecret))
+
+	rc := C.NvWrite(t.tpmCtx,
+		cTpmOwnerSecret,
+		C.size_t(len(tpmOwnerSecretKey)),
+		C.uint32_t(handle),
+		cData,
+		C.size_t(len(data)))
+
+	if rc != 0 {
+		return fmt.Errorf("C.NvWrite returned error code 0x%X", rc)
+	}
+
+	return nil
+}
 
 func (tpm *Tpm20Linux) NvIndexExists(nvIndex uint32) (bool, error) {
 	rc := C.NvIndexExists(tpm.tpmCtx, C.uint(nvIndex))
 	if rc == -1 {
-		return false, nil	// KWT:  Differentiate between and error and index not there
+		return false, nil // KWT:  Differentiate between and error and index not there
 	}
 
 	if rc != 0 {
@@ -350,7 +429,7 @@ func (tpm *Tpm20Linux) NvIndexExists(nvIndex uint32) (bool, error) {
 func (tpm *Tpm20Linux) PublicKeyExists(handle uint32) (bool, error) {
 	rc := C.PublicKeyExists(tpm.tpmCtx, C.uint(handle))
 	if rc != 0 {
-		return false, nil	// KWT:  Differentiate between and error and index not there
+		return false, nil // KWT:  Differentiate between and error and index not there
 	}
 
 	// if rc != 0 {
@@ -359,7 +438,6 @@ func (tpm *Tpm20Linux) PublicKeyExists(handle uint32) (bool, error) {
 
 	return true, nil
 }
-
 
 func (tpm *Tpm20Linux) ReadPublic(secretKey string, handle uint32) ([]byte, error) {
 
@@ -374,21 +452,11 @@ func (tpm *Tpm20Linux) ReadPublic(secretKey string, handle uint32) ([]byte, erro
 
 	defer C.free(unsafe.Pointer(public))
 
-	if (publicLength <= 0) {
+	if publicLength <= 0 {
 		return nil, fmt.Errorf("The public size is incorrect")
 	}
 
 	returnValue = C.GoBytes(unsafe.Pointer(public), publicLength)
 	return returnValue, nil
 
-}
-
-func (t* Tpm20Linux) GetAssetTag(authHandle uint) ([]byte, error) {
-	var b[] byte
-	b = make([]byte, 20, 20)
-	return b, nil
-}
-
-func (t* Tpm20Linux) GetAssetTagIndex() (uint, error) {
-	return 0, nil
 }

@@ -93,7 +93,5 @@ struct tpmCtx
 
 // util.c
 int str2Tpm2bAuth(const char* secretKey, size_t keyLength, TPM2B_AUTH* tpm2bAuth);
-int GetMaxNVBufferSize(TSS2_SYS_CONTEXT *sys, uint32_t *size);
-int tpm2_util_hex_to_byte_structure(const char *inStr, UINT16 *byteLength, BYTE *byteBuffer);
 
 #endif

@@ -50,8 +50,7 @@ func (task* TakeOwnership) Run(c setup.Context) error {
 		return errors.New("Setup error: Invalid secret key")
 	}
 
-	// KWT:  Pass in string, not byte...
-	err = tpmProvider.TakeOwnership([]byte(config.GetConfiguration().Tpm.SecretKey))
+	err = tpmProvider.TakeOwnership(config.GetConfiguration().Tpm.SecretKey)
 	if err != nil {
 		return err
 	}
@@ -82,7 +81,7 @@ func (task* TakeOwnership) Validate(c setup.Context) error {
 
 	defer tpmProvider.Close()
 
-	ok, err := tpmProvider.IsOwnedWithAuth([]byte(config.GetConfiguration().Tpm.SecretKey))
+	ok, err := tpmProvider.IsOwnedWithAuth(config.GetConfiguration().Tpm.SecretKey)
 	if err != nil {
 		return fmt.Errorf("Validation error: IsOwnedWithAuth return: %s", err)
 	}

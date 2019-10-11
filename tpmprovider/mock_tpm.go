@@ -53,16 +53,12 @@ func (t *MockTpm) Sign(ck *CertifiedKey, keyAuth []byte, alg crypto.Hash, hashed
 //	return `tcbmeasurment`, nil
 //}
 
-func (t *MockTpm) TakeOwnership(newOwnerAuth []byte) error {
+func (t *MockTpm) TakeOwnership(newOwnerAuth string) error {
 	return nil
 }
 
-func (t *MockTpm) IsOwnedWithAuth(ownerAuth []byte) (bool, error) {
+func (t *MockTpm) IsOwnedWithAuth(ownerAuth string) (bool, error) {
 	return true, nil
-}
-
-func (t *MockTpm) GetEndorsementKeyCertificate(tpmSecretKey string) ([]byte, error) {
-	return nil, fmt.Errorf("MockTpm.GetEndorsementKeyCertificate is not implemented")
 }
 
 func (t *MockTpm) GetAikBytes(tpmSecretKey string) ([]byte, error) {
@@ -99,6 +95,21 @@ func (t *MockTpm) ActivateCredential(tpmSecretKey string, aikSecretKey string, c
 
 func (t *MockTpm) NvIndexExists(handle uint32) (bool, error) {
 	return false, fmt.Errorf("MockTpm.NvIndexExists is not implemented")
+}
+
+func (t *MockTpm) NvRelease(tpmOwnerSecretKey string, nvIndex uint32) error {
+	return fmt.Errorf("MockTpm.NvRelease is not implemented")
+}
+func (t *MockTpm) NvDefine(tpmOwnerSecretKey string, nvIndex uint32, indexSize uint16) error {
+	return fmt.Errorf("MockTpm.NvDefine is not implemented")
+}
+
+func (t *MockTpm) NvRead(tpmOwnerSecretKey string, handle uint32) ([]byte, error) {
+	return nil, fmt.Errorf("MockTpm.NvRead is not implemented")
+}
+
+func (t *MockTpm) NvWrite(tpmOwnerSecretKey string, handle uint32, data []byte) error {
+	return fmt.Errorf("MockTpm.NvWrite is not implemented")
 }
 
 func (tpm *MockTpm) PublicKeyExists(handle uint32) (bool, error) {

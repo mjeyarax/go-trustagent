@@ -22,11 +22,13 @@ build:gta:
   tags:
     - gta
   script:
+    - make build_test
     - make installer
   artifacts:
     paths:
       - "out/trustagent-*.bin"
       - "out/tagent"
+      - "out/*.test"
     expire_in: 1 week
 
 test:

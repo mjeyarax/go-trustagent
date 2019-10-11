@@ -22,9 +22,9 @@ installer: gta
 	makeself out/installer out/trustagent-$(VERSION).bin "TrustAgent $(VERSION)" ./install.sh
 
 build_test: gta
-	cd resource && go test -c
-	cd tasks && go test -c
-	cd tpmprovider && go test -c
+	cd resource && go test -c -o ../out/resource.test
+	cd tasks && go test -c -o ../out/tasks.test
+	cd tpmprovider && go test -c -o ../out/tpmprovider.test
 
 all: gta
 

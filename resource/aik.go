@@ -14,7 +14,7 @@
 )
 
 // curl --request GET --user tagentadmin:TAgentAdminPassword https://localhost:1443/v2/aik -k --noproxy "*"
-func GetAik(httpWriter http.ResponseWriter, httpRequest *http.Request) {
+func getAik(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 	log.Debug("GetAik")
 
 	if _, err := os.Stat(constants.AikCert); os.IsNotExist(err) {
@@ -23,18 +23,14 @@ func GetAik(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 		return
 	}
 
-	b, err := ioutil.ReadFile(constants.AikCert)
+	aikBytes, err := ioutil.ReadFile(constants.AikCert)
 	if err != nil {
 		log.Errorf("There was an error reading %s", constants.AikCert)
 		httpWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if _, err := bytes.NewBuffer(b).WriteTo(httpWriter); err != nil {
-		log.Errorf("There was an error writing aik")
-		httpWriter.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
 	httpWriter.WriteHeader(http.StatusOK)
+	_, _ = bytes.NewBuffer(aikBytes).WriteTo(httpWriter)
+	return
 }
