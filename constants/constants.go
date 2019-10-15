@@ -20,6 +20,7 @@ const (
 	AikBlob						= ConfigDir + "aik.blob"
 	AikCert						= ConfigDir + "aik.cer"
 	PrivacyCA					= ConfigDir + "privacy-ca.cer"
+	BindingKeyCertificatePath	= "/etc/workload-agent/bindingkey.pem"
 	VarDir						= HomeDir + "var/"
 	SystemInfoDir				= VarDir + "system-info/"
 	PlatformInfoFilePath		= SystemInfoDir + "platform-info"

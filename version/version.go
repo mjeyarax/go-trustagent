@@ -6,3 +6,4 @@
 
  var Version = "unknown"
  var GitHash = "unknown"
+ var CommitDate = "unknown"

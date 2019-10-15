@@ -20,6 +20,7 @@
 	"intel/isecl/go-trust-agent/platforminfo"
 	"intel/isecl/go-trust-agent/resource"
 	"intel/isecl/go-trust-agent/tasks"
+	"intel/isecl/go-trust-agent/version"
 )
 
 func printUsage() {
@@ -104,6 +105,8 @@ func main() {
 	currentUser, _ := user.Current()
 	cmd := os.Args[1]
 	switch cmd {
+	case "version":
+		fmt.Printf("tagent %s-%s [%s]\n", version.Version, version.GitHash, version.CommitDate)
 	case "start":
 
 		// 

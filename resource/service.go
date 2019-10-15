@@ -42,6 +42,7 @@ func CreateTrustAgentService (port int) (*TrustAgentService, error) {
 	trustAgentService.router.HandleFunc("/v2/aik", basicAuth(GetAik)).Methods("GET")
 	trustAgentService.router.HandleFunc("/v2/host", basicAuth(GetPlatformInfo)).Methods("GET")
 	trustAgentService.router.HandleFunc("/v2/tpm/quote", basicAuth(getTpmQuote)).Methods("POST")
+	trustAgentService.router.HandleFunc("/v2/binding-key-certificate", basicAuth(getBindingKeyCertificate)).Methods("GET")
 	
 	return &trustAgentService, nil
 }
