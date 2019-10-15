@@ -286,51 +286,13 @@ func (task* ProvisionAttestationIdentityKey) getEndorsementKeyBytes() ([]byte, e
 
 	defer tpm.Close()
 
-	ekCertBytes, err := tpm.GetEndorsementKeyCertificate(config.GetConfiguration().Tpm.SecretKey)
+	ekCertBytes, err := tpm.NvRead(config.GetConfiguration().Tpm.SecretKey, tpmprovider.NV_IDX_ENDORSEMENT_KEY)
 	if err != nil {
 		return nil, err
 	}
-
-//	log.Debugf("ek: %s", string(ekCertBytes))
-//	log.Debugf("ek: %s",  hex.EncodeToString(ekCertBytes))
-// 	log.Debugf("ek[%x]: %s",  len(ekCertBytes), base64.StdEncoding.EncodeToString(ekCertBytes))
-
-// 	ekCertBytes2, err := tpm.ReadPublic(config.GetConfiguration().Tpm.SecretKey, tpmprovider.TPM_HANDLE_EK)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// ek264 :=  base64.StdEncoding.EncodeToString(ekCertBytes2)
-// 	// log.Debugf("ek264[%x]: %s",  len(ek264), hex.EncodeToString(ek264))
-
-// //	log.Debugf("ek2: %s", string(ekCertBytes2))
-// //	log.Debugf("ek2: %s",  hex.EncodeToString(ekCertBytes2))
-// 	log.Debugf("ek2[%x]: %s",  len(ekCertBytes2), base64.StdEncoding.EncodeToString(ekCertBytes2))
-
-// 	err = ioutil.WriteFile("/tmp/ek.der", ekCertBytes2, 0644)
-
-// //	b := `MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqo9yqhkTd3uG5FcXASwpge5piu4sO/Z8wyihfB5rsWcnpTu1l48B3xOgJVbpiZ+yvalLQ1OYmaJ/mNtoq48VnlEbhl6FGEV4RXa6vs62OcDbxPkbBYIPt1SvDXeSSN4shkfE4d0VyU4dGpb0knUoCi/x7tZQ6ZGKE1RrQ+hOvFd3m45Fb0jSaNlMACZh6cDkUDZR0LtdkQm/vX2eps8NqDmAfCl+Bx9w+LwDRu3BVuqyNbJQ81J1zGis4REd2UW5eW5u9AYMypak8SwOiO3WLNH55VY87rcZwXzgFJg9BY9MHwO0IjG4wuYYZQqCuVPgH3NkILiLXVvF1F1w4RXqjwIDAQAB`
-
-// 	b := `
-// 	-----BEGIN PUBLIC KEY-----
-// 	MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqo9yqhkTd3uG5FcXASwp
-// 	ge5piu4sO/Z8wyihfB5rsWcnpTu1l48B3xOgJVbpiZ+yvalLQ1OYmaJ/mNtoq48V
-// 	nlEbhl6FGEV4RXa6vs62OcDbxPkbBYIPt1SvDXeSSN4shkfE4d0VyU4dGpb0knUo
-// 	Ci/x7tZQ6ZGKE1RrQ+hOvFd3m45Fb0jSaNlMACZh6cDkUDZR0LtdkQm/vX2eps8N
-// 	qDmAfCl+Bx9w+LwDRu3BVuqyNbJQ81J1zGis4REd2UW5eW5u9AYMypak8SwOiO3W
-// 	LNH55VY87rcZwXzgFJg9BY9MHwO0IjG4wuYYZQqCuVPgH3NkILiLXVvF1F1w4RXq
-// 	jwIDAQAB
-// 	-----END PUBLIC KEY-----`
-
-// 	pem,_ := base64.StdEncoding.DecodeString(b)
-// 	log.Debugf("pem[%x]: %s",  len(pem), base64.StdEncoding.EncodeToString(pem))
-// 	log.Debugf("pstr[%x]: %s",  len(b), b)
 	
+	return ekCertBytes, nil 
 
-	return ekCertBytes, nil // invalidate challenge response
-	//return ekCertBytes2, nil // malformed PEM data
-//	return pem, nil
-//	return []byte(b), nil
 }
 
 //

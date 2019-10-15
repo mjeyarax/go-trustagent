@@ -44,23 +44,24 @@
 //     <isTagProvisioned>false</isTagProvisioned>
 // </tpm_quote_response>
 type TpmQuoteResponse struct {
-	XMLName				xml.Name	`xml:"tpm_quote_response"`
-	TimeStamp			int64		`xml:"timestamp"`
-	ClientIp			string		`xml:"clientIp"`
-	ErrorCode			int			`xml:"errorCode"`
-	ErrorMessage		string		`xml:"errorMessage"`
-	Aik					string		`xml:"aik"`
-	Quote				string		`xml:"quote"`
-	EventLog			string		`xml:"eventLog"`
+	XMLName				 xml.Name	`xml:"tpm_quote_response"`
+	TimeStamp			 int64		`xml:"timestamp"`
+	ClientIp			 string		`xml:"clientIp"`
+	ErrorCode			 int		`xml:"errorCode"`
+	ErrorMessage		 string		`xml:"errorMessage"`
+	Aik					 string		`xml:"aik"`
+	Quote				 string		`xml:"quote"`
+	EventLog			 string		`xml:"eventLog"`
 	TcbMeasurements	struct {
-		XMLName				xml.Name	`xml:"tcbMeasurements"`
-		TcbMeasurements		[]string 	`xml:"tcbMeasurements"`
+		XMLName			 xml.Name	`xml:"tcbMeasurements"`
+		TcbMeasurements	 []string	`xml:"tcbMeasurements"`
 	}
-	SelectedPcrBanks	struct {
-		XMLName				xml.Name	`xml:"selectedPcrBanks"`
-		SelectedPcrBanks	[]string 	`xml:"selectedPcrBanks"`
+	SelectedPcrBanks struct {
+		XMLName			 xml.Name	`xml:"selectedPcrBanks"`
+		SelectedPcrBanks []string	`xml:"selectedPcrBanks"`
 	}
-	IsTagProvisioned	bool		`xml:"isTagProvisioned"`
+	IsTagProvisioned	 bool		`xml:"isTagProvisioned"`
+	AssetTag			 string		`xml:"assetTag,omitempty"`
 }
 
 // HVS will provide json like...
@@ -139,25 +140,62 @@ func getLocalIpAddr() (net.Addr, error) {
 	return addr, nil
 }
 
-// get's the local ip address in bytes and hashes the nonce/ip in a fashion acceptable
-// to HVS's quote verifier.
-func getIpHashedNonce(nonce []byte) ([]byte, error) {
+
+// HVS generates a 20 byte random nonce that is sent in the tpmQuoteRequest.  However,
+// HVS expects the response nonce (in the TpmQuoteResponse.Quote binary) to be hashed with the bytes
+// of local ip address.  If this isn't performed, HVS will throw an error when the
+// response is received.
+// 
+// Also, HVS takes into account the asset tag in the nonce -- it takes the ip hashed nonce
+// and 'extends' it with value of asset tag (i.e. when tags have been set on the trust agent).
+func (tpmQuoteResponse *TpmQuoteResponse) getNonce(hvsNonce []byte) ([]byte, error) {
 
 	ipBytes, err := getLocalIpAsBytes()
 	if err != nil {
 		return nil, err
 	}
 
+	log.Debugf("Received HVS nonce '%s', raw[%s]", base64.StdEncoding.EncodeToString(hvsNonce), hex.EncodeToString(hvsNonce))
+
+	// similar to HVS' SHA1.digestOf(hvsNonce).extend(ipBytes)
     hash := sha1.New()
-    hash.Write(nonce)
-    b1 := hash.Sum(nil)
+    hash.Write(hvsNonce)
+    taNonce := hash.Sum(nil)
 
     hash = sha1.New()
-    hash.Write(b1)
+    hash.Write(taNonce)
     hash.Write(ipBytes)
-    b2 := hash.Sum(nil)
+	taNonce = hash.Sum(nil)
 
-    return b2, nil
+	log.Debugf("Used ip bytes '%s' to extend nonce to '%s', raw[%s]", hex.EncodeToString(ipBytes), base64.StdEncoding.EncodeToString(taNonce), hex.EncodeToString(taNonce))
+
+	if tpmQuoteResponse.IsTagProvisioned {
+
+		if tpmQuoteResponse.AssetTag == "" {
+			return nil, errors.New("The quote is 'tag provisioned', but the tag was not provided")
+		}
+
+		// TpmQuoteResponse is used to share data with HVS and stores the asset tag
+		// as base64 -- apply the raw bytes to the hash similar to HVS.
+		tagBytes, err := base64.StdEncoding.DecodeString(tpmQuoteResponse.AssetTag)
+		if err != nil {
+			return nil, err
+		}
+
+		// similar to HVS' SHA1.digestOf(taNonce).extend(tagBytes)
+		hash := sha1.New()
+		hash.Write(taNonce)
+		taNonce = hash.Sum(nil)
+
+		hash = sha1.New()
+		hash.Write(taNonce)
+		hash.Write(tagBytes)
+		taNonce = hash.Sum(nil)	
+
+		log.Debugf("Used tag bytes '%s' to extend nonce to '%s', raw[%s]", hex.EncodeToString(tagBytes), base64.StdEncoding.EncodeToString(taNonce), hex.EncodeToString(taNonce))
+	}
+
+    return taNonce, nil
 }
 
 func (tpmQuoteResponse *TpmQuoteResponse) readAikAsBase64() error {
@@ -203,17 +241,12 @@ func (tpmQuoteResponse *TpmQuoteResponse) readEventLog() error {
 
 func (tpmQuoteResponse *TpmQuoteResponse) getQuote(tpmQuoteRequest *TpmQuoteRequest) error {
 
-	// HVS generates a 20 byte random nonce that is sent in the tpmQuoteRequest.  However,
-	// HVS expects a nonce (in the TpmQuoteResponse.Quote binary) is that nonce hashed with the bytes
-	// of local ip address.  If this isn't performed, HVS will throw an error when the
-	// response is received.
-	ipHashedNonce, err := getIpHashedNonce(tpmQuoteRequest.Nonce)
+	nonce, err := tpmQuoteResponse.getNonce(tpmQuoteRequest.Nonce)
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("Nonce received: %s", hex.EncodeToString(tpmQuoteRequest.Nonce))
-	log.Debugf("Nonce hashed: %s", hex.EncodeToString(ipHashedNonce))
+	log.Debugf("Providing tpm nonce value '%s', raw[%s]", base64.StdEncoding.EncodeToString(nonce), hex.EncodeToString(nonce))
 
 	tpmProvider, err := tpmprovider.NewTpmProvider()
 	if err != nil {
@@ -222,7 +255,7 @@ func (tpmQuoteResponse *TpmQuoteResponse) getQuote(tpmQuoteRequest *TpmQuoteRequ
 
 	defer tpmProvider.Close()
 
-	quoteBytes, err := tpmProvider.GetTpmQuote(config.GetConfiguration().Tpm.AikSecretKey, ipHashedNonce, tpmQuoteRequest.PcrBanks, tpmQuoteRequest.Pcrs)
+	quoteBytes, err := tpmProvider.GetTpmQuote(config.GetConfiguration().Tpm.AikSecretKey, nonce, tpmQuoteRequest.PcrBanks, tpmQuoteRequest.Pcrs)
 	if err != nil {
 		return err
 	}
@@ -238,11 +271,49 @@ func (tpmQuoteResponse *TpmQuoteResponse) getTcbMeasurements() error {
 	return nil 
 }
 
+func (tpmQuoteResponse *TpmQuoteResponse) getAssetTags() error {
+
+	tpm, err := tpmprovider.NewTpmProvider()
+	if err != nil {
+		return err
+	}
+
+	defer tpm.Close()
+	
+	tagExists, err := tpm.NvIndexExists(tpmprovider.NV_IDX_ASSET_TAG)
+	if err != nil {
+		return err
+	}
+
+	if tagExists  {
+
+		tpmQuoteResponse.IsTagProvisioned = true
+		
+		tagBytes, err := tpm.NvRead(config.GetConfiguration().Tpm.SecretKey, tpmprovider.NV_IDX_ASSET_TAG)
+		if err != nil {
+			return err
+		} 
+
+		tpmQuoteResponse.AssetTag = base64.StdEncoding.EncodeToString(tagBytes);	// this data will be evaluated in 'getNonce'
+
+	} else {
+		tpmQuoteResponse.IsTagProvisioned = false
+	}
+	
+	return nil 
+}
+
 func createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) (*TpmQuoteResponse, error) {
 	var err error
 
 	tpmQuoteResponse := TpmQuoteResponse {}
 	tpmQuoteResponse.TimeStamp = time.Now().Unix()
+
+	// getAssetTags must be called before getQuote so that the nonce is created correctly - see comments for getNonce()
+	err = tpmQuoteResponse.getAssetTags()
+	if err != nil {
+		return nil, err
+	}
 
 	// get the quote from tpmprovider
 	err = tpmQuoteResponse.getQuote(tpmQuoteRequest)
@@ -277,9 +348,6 @@ func createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) (*TpmQuoteResponse, error)
 	// selected pcr banks (just return what was requested similar to java implementation)
 	tpmQuoteResponse.SelectedPcrBanks.SelectedPcrBanks = tpmQuoteRequest.PcrBanks
 
-	// TODO:  Based on asset tags
-	tpmQuoteResponse.IsTagProvisioned = false
-
 	tpmQuoteResponse.ErrorCode = 0				// Question: does HVS handle specific error codes or is just a pass through?
 	tpmQuoteResponse.ErrorMessage = "OK"
 	return &tpmQuoteResponse, nil
@@ -290,25 +358,27 @@ func getTpmQuote(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 
 	log.Debug("getTpmQuote")
 
-	httpWriter.Header().Set("Content-Type", "application/xml") 
-
 	var tpmQuoteRequest TpmQuoteRequest
 
 	data, err := ioutil.ReadAll(httpRequest.Body)
 	if err != nil {
 		log.Errorf("Error reading request body: %s", err)
-		httpWriter.WriteHeader(http.StatusInternalServerError)
+		httpWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	err = json.Unmarshal(data, &tpmQuoteRequest)
 	if err != nil {
 		log.Errorf("Error marshaling json data: %s...\n%s", err, string(data))
-		httpWriter.WriteHeader(http.StatusInternalServerError)
+		httpWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	// KWT:  Validate tpmQuoteRequest (nonce can't be empty, etc.)
+	if len(tpmQuoteRequest.Nonce) == 0 {
+		log.Error("The TpmQuoteRequest does not contain a nonce")
+		httpWriter.WriteHeader(http.StatusBadRequest)
+		return
+	} 
 
 	tpmQuoteResonse, err := createTpmQuote(&tpmQuoteRequest) 
 	if err != nil {
@@ -324,11 +394,8 @@ func getTpmQuote(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 		return
 	}
 
-	if _, err := bytes.NewBuffer(xmlOutput).WriteTo(httpWriter); err != nil {
-		log.Errorf("There was an error writing tpm quote: %s", err)
-		httpWriter.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
+	httpWriter.Header().Set("Content-Type", "application/xml")
 	httpWriter.WriteHeader(http.StatusOK)
+	_, _ = bytes.NewBuffer(xmlOutput).WriteTo(httpWriter)
+	return
 }

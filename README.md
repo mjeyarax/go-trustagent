@@ -90,7 +90,7 @@ Visual Studio Code Insiders contains the 'Remote Development' extension that pro
     }
     ```
 5. Prepare tpm2-abrmd for use with the TPM simulator.
-   1. Edit /usr/lib/systemd/system/tpm2-abrmd to use the simulator (i.e. add the '--tcti=mssim' option)...
+   1. Edit /usr/lib/systemd/system/tpm2-abrmd.service to use the simulator (i.e. add the '--tcti=mssim' option)...
         ```
         ExecStart=/usr/sbin/tpm2-abrmd --tcti=mssim
         ```

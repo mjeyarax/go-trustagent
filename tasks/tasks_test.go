@@ -7,8 +7,6 @@
  package tasks
 
  import (
-//	"encoding/hex"
-	"io/ioutil"
 	"testing"
 	"github.com/stretchr/testify/assert"
 	"intel/isecl/go-trust-agent/config"
@@ -38,17 +36,17 @@ func TestGetTpmSymetricKey(t *testing.T) {
 	assert.NoError(err)
 }
 
-func TestGetEncryptedEndorsementCertificate(t *testing.T) {
-	assert := assert.New(t)
+// func TestGetEncryptedEndorsementCertificate(t *testing.T) {
+// 	assert := assert.New(t)
 
-	provisionAik := ProvisionAttestationIdentityKey { Flags: nil }
+// 	provisionAik := ProvisionAttestationIdentityKey { Flags: nil }
 
-	ekCertBytes, err := ioutil.ReadFile("/tmp/ek.der")
-	assert.NoError(err)
+// 	ekCertBytes, err := ioutil.ReadFile("/tmp/ek.der")
+// 	assert.NoError(err)
 
-	_, err = provisionAik.getEncryptedBytes(ekCertBytes)
-	assert.NoError(err)
-}
+// 	_, err = provisionAik.getEncryptedBytes(ekCertBytes)
+// 	assert.NoError(err)
+// }
 
 func TestRegisterDownloadEndorsementAuthorities(t *testing.T) {
 	assert := assert.New(t)

@@ -56,54 +56,6 @@ int str2Tpm2bAuth(const char* tpmSecretKey, size_t keyLength, TPM2B_AUTH* tpm2bA
     return 0;
 }
 
-// https://github.com/tpm2-software/tpm2-tools/blob/3.1.0/lib/tpm2_util.c
-int tpm2_util_hex_to_byte_structure(const char *inStr, UINT16 *byteLength, BYTE *byteBuffer) {
-    int strLength; //if the inStr likes "1a2b...", no prefix "0x"
-    int i = 0;
-    if (inStr == NULL || byteLength == NULL || byteBuffer == NULL)
-        return -1;
-    strLength = strlen(inStr);
-    if (strLength % 2)
-        return -2;
-    for (i = 0; i < strLength; i++) {
-        if (!isxdigit(inStr[i]))
-            return -3;
-    }
-
-    if (*byteLength < strLength / 2)
-        return -4;
-
-    *byteLength = strLength / 2;
-
-    for (i = 0; i < *byteLength; i++) {
-        char tmpStr[4] = { 0 };
-        tmpStr[0] = inStr[i * 2];
-        tmpStr[1] = inStr[i * 2 + 1];
-        byteBuffer[i] = strtol(tmpStr, NULL, 16);
-    }
-    return 0;
-}
-
-//
-// Returns 0 if true, -1 for false, all other values are error codes
-//
-// KWT:  NEEDED?
-int NvIndexExists(tpmCtx* ctx, uint32_t nvIndex)
-{
-    TSS2_RC rval;
-    TPM2B_NV_PUBLIC nv_public = TPM2B_EMPTY_INIT;
-    TPM2B_NAME nv_name = TPM2B_TYPE_INIT(TPM2B_NAME, name);
-
-    rval = Tss2_Sys_NV_ReadPublic(ctx->sys, nvIndex, NULL, &nv_public, &nv_name, NULL);
-    DEBUG("Tss2_Sys_NV_ReadPublic rval = 0x%0x", rval);
-    if(rval == 0x184)
-    {
-        return -1;
-    }
-    
-    return rval;
-}
-
 // KWT:  NEEDED?
 int PublicKeyExists(tpmCtx* ctx, uint32_t handle)
 {
@@ -123,39 +75,6 @@ int PublicKeyExists(tpmCtx* ctx, uint32_t handle)
 
     return rval;
 
-}
-
-// https://github.com/tpm2-software/tpm2-tools/blob/3.1.0/lib/tpm2_nv_util.h::tpm2_util_nv_max_buffer_size
-int GetMaxNVBufferSize(TSS2_SYS_CONTEXT *sys, uint32_t *size) 
-{
-    TSS2_RC rval;
-    TPMS_CAPABILITY_DATA cap_data;
-    TPMI_YES_NO more_data;
-
-    if(!sys)
-    {
-        ERROR("TSS2_SYS_CONTEXT was not provided.");
-    }
-
-    if(!size)
-    {
-        ERROR("'size' was not provided.")
-    }
-
-    *size = 0;
-
-    rval = Tss2_Sys_GetCapability (sys, NULL, TPM2_CAP_TPM_PROPERTIES, TPM2_PT_NV_BUFFER_MAX, 1, &more_data, &cap_data, NULL);
-    
-    if (rval != TSS2_RC_SUCCESS) 
-    {
-        ERROR("Failed to query max transmission size via Tss2_Sys_GetCapability. Error:0x%x", rval);
-    } 
-    else
-    {
-        *size = cap_data.data.tpmProperties.tpmProperty[0].value;
-    }
-
-    return rval;
 }
 
 

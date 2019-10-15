@@ -39,10 +39,11 @@ func CreateTrustAgentService (port int) (*TrustAgentService, error) {
 
 	// Register routes...
 	trustAgentService.router = mux.NewRouter()
-	trustAgentService.router.HandleFunc("/v2/aik", basicAuth(GetAik)).Methods("GET")
-	trustAgentService.router.HandleFunc("/v2/host", basicAuth(GetPlatformInfo)).Methods("GET")
+	trustAgentService.router.HandleFunc("/v2/aik", basicAuth(getAik)).Methods("GET")
+	trustAgentService.router.HandleFunc("/v2/host", basicAuth(getPlatformInfo)).Methods("GET")
 	trustAgentService.router.HandleFunc("/v2/tpm/quote", basicAuth(getTpmQuote)).Methods("POST")
 	trustAgentService.router.HandleFunc("/v2/binding-key-certificate", basicAuth(getBindingKeyCertificate)).Methods("GET")
+	trustAgentService.router.HandleFunc("/v2/tag", basicAuth(setAssetTag)).Methods("POST")
 	
 	return &trustAgentService, nil
 }

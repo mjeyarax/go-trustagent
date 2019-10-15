@@ -171,7 +171,6 @@ static int getpubak(TSS2_SYS_CONTEXT *sys, TPM2B_AUTH* secretKey, TPM2B_AUTH* ai
         inPublic.publicArea.parameters.rsaDetail.keyBits = 2048;
         inPublic.publicArea.parameters.rsaDetail.exponent = 0;
         inPublic.publicArea.unique.rsa.size = 0;
-        // KWT: set_rsa_signing_algorithm(ctx.sign_alg, ctx.digest_alg, inPublic);
         inPublic.publicArea.parameters.rsaDetail.scheme.scheme = TPM2_ALG_RSASSA; // -s argument (0x14)
         inPublic.publicArea.parameters.rsaDetail.scheme.details.anySig.hashAlg = TPM2_ALG_SHA256; // -D argument (0x0b)
     }

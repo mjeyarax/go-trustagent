@@ -92,7 +92,7 @@ func (task* ProvisionEndorsementKey) readEndorsementKeyCertificate() error {
 
 	defer tpm.Close()
 
-	ekCertBytes, err := tpm.GetEndorsementKeyCertificate(config.GetConfiguration().Tpm.SecretKey)
+	ekCertBytes, err := tpm.NvRead(config.GetConfiguration().Tpm.SecretKey, tpmprovider.NV_IDX_ENDORSEMENT_KEY)
 	if err != nil {
 		return err
 	}
@@ -120,11 +120,6 @@ func (task* ProvisionEndorsementKey) readEndorsementKeyCertificate() error {
 		return err
 	}
 
-	// WEEK2: Remove
-	err = ioutil.WriteFile("/opt/trustagent/configuration/ek.der", ekCertBytes, 0644)
-	if err != nil {
-		return fmt.Errorf("Error %s", err)
-	}
 	return nil
 }
 

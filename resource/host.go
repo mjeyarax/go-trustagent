@@ -56,11 +56,9 @@
 // 	]
 //  }
 //
-func GetPlatformInfo(httpWriter http.ResponseWriter, httpRequest *http.Request) {
+func getPlatformInfo(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 
 	log.Debug("GetPlatformInfo")
-
-	httpWriter.Header().Set("Content-Type", "application/json") 
 
 	if _, err := os.Stat(constants.PlatformInfoFilePath); os.IsNotExist(err) {
 		log.Errorf("%s does not exist", constants.PlatformInfoFilePath)
@@ -75,11 +73,8 @@ func GetPlatformInfo(httpWriter http.ResponseWriter, httpRequest *http.Request) 
 		return
 	}
 
-	if _, err := bytes.NewBuffer(b).WriteTo(httpWriter); err != nil {
-		log.Errorf("There was an error writing platform-info")
-		httpWriter.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
+	httpWriter.Header().Set("Content-Type", "application/json") 
 	httpWriter.WriteHeader(http.StatusOK)
+	_, _ = bytes.NewBuffer(b).WriteTo(httpWriter)
+	return
 }

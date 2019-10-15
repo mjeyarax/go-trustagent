@@ -32,10 +32,7 @@ func TestTpmTakeOwnership(t *testing.T) {
 	tpmProvider, _ := NewTpmProvider()
 	defer tpmProvider.Close()
 
-	var b[] byte
-	b = make([]byte, 20, 20)
-
-	rc := tpmProvider.TakeOwnership(b)
+	rc := tpmProvider.TakeOwnership("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
 	assert.Equal(t, rc, nil)
 }
 
@@ -178,4 +175,53 @@ func TestPcrSelectionParsing(t *testing.T) {
 	pcrSelectionBytes, err = getPcrSelectionBytes([]string{"SHA1"}, []int {32})
 	assert.Error(err)
 	
+}
+
+// assumes TPM is cleared and has ownership using TpmSecretKey value
+// Reset simulator: cicd/start-tpm-simulator.sh
+// tpm2_takeownership -o hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -e hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -l hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef
+//
+// Simulates commands...
+//
+// tpm2_nvdefine -P hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -x 0x1c10110 -a 0x40000001 -s 1024 -t 0x2000a # (ownerread|ownerwrite|policywrite)
+// tpm2_nvwrite -P hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -x 0x1c10110 -a 0x40000001 -o 0 /tmp/quote.bin
+// tpm2_nvread -P hex:deadbeefdeadbeefdeadbeefdeadbeefdeadbeef -x 0x1c10110 -a 0x40000001 -o 0 -f /tmp/quote_nv.bin
+func TestNvRAM(t *testing.T) {
+	assert := assert.New(t)
+
+	var handle uint32
+
+	tpm, err := NewTpmProvider()
+	assert.NoError(err)
+	defer tpm.Close()
+
+	data := []byte("Wlf4sABZ1GvQ9dGHjACHSioLedYfsbRSk2CqztFrjJpH1gCblyjtZw822YwEQCAc")
+	handle = NV_IDX_ASSET_TAG;
+
+	// if the index already exists, delete it
+	nvExists, err := tpm.NvIndexExists(handle)
+	if assert.NoError(err) == false { return }
+
+	if nvExists {
+		err = tpm.NvRelease(TpmSecretKey, handle)
+		if assert.NoError(err) == false { return }
+	}
+
+	// create an index for the data
+	tpm.NvDefine(TpmSecretKey, handle, uint16(len(data)))
+	if assert.NoError(err) == false { return }
+
+	// write the data
+	err = tpm.NvWrite(TpmSecretKey, handle, data)
+	if assert.NoError(err) == false { return }
+
+	// make sure the index exists
+	nvExists, err = tpm.NvIndexExists(handle)
+	if assert.NoError(err) == false { return }
+	if assert.Equal(nvExists, true) == false { return }	// index should exist
+
+	// make sure the data from the index matches the original
+	copy, err := tpm.NvRead(TpmSecretKey, handle)
+	assert.NoError(err)
+	assert.Equal(data, copy)
 }
