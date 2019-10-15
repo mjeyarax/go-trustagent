@@ -394,8 +394,8 @@ func getTpmQuote(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 		return
 	}
 
-	httpWriter.WriteHeader(http.StatusOK)
 	httpWriter.Header().Set("Content-Type", "application/xml")
+	httpWriter.WriteHeader(http.StatusOK)
 	_, _ = bytes.NewBuffer(xmlOutput).WriteTo(httpWriter)
 	return
 }

@@ -73,8 +73,8 @@ func getPlatformInfo(httpWriter http.ResponseWriter, httpRequest *http.Request) 
 		return
 	}
 
-	httpWriter.WriteHeader(http.StatusOK)
 	httpWriter.Header().Set("Content-Type", "application/json") 
+	httpWriter.WriteHeader(http.StatusOK)
 	_, _ = bytes.NewBuffer(b).WriteTo(httpWriter)
 	return
 }
