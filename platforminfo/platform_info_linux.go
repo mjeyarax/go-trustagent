@@ -100,7 +100,16 @@ func HardwareUUID() (string, error) {
 // OSName retrieves the host OS name.
 // An example of the host OS name is Ubuntu
 func OSName() (string, error) {
-	osName, _, err := osNameAndVersion()
+
+	osName, osVersion, err := osNameAndVersion()
+
+	// ISECL-7227:  This is a hack to get flavors to work in hvs.  HVS is expecting "RedHatEnterpriseServer",
+	// but on RHEL8 'lsb_release -a' is returning "RedHatEnterprise".  This needs to be
+	// fixed in HVS.
+	if(osName == "RedHatEnterprise" && osVersion == "8.0") {
+		osName = "RedHatEnterpriseServer"
+	}
+
 	return osName, err
 }
 
