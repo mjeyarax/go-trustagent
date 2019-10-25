@@ -11,7 +11,7 @@ require (
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	gopkg.in/yaml.v2 v2.2.2
 	intel/isecl/lib/common v1.0.0-Beta
-	intel/isecl/lib/tpmprovider v0.0.0
+	intel/isecl/lib/tpmprovider v1.0.0-Beta
 )
 
 replace intel/isecl/lib/common => github.com/intel-secl/common v1.0.0-Beta.0.20190920051932-22c16ec493a3
