@@ -9,7 +9,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
-	"intel/isecl/go-trust-agent/tpmprovider"
+	"intel/isecl/lib/tpmprovider"
 	"intel/isecl/lib/common/crypt"
 	"intel/isecl/lib/common/setup"
 )
@@ -38,19 +38,31 @@ func (task* TakeOwnership) Run(c setup.Context) error {
 		config.GetConfiguration().Tpm.SecretKey = newSecretKey
 	}
 
-	tpmProvider, err := tpmprovider.NewTpmProvider()
-	if err != nil {
-		return fmt.Errorf("Setup error: Could not create TpmProvider: %s", err)
-	}
-
-	defer tpmProvider.Close()
-
-
+	// validate the secret key...
 	if(len(config.GetConfiguration().Tpm.SecretKey) == 0 || len(config.GetConfiguration().Tpm.SecretKey) > 40) {
 		return errors.New("Setup error: Invalid secret key")
 	}
 
-	err = tpmProvider.TakeOwnership(config.GetConfiguration().Tpm.SecretKey)
+	tpm, err := tpmprovider.NewTpmProvider()
+	if err != nil {
+		return fmt.Errorf("Setup error: Could not create TpmProvider: %s", err)
+	}
+
+	defer tpm.Close()
+
+	// check if the tpm is already owned with the current secret key (and return)
+	alreadyOwned, err := tpm.IsOwnedWithAuth(config.GetConfiguration().Tpm.SecretKey)
+	if err != nil {
+		return fmt.Errorf("Setup error: IsOwnedWithAuth return: %s", err)
+	}
+
+	if alreadyOwned {
+		log.Trace("TPM ownership has already been established.")
+		return nil
+	}
+
+	// tpm is not owned by current secret, take ownership
+	err = tpm.TakeOwnership(config.GetConfiguration().Tpm.SecretKey)
 	if err != nil {
 		return err
 	}

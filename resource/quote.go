@@ -21,7 +21,7 @@
 	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
-	"intel/isecl/go-trust-agent/tpmprovider"
+	"intel/isecl/lib/tpmprovider"
 )
 
 // HVS expects...

@@ -40,6 +40,11 @@ var mu sync.Mutex
 
 var instance *TrustAgentConfiguration
 
+// This function is used by unit tests to intialize an empty configuration
+func InitConfiguration() {
+	instance = &TrustAgentConfiguration{}
+}
+
 func GetConfiguration() *TrustAgentConfiguration {
 	if instance == nil {
 		instance = load(constants.ConfigFilePath)

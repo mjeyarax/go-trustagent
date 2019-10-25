@@ -12,17 +12,26 @@
 	"intel/isecl/go-trust-agent/config"
 )
 
+const (
+	TpmSecretKey	= "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+	AikSecretKey	= "beefbeefbeefbeefbeefbeefbeefbeefbeefbeef"
+)
+
 func TestTakeOwnership(t *testing.T) {
 	assert := assert.New(t)
 
-	cfg := config.TrustAgentConfiguration {}
-	cfg.Tpm.SecretKey = "0123456789012345678901234567890123456789"
+	config.InitConfiguration()
+	config.GetConfiguration().Tpm.SecretKey = TpmSecretKey
 
 	registry, err := CreateTaskRegistry(nil)
 	assert.NoError(err)
 
-	registry.RunCommand(TakeOwnershipCommand)
+	err = registry.RunCommand(TakeOwnershipCommand)
+	assert.NoError(err)
 
+	// run it a second time -- it should not fail
+	err = registry.RunCommand(TakeOwnershipCommand)
+	assert.NoError(err)
 }
 
 func TestGetTpmSymetricKey(t *testing.T) {
@@ -33,6 +42,20 @@ func TestGetTpmSymetricKey(t *testing.T) {
 	key := []byte("aaaabbbbaaaabbbb")
 
 	_, err := provisionAik.getTpmSymetricKey(key)
+	assert.NoError(err)
+}
+
+func TestProvisionPrimaryKey(t *testing.T) {
+	assert := assert.New(t)
+
+	config.InitConfiguration()
+	config.GetConfiguration().Tpm.SecretKey = TpmSecretKey
+
+	registry, err := CreateTaskRegistry(nil)
+	assert.NoError(err)
+
+	//registry.RunCommand(TakeOwnershipCommand)
+	err = registry.RunCommand(ProvisionPrimaryKeyCommand)
 	assert.NoError(err)
 }
 

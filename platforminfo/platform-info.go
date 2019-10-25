@@ -5,8 +5,10 @@
  package platforminfo
 
  import (
+	 "os"
 	 "runtime"
 	 "strings"
+	 "intel/isecl/go-trust-agent/constants"
  )
 
 // Struct used to hold the current host's platform information that can be encoded/decoded to 
@@ -115,7 +117,14 @@ func GetPlatformInfo() (PlatformInfo, error) {
     platformInfo.HardwareFeatures.TPM.Enabled = platformInfo.TPMEnabled
     platformInfo.HardwareFeatures.TPM.Meta.TPMVersion = platformInfo.TPMVersion
 	platformInfo.HardwareFeatures.TPM.Meta.PCRBanks = strings.Join(platformInfo.PCRBanks, "_")
-	platformInfo.InstalledComponents = []string {"trustagent"}
+	platformInfo.InstalledComponents = []string {"tagent"}
+
+	// KWT:  This logic checks to see if /etc/workload-agent/bindingkey.pem exists to determine
+	// if WLA is installed (and updates 'InstalledComponents').
+	_, err := os.Stat(constants.BindingKeyCertificatePath)
+	if err == nil  {
+		platformInfo.InstalledComponents = append(platformInfo.InstalledComponents, "wlagent")
+	}
 
 	return platformInfo, nil
 }

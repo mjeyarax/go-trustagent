@@ -21,6 +21,7 @@ const (
 	ProvisionEndorsementKeyCommand			= "provisionek"
 	ProvisionAttestationIdentityKeyCommand	= "provisionaik"
 	DownloadPrivacyCACommand				= "downloadprivacyca"
+	ProvisionPrimaryKeyCommand				= "provisionprimarykey"
 )
 
 func CreateTaskRegistry(flags []string) (TaskRegistry, error) {
@@ -34,6 +35,7 @@ func CreateTaskRegistry(flags []string) (TaskRegistry, error) {
 	provisionEndorsementKey := ProvisionEndorsementKey { Flags: flags }
 	provisionAttestationIdentityKey := ProvisionAttestationIdentityKey { Flags: flags }
 	downloadPrivacyCA := DownloadPrivacyCA { Flags: flags }
+	provisionPrimaryKey := ProvisionPrimaryKey { Flags: flags }
 
 	registry.taskMap[TakeOwnershipCommand] = []setup.Task { &takeOwnership, }
 	registry.taskMap[TrustAgentConfigCommand] = []setup.Task { &trustAgentConfig, }
@@ -41,6 +43,7 @@ func CreateTaskRegistry(flags []string) (TaskRegistry, error) {
 	registry.taskMap[ProvisionEndorsementKeyCommand] = []setup.Task { &provisionEndorsementKey, }
 	registry.taskMap[ProvisionAttestationIdentityKeyCommand] = []setup.Task { &provisionAttestationIdentityKey, }
 	registry.taskMap[DownloadPrivacyCACommand] = []setup.Task { &downloadPrivacyCA, }
+	registry.taskMap[ProvisionPrimaryKeyCommand] = []setup.Task { &provisionPrimaryKey, }
 
 	registry.taskMap[DefaultSetupCommand] = []setup.Task {
 		&trustAgentConfig,
@@ -49,6 +52,7 @@ func CreateTaskRegistry(flags []string) (TaskRegistry, error) {
 		&takeOwnership,
 		&provisionEndorsementKey,
 		&provisionAttestationIdentityKey,
+		&provisionPrimaryKey,
 	}
 
 	return registry, nil

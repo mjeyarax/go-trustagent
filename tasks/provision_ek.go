@@ -19,7 +19,7 @@ import (
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/platforminfo"
-	"intel/isecl/go-trust-agent/tpmprovider"
+	"intel/isecl/lib/tpmprovider"
 	"intel/isecl/lib/common/setup"
 //	commonTls "intel/isecl/lib/common/tls"
 )
