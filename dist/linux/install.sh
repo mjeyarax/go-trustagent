@@ -6,8 +6,9 @@
 # 2. Load trustagent.env if present and apply exports.
 # 3. Create tagent user
 # 4. Create directories, copy files and own them by tagent user.
-# 5. Make sure tpm2-abrmd is started and deploy tagent service.
-# 6. If 'automatic provisioning' is enabled (PROVISION_ATTESTATION=y), initiate 'tagent setup'. 
+# 5. Install application-agent (tbootxm)
+# 6. Make sure tpm2-abrmd is started and deploy tagent service.
+# 7. If 'automatic provisioning' is enabled (PROVISION_ATTESTATION=y), initiate 'tagent setup'. 
 #    Otherwise, exit with a message that the user must provision the trust agent and start the
 #    service.
 #--------------------------------------------------------------------------------------------------
@@ -36,7 +37,7 @@ TRUSTAGENT_BIN_DIR=$TRUSTAGENT_HOME/bin
 TRUSTAGENT_LOG_DIR=$TRUSTAGENT_HOME/logs
 TRUSTAGENT_CFG_DIR=$TRUSTAGENT_HOME/configuration
 TRUSTAGENT_VAR_DIR=$TRUSTAGENT_HOME/var
-TRUSTAGENT_DEPENDENCIES=('tpm2-abrmd-2.0' 'dmidecode-3' 'redhat-lsb-core-4.1' 'tboot-1.9.7')
+TRUSTAGENT_DEPENDENCIES=('tpm2-abrmd-2.0' 'dmidecode-3' 'redhat-lsb-core-4.1' 'tboot-1.9.7' 'compat-openssl10-1.0')
 TPM2_ABRMD_SERVICE=tpm2-abrmd.service
 
 #--------------------------------------------------------------------------------------------------
@@ -113,6 +114,7 @@ mkdir -p $TRUSTAGENT_CFG_DIR
 mkdir -p $TRUSTAGENT_LOG_DIR
 mkdir -p $TRUSTAGENT_VAR_DIR
 mkdir -p $TRUSTAGENT_VAR_DIR/system-info
+mkdir -p $TRUSTAGENT_VAR_DIR/ramfs
 
 # copy 'tagent' to bin dir
 cp $TRUSTAGENT_EXE $TRUSTAGENT_BIN_DIR/ 
@@ -120,7 +122,7 @@ cp $TRUSTAGENT_EXE $TRUSTAGENT_BIN_DIR/
 # copy module analysis scripts to bin dier
 cp $TRUSTAGENT_MODULE_ANALYSIS_SH $TRUSTAGENT_BIN_DIR/ 
 cp $TRUSTAGENT_MODULE_ANALYSIS_DA_SH $TRUSTAGENT_BIN_DIR/ 
-cp $TRUSTAGENT_MODULE_ANALYSIS_DA_TCG_SH $TRUSTAGENT_BIN_DIR/ 
+cp $TRUSTAGENT_MODULE_ANALYSIS_DA_TCG_SH $TRUSTAGENT_BIN_DIR/
 
 # make a link in /usr/bin to tagent...
 ln -sfT $TRUSTAGENT_BIN_DIR/$TRUSTAGENT_EXE /usr/bin/$TRUSTAGENT_EXE
@@ -128,12 +130,60 @@ ln -sfT $TRUSTAGENT_BIN_DIR/$TRUSTAGENT_EXE /usr/bin/$TRUSTAGENT_EXE
 # Install systemd script
 cp $TRUSTAGENT_SERVICE $TRUSTAGENT_HOME 
 
+# deploy hex2bin (used by tbootxm's measure_host) to the installation directory
+# TODO: Move hex2bin into /opt/tbootxm/bin and affiliated scripts
+mkdir -p $TRUSTAGENT_HOME/share/hex2bin/bin
+chmod +x hex2bin
+cp hex2bin $TRUSTAGENT_HOME/share/hex2bin/bin
+
+# copy default and workload software manifest to /opt/trustagent/var/ (application-agent)
+if ! stat $TRUSTAGENT_VAR_DIR/manifest_* 1> /dev/null 2>&1; then
+  TA_VERSION=`tagent version short`
+  UUID=$(uuidgen)
+  cp manifest_tpm20.xml $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
+  sed -i "s/Uuid=\"\"/Uuid=\"${UUID}\"/g" $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
+  sed -i "s/Label=\"ISecL_Default_Application_Flavor_v\"/Label=\"ISecL_Default_Application_Flavor_v${TA_VERSION}_TPM2.0\"/g" $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
+
+  UUID=$(uuidgen)
+  cp manifest_wlagent.xml $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
+  sed -i "s/Uuid=\"\"/Uuid=\"${UUID}\"/g" $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
+  sed -i "s/Label=\"ISecL_Default_Workload_Flavor_v\"/Label=\"ISecL_Default_Workload_Flavor_v${TA_VERSION}\"/g" $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
+fi
+
 # file ownership/permissions
 chown -R $TRUSTAGENT_USERNAME:$TRUSTAGENT_USERNAME $TRUSTAGENT_HOME
 chmod 755 $TRUSTAGENT_BIN/*
 
 #--------------------------------------------------------------------------------------------------
-# 5. Enable/configure services, etc.
+# 5. Install application-agent (tboot-xm)
+#--------------------------------------------------------------------------------------------------
+if [ "$TBOOTXM_INSTALL" != "N" ] && [ "$TBOOTXM_INSTALL" != "No" ] && [ "$TBOOTXM_INSTALL" != "n" ] && [ "$TBOOTXM_INSTALL" != "no" ]; then
+    echo "Installing application agent..."
+    TBOOTXM_PACKAGE=`ls -1 application-agent*.bin 2>/dev/null | tail -n 1`
+
+    if [ -z "$TBOOTXM_PACKAGE" ]; then
+        echo_failure "Failed to find application agent installer package"
+        exit -1
+    fi
+
+    chmod +x $TBOOTXM_PACKAGE
+    ./$TBOOTXM_PACKAGE
+
+    if [ $? -ne 0 ]; then 
+        echo "Failed to install application agent"
+        exit -1
+    fi
+
+    # add execute permission for measure binary
+    chmod o+x /opt/tbootxm
+    chmod o+x /opt/tbootxm/bin/
+    chmod o+x /opt/tbootxm/lib/
+    chmod o+x /opt/tbootxm/bin/measure
+    chmod o+x /opt/tbootxm/lib/libwml.so
+fi
+
+#--------------------------------------------------------------------------------------------------
+# 6. Enable/configure services, etc.
 #--------------------------------------------------------------------------------------------------
 # make sure the tss user owns /dev/tpm0 or tpm2-abrmd service won't start (this file does not
 # exist when using the tpm simulator, so check for its existence)
@@ -151,7 +201,7 @@ systemctl enable $TRUSTAGENT_HOME/$TRUSTAGENT_SERVICE
 systemctl daemon-reload
 
 #--------------------------------------------------------------------------------------------------
-# 6. If automatic provisioning is enabled, do it here...
+# 7. If automatic provisioning is enabled, do it here...
 #--------------------------------------------------------------------------------------------------
 if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PROVISION_ATTESTATION" == "yes" ]]; then
     echo "Automatic provisioning is enabled, using mtwilson url $MTWILSON_API_URL"

@@ -12,10 +12,12 @@
 	"encoding/json"
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 	log "github.com/sirupsen/logrus"
@@ -265,9 +267,27 @@ func (tpmQuoteResponse *TpmQuoteResponse) getQuote(tpmQuoteRequest *TpmQuoteRequ
 	return nil
 }
 
-// TBD: Application Integrity
+// create an array of "tcbMeasurments", each from the  xml escaped string 
+// of the files located in /opt/trustagent/var/ramfs
 func (tpmQuoteResponse *TpmQuoteResponse) getTcbMeasurements() error {
-	//tpmQuoteResponse.TcbMeasurements.TcbMeasurements = []string {"",}
+
+	fileInfo, err := ioutil.ReadDir(constants.RamfsDir)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range fileInfo {
+		log.Debugf("Examining measurement file %s with ext %s", file.Name(), filepath.Ext(file.Name()))
+		if filepath.Ext(file.Name()) == ".xml" {
+			xml, err := ioutil.ReadFile(constants.RamfsDir + file.Name())
+			if err != nil {
+				return fmt.Errorf("There was an error reading manifest file %s", file.Name())
+			}
+
+			tpmQuoteResponse.TcbMeasurements.TcbMeasurements = append(tpmQuoteResponse.TcbMeasurements.TcbMeasurements, string(xml))
+		}
+	}
+
 	return nil 
 }
 
@@ -339,7 +359,6 @@ func createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) (*TpmQuoteResponse, error)
 		return nil, err
 	}
 
-	// TODO:  Application integrity
 	err = tpmQuoteResponse.getTcbMeasurements()
 	if err != nil {
 		return nil, err
@@ -356,7 +375,7 @@ func createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) (*TpmQuoteResponse, error)
 // curl --user tagentadmin:TAgentAdminPassword -d '{ "nonce":"ZGVhZGJlZWZkZWFkYmVlZmRlYWRiZWVmZGVhZGJlZWZkZWFkYmVlZiA=", "pcrs": [0,1,2,3,18,19,22] }' -H "Content-Type: application/json" -X POST https://localhost:1443/v2/tpm/quote -k --noproxy "*"
 func getTpmQuote(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 
-	log.Debug("getTpmQuote")
+	log.Debugf("Request: %s", httpRequest.URL.Path)
 
 	var tpmQuoteRequest TpmQuoteRequest
 

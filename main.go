@@ -29,7 +29,7 @@ func printUsage() {
  
 func setupLogging() error {
 
-	logFile, err := os.OpenFile(constants.LogFilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
+	logFile, err := os.OpenFile(constants.LogFilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -88,6 +88,25 @@ func updateMeasureLog() error {
 	log.Info("Successfully updated measureLog.xml")
 	return nil
 }
+
+func printVersion() {
+
+	if len(os.Args) > 2 && os.Args[2] == "short" {
+		major, err := version.GetMajorVersion()
+		if err != nil {
+			panic(err)
+		}
+
+		minor, err := version.GetMinorVersion()
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("%d.%d\n", major, minor)
+	} else {
+		fmt.Printf("tagent %s-%s [%s]\n", version.Version, version.GitHash, version.CommitDate)
+	}
+}
  
 func main() {
 
@@ -106,7 +125,7 @@ func main() {
 	cmd := os.Args[1]
 	switch cmd {
 	case "version":
-		fmt.Printf("tagent %s-%s [%s]\n", version.Version, version.GitHash, version.CommitDate)
+		printVersion()
 	case "start":
 
 		// 

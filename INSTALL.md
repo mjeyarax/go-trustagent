@@ -7,8 +7,9 @@
     2. dmidecode (v3.x)
     3. redhat-lsb-core (v4.1.x)
     4. tboot (v1.9.7.x)
+    5. compat-openssl10 (v1.0.x)
 
-    Ex. `yum -y install tpm2-abrmd dmidecode redhat-lsb-core tboot`
+    Ex. `yum -y install tpm2-abrmd dmidecode redhat-lsb-core tboot compat-openssl10`
 
 ## Provisioning InformationDebug
 The following (example) information needs to be provided in `trustagent.env` file.

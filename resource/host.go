@@ -58,7 +58,7 @@
 //
 func getPlatformInfo(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 
-	log.Debug("GetPlatformInfo")
+	log.Debugf("Request: %s", httpRequest.URL.Path)
 
 	if _, err := os.Stat(constants.PlatformInfoFilePath); os.IsNotExist(err) {
 		log.Errorf("%s does not exist", constants.PlatformInfoFilePath)

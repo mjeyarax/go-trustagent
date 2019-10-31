@@ -30,7 +30,8 @@ type TagWriteRequest struct {
 // quote xml.
 //
 func setAssetTag(httpWriter http.ResponseWriter, httpRequest *http.Request) {
-	log.Debug("setAssetTag")
+
+	log.Debugf("Request: %s", httpRequest.URL.Path)
 
 	var tagWriteRequest TagWriteRequest
 	tpmSecretKey := config.GetConfiguration().Tpm.SecretKey

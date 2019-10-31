@@ -15,7 +15,8 @@
 
  // curl --request GET --user tagentadmin:TAgentAdminPassword https://localhost:1443/v2/binding-key-certificate -k --noproxy "*"
 func getBindingKeyCertificate(httpWriter http.ResponseWriter, httpRequest *http.Request) {
-	log.Trace("getBindingKeyCertificate")
+
+	log.Debugf("Request: %s", httpRequest.URL.Path)
 
 	if _, err := os.Stat(constants.BindingKeyCertificatePath); os.IsNotExist(err) {
 		log.Errorf("%s does not exist", constants.BindingKeyCertificatePath)
