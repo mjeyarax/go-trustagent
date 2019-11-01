@@ -1,4 +1,4 @@
-// XXXXbuild integration
+// +build !integration
 
 /*
  * Copyright (C) 2019 Intel Corporation

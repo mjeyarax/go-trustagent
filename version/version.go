@@ -17,7 +17,7 @@ var CommitDate = "unknown"
 func GetMajorVersion() (int, error) {
 	endIdx := strings.Index(Version, ".")
 	if endIdx <= 0 {
-		return 0, fmt.Errorf("Could not parse version string %s")
+		return 0, fmt.Errorf("Could not parse version string %s", Version)
 	}
 
 	major, err := strconv.Atoi(strings.Replace(Version[0:endIdx], "v", "", -1))
@@ -31,12 +31,12 @@ func GetMajorVersion() (int, error) {
 func GetMinorVersion() (int, error) {
 	startIdx := strings.Index(Version, ".")
 	if startIdx <= 0 {
-		return 0, fmt.Errorf("Could not parse version string %s")
+		return 0, fmt.Errorf("Could not parse version string %s", Version)
 	}
 
 	endIdx := strings.Index(Version[startIdx+1:], ".")
 	if endIdx <= 0 {
-		return 0, fmt.Errorf("Could not parse version string %s")
+		return 0, fmt.Errorf("Could not parse version string %s", Version)
 	}
 
 	endIdx += startIdx+1
@@ -52,7 +52,7 @@ func GetMinorVersion() (int, error) {
 func GetPatchVersion() (int, error) {
 	startIdx := strings.LastIndex(Version, ".")
 	if startIdx <= 0 {
-		return 0, fmt.Errorf("Could not parse version string %s")
+		return 0, fmt.Errorf("Could not parse version string %s", Version)
 	}
 
 

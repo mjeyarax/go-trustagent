@@ -13,35 +13,32 @@ before_script:
 
 stages:
   - build
-  - test
+  # - test
 
 
-build:gta:
-  stage: build
-  image: gta-devel
-  tags:
-    - gta
-  script:
-    - make build_test
-    - make installer
-  artifacts:
-    paths:
-      - "out/trustagent-*.bin"
-      - "out/tagent"
-      - "out/*.test"
-    expire_in: 1 week
+# build:gta:
+#   stage: build
+#   image: gta-devel
+#   tags:
+#     - gta
+#   script:
+#     - make build_test
+#     - make installer
+#   artifacts:
+#     paths:
+#       - "out/trustagent-*.bin"
+#       - "out/tagent"
+#       - "out/*.test"
+#     expire_in: 1 week
 
-test:
-  stage: test
-#  image: gta-devel
-  tags:
-    - gta-test
-#  dependencies:
-#    - build:gta
-  script:
-    - go test ./... -tags=integration -coverpkg=./... -coverprofile cover.out
-    - go tool cover -func cover.out
-    - go tool cover -html=cover.out -o cover.html
-  artifacts:
-    paths:
-      - "cover.html"
+# test:
+#   stage: test
+#   tags:
+#     - gta-test
+#   script:
+#     - go test ./... -tags=integration -coverpkg=./... -coverprofile cover.out
+#     - go tool cover -func cover.out
+#     - go tool cover -html=cover.out -o cover.html
+#   artifacts:
+#     paths:
+#       - "cover.html"
