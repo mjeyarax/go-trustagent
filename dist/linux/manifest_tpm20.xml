@@ -10,20 +10,10 @@
    <File Path="/opt/tbootxm/lib/.*" SearchType="regex"/>   
    <File Path="/opt/tbootxm/initrd_hooks/tcb"/>
    <File Path="/opt/tbootxm/mkinitrd_files/setup-measure_host.sh"/>
-   <File Path="/opt/trustagent/.bash_profile"/>
    <Dir Exclude="" FilterType="regex" Include=".*" Path="/opt/trustagent/bin"/>
-   <Dir Exclude="" FilterType="regex" Include=".*" Path="/opt/trustagent/features"/>
-   <File Path="/opt/trustagent/feature.xml"/>
-   <Dir Exclude="" FilterType="regex" Include=".*" Path="/opt/trustagent/hypertext"/>
-   <Dir Exclude="" FilterType="regex" Include=".*" Path="/opt/trustagent/java"/>
    <Dir Exclude="" FilterType="regex" Include=".*" Path="/opt/trustagent/share"/>
    <Symlink Path="/opt/trustagent/bin/tagent"/>
    <File Path="/opt/trustagent/bin/.*\.sh" SearchType="regex"/>
-   <File Path="/opt/trustagent/hypertext/index.html"/>
-   <Dir Exclude="" FilterType="regex" Include=".*" Path="/opt/trustagent/hypertext/WEB-INF"/>
-   <File Path="/opt/trustagent/hypertext/WEB-INF/web.xml"/>
-   <File Path="/opt/trustagent/java/.*" SearchType="regex"/>
    <Dir Exclude="" FilterType="regex" Include=".*" Path="/opt/trustagent/share/.*" SearchType="regex"/>
    <File Path="/opt/trustagent/share/hex2bin/bin/hex2bin"/>
-   <File Path="/opt/trustagent/share/scripts/.*" SearchType="regex"/>
 </Manifest>

@@ -180,7 +180,16 @@ if [ "$TBOOTXM_INSTALL" != "N" ] && [ "$TBOOTXM_INSTALL" != "No" ] && [ "$TBOOTX
     chmod o+x /opt/tbootxm/lib/
     chmod o+x /opt/tbootxm/bin/measure
     chmod o+x /opt/tbootxm/lib/libwml.so
+else
+    echo "application-agent will not be installed"
 fi
+
+# KWT:  tpmextend looks for the tpm version in /opt/trustagent/configuration/tpm-version
+# let's remove this dependency at a later date
+if [ -f "$TRUSTAGENT_CFG_DIR/tpm-version" ]; then
+    rm -f $TRUSTAGENT_CFG_DIR/tpm-version
+fi
+echo "2.0" > $TRUSTAGENT_CFG_DIR/tpm-version
 
 #--------------------------------------------------------------------------------------------------
 # 6. Enable/configure services, etc.

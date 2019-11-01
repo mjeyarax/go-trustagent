@@ -16,4 +16,4 @@ require (
 
 replace intel/isecl/lib/common => github.com/intel-secl/common v1.0.0-Beta.0.20190920051932-22c16ec493a3
 
-replace intel/isecl/lib/tpmprovider => gitlab.devtools.intel.com/sst/isecl/lib/tpm-provider.git v1.0/go-trust-agent
+replace intel/isecl/lib/tpmprovider => gitlab.devtools.intel.com/sst/isecl/lib/tpm-provider.git v0.0.0-20191031175459-2f621858eb7d
