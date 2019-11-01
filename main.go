@@ -89,6 +89,16 @@ func updateMeasureLog() error {
 	return nil
 }
 
+func printConfig(setting string) {
+
+	switch setting {
+	case "aik.secret" :
+		fmt.Printf("%s\n", config.GetConfiguration().Tpm.AikSecretKey)
+	default:
+		fmt.Printf("Unknown config parameter: %s\n", setting)
+	}
+}
+
 func printVersion() {
 
 	if len(os.Args) > 2 && os.Args[2] == "short" {
@@ -235,6 +245,12 @@ func main() {
 			panic(err)
 		}
 
+	case "config":
+		if(len(os.Args) != 3) {
+			fmt.Printf("'config' requires an additional parameter.\n")
+		}
+
+		printConfig(os.Args[2])
 	default:
 		printUsage()
 	}
