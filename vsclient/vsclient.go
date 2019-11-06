@@ -21,41 +21,14 @@ import (
 	"intel/isecl/go-trust-agent/config"
 )
 
-const TRUST_POLICY_TRUST_FIRST_CERTIFICATE = "TRUST_FIRST_CERTIFICATE"
+const (
+	TRUST_POLICY_TRUST_FIRST_CERTIFICATE 	= "TRUST_FIRST_CERTIFICATE"
+	FLAVOR_HOST_UNIQUE						= "HOST_UNIQUE"
+	FLAVOR_SOFTWARE							= "SOFTWARE"
+	FLAVOR_OS								= "OS"
+	FLAVOR_PLATFORM							= "PLATFORM"
+)
 
-// {
-// 	"id": "068b5e88-1886-4ac2-a908-175cf723723d",
-// 	"host_name": "10.105.167.153",
-// 	"description": "GTA RHEL 8.0",
-// 	"connection_string": "https://10.105.167.153:1443",
-// 	"hardware_uuid": "8032632b-8fa4-e811-906e-00163566263e",
-// 	"tls_policy_id": "e1a1c631-e006-4ff2-aed1-6b42a2f5be6c"
-// }
-type Host struct {
-	Id string `json:"id"`
-	HostName string `json:"host_name"`
-	Description string `json:"description"`
-	ConnectionString string `json:"connection_string"`
-	HardwareUUID string `json:"hardware_uuid"`
-	TlsPolicyId string `json:"tls_policy_id"`
-}
-
-type HostCollection struct {
-	Hosts []Host `json:"hosts"`
-}
-
-type HostCreateCriteria struct {
-	ConnectionString string `json:"connection_string"`
-	HostName string `json:"host_name"`
-	TlsPolicyId string `json:"tls_policy_id"`
-}
-
-type HostFilterCriteria struct {
-	Id string `json:"id"`
-	NameEqualTo string `json:"nameEqualTo"`
-	NameContains string `json:"nameContains"`
-	DescriptionContains string `json:"descriptionContains"`
-}
 
 // type TlsPolicy struct {
 // 	Id string `json:"Id"`
@@ -135,13 +108,42 @@ type IdentityProofRequest struct {
 }
 
 type VSClient interface {
-	
+	Hosts() HostsClient
+	Flavors() FlavorsClient
+	Manifests() ManifestsClient
+}
+
+type HostsClient interface {
+	// TODO
 	SearchHosts(hostFilterCriteria *HostFilterCriteria) (*HostCollection, error)
+
+	// Registers the specified host with the Verfication Service. 
+	//
+	// https://server.com:8181/mtwilson/v2/hosts/
+	//  
+	// Input (HostCreateCriteria): 
+	// {
+	// 	 "connection_string":"intel:https://0.0.0.0:1443;u=user;p=password",
+	// 	 "host_name":"MyHost",
+	// 	 "tls_policy_id":"TRUST_FIRST_CERTIFICATE"
+	// }
+	// 
+	// Output (Host): 
+	// {
+	// 	  "id":"6208006d-1101-4ca6-8855-8542cfa3f66a",
+	// 	  "host_name":"MyHost",
+	// 	  "connection_string":"https://0.0.0.0:1443",
+	// 	  "hardware_uuid":"8032632b-8fa4-e811-906e-00163566263e",
+	// 	  "tls_policy_id":"TRUST_FIRST_CERTIFICATE",
+	// 	  "flavorgroup_names":["automatic","platform_software"]
+	// }
 	CreateHost(hostCreateCriteria *HostCreateCriteria) (*Host, error) 
 
 	//  Updates the host with the specified attributes. Except for the host name, all other attributes can be updated.
 	//
 	//  https://server.com:8181/mtwilson/v2/hosts/e43424ca-9e00-4cb9-b038-9259d0307888
+	//
+	//  KWT: UPDATE JSON...
 	//
 	//  Input: {"name":"192.168.0.2","connection_url":"https://192.168.0.1:443/sdk;admin;pwd","bios_mle_uuid":"823a4ae6-b8cd-4c14-b89b-2a3be2d13985",
 	//           "vmm_mle_uuid":"98101211-b617-4f59-8132-a5d05360acd6","tls_policy_id":"e1a527b5-2020-49c1-83be-6bd8bf641258"}
@@ -149,7 +151,29 @@ type VSClient interface {
 	//  Output: {"id":"e43424ca-9e00-4cb9-b038-9259d0307888","name":"192.168.0.2",
 	//           "connection_url":"https://192.168.0.1:443/sdk;admin;pwd","bios_mle_uuid":"823a4ae6-b8cd-4c14-b89b-2a3be2d13985",
 	//           "vmm_mle_uuid":"98101211-b617-4f59-8132-a5d05360acd6","tls_policy_id":"e1a527b5-2020-49c1-83be-6bd8bf641258"}
-	UpdateHost(host *Host) (*Host, error)
+	UpdateHost(host *Host) (*Host, error)	
+}
+
+type FlavorsClient interface {
+
+	//
+	// TODO:  Document fx 
+	//
+	// Will not include a return 'flavor' structure at this time
+	CreateFlavor(flavorCreateCriteria *FlavorCreateCriteria) error
+
+}
+
+type ManifestsClient interface {
+	//
+	// TODO:  Document fx 
+	//
+	GetManifestXmlById(manifestUUID string) ([]byte, error)
+
+	//
+	// TODO:  Document fx 
+	//
+	GetManifestXmlByLabel(manifestLabel string) ([]byte, error)
 }
 
 type VSClientFactory interface {

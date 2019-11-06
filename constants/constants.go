@@ -30,4 +30,6 @@ const (
 	RootUserName				= "root"
 	TagentUserName				= "tagent"
 	DefaultPort					= 1443
+	FlavorUUIDs					= "FLAVOR_UUIDS"
+	FlavorLabels				= "FLAVOR_LABELS"
 )

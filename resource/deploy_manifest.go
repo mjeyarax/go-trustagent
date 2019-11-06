@@ -11,24 +11,8 @@ import (
 	"strings"
 	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/constants"
+	"intel/isecl/go-trust-agent/vsclient"
 	"intel/isecl/lib/common/validation"
-)
-
-// The Manifest xml (below) is pretty extensive, this endpoint just needs the UUID and Label
-// for validating the request body.
-//
-// <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-// <Manifest xmlns="lib:wml:manifests:1.0" Label="ISecL_Default_Application_Flavor_v4.6_TPM2.0" Uuid="1fe1b7fc-99e6-4e7e-ba3d-d9aeeb03d227" DigestAlg="SHA384">
-// <File Path="/opt/trustagent/.*" SearchType="regex"/>
-// </Manifest>
-type Manifest struct {
-	UUID  string `xml:"Uuid,attr"`
-	Label string `xml:"Label,attr"`
-}
-
-const (
-	DEFAULT_APPLICATION_FLAVOR_PREFIX 	= "ISecL_Default_Application_Flavor_v"
-    DEFAULT_WORKLOAD_FLAVOR_PREFIX 		= "ISecL_Default_Workload_Flavor_v"
 )
 
 
@@ -45,7 +29,7 @@ func deployManifest(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 	}
 
 	// make sure the xml is well formed
-	manifest := Manifest{}
+	manifest := vsclient.Manifest{}
 	err = xml.Unmarshal(manifestXml, &manifest)
 	if err != nil {
 		log.Errorf("Deploy manifest: Invalid xml format: %s", err)
@@ -66,9 +50,9 @@ func deployManifest(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 		return
 	}
 
-	if (strings.Contains(manifest.Label, DEFAULT_APPLICATION_FLAVOR_PREFIX) || 
-		strings.Contains(manifest.Label, DEFAULT_WORKLOAD_FLAVOR_PREFIX)) {
-		log.Errorf("Default flavor's manifest (%s) is part of installation, no need to deploy default flavor's manifest", manifest.Label)
+	if (strings.Contains(manifest.Label, vsclient.DEFAULT_APPLICATION_FLAVOR_PREFIX) || 
+		strings.Contains(manifest.Label, vsclient.DEFAULT_WORKLOAD_FLAVOR_PREFIX)) {
+		log.Infof("Default flavor's manifest (%s) is part of installation, no need to deploy default flavor's manifest", manifest.Label)
 		httpWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}

@@ -16,7 +16,7 @@ type CreateHost struct {
 	Flags 	[]string
 	vsClientFactory vsclient.VSClientFactory
 	ip string
-	vsClient vsclient.VSClient
+	hostsClient vsclient.HostsClient
 }
 
 //
@@ -34,10 +34,12 @@ func (task* CreateHost) Run(c setup.Context) error {
 		return err
 	}
 
-	task.vsClient, err = task.vsClientFactory.NewVSClient()
+	vsClient, err := task.vsClientFactory.NewVSClient()
 	if err != nil {
 		return err
 	}
+
+	task.hostsClient = vsClient.Hosts()
 
 	// tlsPolicy, err := GetTlsPolicyFromVS()
 	// if err != nil {
@@ -50,7 +52,7 @@ func (task* CreateHost) Run(c setup.Context) error {
 	}
 	
 	hostFilterCriteria := vsclient.HostFilterCriteria {NameEqualTo: task.ip}
-	hostCollection, err := task.vsClient.SearchHosts(&hostFilterCriteria)
+	hostCollection, err := task.hostsClient.SearchHosts(&hostFilterCriteria)
 	if err != nil {
 		return err
 	}
@@ -62,7 +64,7 @@ func (task* CreateHost) Run(c setup.Context) error {
 		hostCreateCriteria.ConnectionString = connectionString
 		hostCreateCriteria.TlsPolicyId = vsclient.TRUST_POLICY_TRUST_FIRST_CERTIFICATE // tlsPolicy.Id
 
-		host, err := task.vsClient.CreateHost(&hostCreateCriteria)
+		host, err := task.hostsClient.CreateHost(&hostCreateCriteria)
 		if err != nil {
 			return err
 		}
@@ -93,7 +95,7 @@ func (task* CreateHost) Run(c setup.Context) error {
 func (task* CreateHost) Validate(c setup.Context) error {
 
 	hostFilterCriteria := vsclient.HostFilterCriteria {NameEqualTo: task.ip}
-	hostCollection, err := task.vsClient.SearchHosts(&hostFilterCriteria)
+	hostCollection, err := task.hostsClient.SearchHosts(&hostFilterCriteria)
 	if err != nil {
 		return err
 	}

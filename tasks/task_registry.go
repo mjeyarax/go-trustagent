@@ -22,12 +22,14 @@ const (
 	TakeOwnershipCommand 					= "takeownership"
 	TrustAgentConfigCommand					= "config"
 	CreateTLSKeyPairCommand					= "createtlskeypair"
+	ReplaceTLSKeyPairCommand				= "replace-tls-keypair"
 	ProvisionEndorsementKeyCommand			= "provisionek"
 	ProvisionAttestationIdentityKeyCommand	= "provisionaik"
 	DownloadPrivacyCACommand				= "downloadprivacyca"
 	ProvisionPrimaryKeyCommand				= "provisionprimarykey"
 	CreateHostCommand						= "create-host"
 	CreateHostUniqueFlavorCommand			= "create-host-unique-flavor"
+	GetConfiguredManifestCommand			= "get-configured-manifest"
 )
 
 func CreateTaskRegistry(flags []string) (*TaskRegistry, error) {
@@ -46,8 +48,6 @@ func CreateTaskRegistry(flags []string) (*TaskRegistry, error) {
 	provisionAttestationIdentityKey := ProvisionAttestationIdentityKey { Flags: flags }
 	downloadPrivacyCA := DownloadPrivacyCA { Flags: flags }
 	provisionPrimaryKey := ProvisionPrimaryKey { Flags: flags }
-	createHost := CreateHost { Flags: flags, vsClientFactory : vsClientFactory }
-	createHostUniqueFlavor := CreateHostUniqueFlavor { Flags: flags }
 
 	registry.taskMap[TakeOwnershipCommand] = []setup.Task { &takeOwnership, }
 	registry.taskMap[CreateTLSKeyPairCommand] = []setup.Task { &createTLSKeyPair, }
@@ -55,10 +55,6 @@ func CreateTaskRegistry(flags []string) (*TaskRegistry, error) {
 	registry.taskMap[ProvisionAttestationIdentityKeyCommand] = []setup.Task { &provisionAttestationIdentityKey, }
 	registry.taskMap[DownloadPrivacyCACommand] = []setup.Task { &downloadPrivacyCA, }
 	registry.taskMap[ProvisionPrimaryKeyCommand] = []setup.Task { &provisionPrimaryKey, }
-
-	// these are not part of the default setup
-	registry.taskMap[CreateHostCommand] = []setup.Task {&createHost}
-	registry.taskMap[CreateHostUniqueFlavorCommand] = []setup.Task {&createHostUniqueFlavor}
 
 	registry.taskMap[DefaultSetupCommand] = []setup.Task {
 		&createTLSKeyPair,
@@ -68,6 +64,12 @@ func CreateTaskRegistry(flags []string) (*TaskRegistry, error) {
 		&provisionAttestationIdentityKey,
 		&provisionPrimaryKey,
 	}
+
+	// these are individual commands that are not included of setup
+	registry.taskMap[CreateHostCommand] = []setup.Task { &CreateHost { Flags: flags, vsClientFactory : vsClientFactory }}
+	registry.taskMap[CreateHostUniqueFlavorCommand] = []setup.Task { &CreateHostUniqueFlavor { Flags: flags, vsClientFactory : vsClientFactory }}
+	registry.taskMap[ReplaceTLSKeyPairCommand] = []setup.Task { &ReplaceTlsKeypair { Flags: flags }}
+	registry.taskMap[GetConfiguredManifestCommand] = []setup.Task { &GetConfiguredManifest { Flags: flags, vsClientFactory : vsClientFactory }}
 
 	return &registry, nil
 }

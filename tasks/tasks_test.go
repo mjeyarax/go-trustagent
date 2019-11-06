@@ -157,6 +157,21 @@ func (mock *MockedVSClient) UpdateHost(host *vsclient.Host) (*vsclient.Host, err
 	return args.Get(0).(*vsclient.Host), args.Error(1)
 }
 
+func (mock *MockedVSClient) Hosts() vsclient.HostsClient {
+	args := mock.Called()
+	return args.Get(0).(vsclient.HostsClient)
+}
+
+func (mock *MockedVSClient) Flavors() vsclient.FlavorsClient {
+	args := mock.Called()
+	return args.Get(0).(vsclient.FlavorsClient)
+}
+
+func (mock *MockedVSClient) Manifests() vsclient.ManifestsClient {
+	args := mock.Called()
+	return args.Get(0).(vsclient.ManifestsClient)
+}
+
 type MockedVSClientFactory struct {
 	mockVsClient *MockedVSClient
 }

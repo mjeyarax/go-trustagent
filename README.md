@@ -99,7 +99,7 @@ Visual Studio Code Insiders contains the 'Remote Development' extension that pro
 7. Build GTA in the debug container (i.e. `make` from the go-trust-agent directory).  
     * Note: This requires that git configuration and ssh keys.
     * Note: Run `make installer` the first time and run `out/trustagent-v1.0.0.bin` without a trustagent.env file.  This will create folders needed in /opt/trustagent but not start the tagent service (the debugger will be used to start/stop the service).
-8. Debug:  Set breakpoings in go or code, go to vscode's debug tab and select the name of the target (in this case 'GTA:(gdb) Launch').  Click the 'Start Debugging' button.  Repeat setps 6, 7 and 8 as needed.
+8. Debug:  Set breakpoints in go or code, go to vscode's debug tab and select the name of the target (in this case 'GTA:(gdb) Launch').  Click the 'Start Debugging' button.  Repeat setps 6, 7 and 8 as needed.
     
 
 # GitLab-Runner Configuration
