@@ -1,6 +1,7 @@
 module intel/isecl/go-trust-agent
 
 require (
+	github.com/go-delve/delve v1.3.2 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/context v1.1.1
 	github.com/gorilla/handlers v1.4.0

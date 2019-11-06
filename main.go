@@ -20,13 +20,62 @@
 	"intel/isecl/go-trust-agent/platforminfo"
 	"intel/isecl/go-trust-agent/resource"
 	"intel/isecl/go-trust-agent/tasks"
-	"intel/isecl/go-trust-agent/version"
+	"intel/isecl/go-trust-agent/util"
 )
 
 func printUsage() {
-	fmt.Println("Tagent Usage:")
+	fmt.Println("Usage:")
+	fmt.Println("")
+	fmt.Println("    tagent <command> [arguments]")
+	fmt.Println("")
+	fmt.Println("Available Commands:")
+	fmt.Println("    help|-h|-help    Show this help message")
+	fmt.Println("    setup [task]     Run setup task")
+	// fmt.Println("    start            Start tagent")
+	// fmt.Println("    status           Show the status of tagent")
+	// fmt.Println("    stop             Stop tagent")
+	// fmt.Println("    tlscertsha384    Show the SHA384 of the certificate used for TLS")
+	fmt.Println("    uninstall        Uninstall tagent")
+	fmt.Println("    version          Show the version of tagent")
+	fmt.Println("")
+	fmt.Println("Available Tasks for setup:")
+	fmt.Println("    tagent setup all (or with empty setup argument)")
+	fmt.Println("        - Runs all setup tasks")
+	fmt.Println("    tagent setup server [--port=<port>]")
+	fmt.Println("        - Setup http server on <port>")
+	fmt.Println("        - Environment variable AAS_PORT=<port> can be set alternatively")
+	fmt.Println("    tagent setup tls [--force] [--host_names=<host_names>]")
+	fmt.Println("        - Use the key and certificate provided in /etc/threat-detection if files exist")
+	fmt.Println("        - Otherwise create its own self-signed TLS keypair in /etc/tagent for quality of life")
+	fmt.Println("        - Option [--force] overwrites any existing files, and always generate self-signed keypair")
+	fmt.Println("        - Argument <host_names> is a list of host names used by local machine, seperated by comma")
+	fmt.Println("        - Environment variable AAS_TLS_HOST_NAMES=<host_names> can be set alternatively")
+	fmt.Println("    tagent setup admin [--user=<username>] [--pass=<password>]")
+	fmt.Println("        - Environment variable AAS_ADMIN_USERNAME=<username> can be set alternatively")
+	fmt.Println("        - Environment variable AAS_ADMIN_PASSWORD=<password> can be set alternatively")
+	fmt.Println("    tagent setup reghost [--user=<username>] [--pass=<password>]")
+	fmt.Println("        - Environment variable AAS_REG_HOST_USERNAME=<username> can be set alternatively")
+	fmt.Println("        - Environment variable AAS_REG_HOST_PASSWORD=<password> can be set alternatively")
+	fmt.Println("    tagent setup download_ca_cert [--force]")
+	fmt.Println("        - Download CMS root CA certificate")
+	fmt.Println("        - Option [--force] overwrites any existing files, and always downloads new root CA cert")
+	fmt.Println("        - Environment variable CMS_BASE_URL=<url> for CMS API url")
+	fmt.Println("    tagent setup download_cert TLS [--force]")
+	fmt.Println("        - Generates Key pair and CSR, gets it signed from CMS")
+	fmt.Println("        - Option [--force] overwrites any existing files, and always downloads newly signed TLS cert")
+	fmt.Println("        - Environment variable CMS_BASE_URL=<url> for CMS API url")
+	fmt.Println("        - Environment variable BEARER_TOKEN=<token> for authenticating with CMS")
+	fmt.Println("        - Environment variable KEY_PATH=<key_path> to override default specified in config")
+	fmt.Println("        - Environment variable CERT_PATH=<cert_path> to override default specified in config")
+	fmt.Println("        - Environment variable AAS_TLS_CERT_CN=<TLS CERT COMMON NAME> to override default specified in config")
+	fmt.Println("        - Environment variable AAS_CERT_ORG=<CERTIFICATE ORGANIZATION> to override default specified in config")
+	fmt.Println("        - Environment variable AAS_CERT_COUNTRY=<CERTIFICATE COUNTRY> to override default specified in config")
+	fmt.Println("        - Environment variable AAS_CERT_LOCALITY=<CERTIFICATE LOCALITY> to override default specified in config")
+	fmt.Println("        - Environment variable AAS_CERT_PROVINCE=<CERTIFICATE PROVINCE> to override default specified in config")
+	fmt.Println("        - Environment variable SAN_LIST=<san> list of hosts which needs access to service")
+	fmt.Println("")
 }
- 
+
 func setupLogging() error {
 
 	logFile, err := os.OpenFile(constants.LogFilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
@@ -102,23 +151,26 @@ func printConfig(setting string) {
 func printVersion() {
 
 	if len(os.Args) > 2 && os.Args[2] == "short" {
-		major, err := version.GetMajorVersion()
+		major, err := util.GetMajorVersion()
 		if err != nil {
 			panic(err)
 		}
 
-		minor, err := version.GetMinorVersion()
+		minor, err := util.GetMinorVersion()
 		if err != nil {
 			panic(err)
 		}
 
 		fmt.Printf("%d.%d\n", major, minor)
 	} else {
-		fmt.Printf("tagent %s-%s [%s]\n", version.Version, version.GitHash, version.CommitDate)
+		fmt.Printf("tagent %s-%s [%s]\n", util.Version, util.GitHash, util.CommitDate)
 	}
 }
  
 func main() {
+
+	// Initialize the config from the yaml file (may be empty)
+	config.InitConfigFromYaml(constants.ConfigFilePath)
 
 	err := setupLogging()
 	if err != nil {
@@ -211,8 +263,11 @@ func main() {
 			os.Exit(1)
 		}
 
-		if config.GetConfiguration().TrustAgentService.Port == 0 {
-			panic("The port has not been set, 'tagent setup' must be run before 'start'")
+		// make sure the config is valid before starting the trust agent service
+		err = config.GetConfiguration().Validate()
+		if err != nil {
+			log.Errorf("Configuratoin error: %s", err)
+			os.Exit(1)
 		}
 
 		// create and start webservice
@@ -223,6 +278,10 @@ func main() {
 
 		service.Start()
 	case "setup":
+		
+		// make sure config is updated with env vars before starting setup tasks
+		config.GetConfiguration().LoadEnvironmentVariables()
+
 		if currentUser.Username != constants.RootUserName {
 			log.Errorf("'tagent setup' must be run as root, not  user '%s'\n", currentUser.Username)
 			os.Exit(1)
@@ -251,6 +310,9 @@ func main() {
 		}
 
 		printConfig(os.Args[2])
+	case "help":
+	case "-help":
+	case "-h":
 	default:
 		printUsage()
 	}

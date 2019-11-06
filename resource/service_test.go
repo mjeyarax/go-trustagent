@@ -16,6 +16,7 @@ import (
 	"strings"
 	"github.com/stretchr/testify/assert"
 	"intel/isecl/go-trust-agent/config"
+	"intel/isecl/go-trust-agent/util"
 )
 
 const (
@@ -100,7 +101,7 @@ func TestAssetTagService(t *testing.T) {
 func TestLocalIpAddress(t *testing.T) {
 	assert := assert.New(t)
 
-	ipString,err := getLocalIpAsString()
+	ipString,err := util.GetLocalIpAsString()
 	assert.NoError(err)
 
 	// not local ip address or private address
@@ -110,7 +111,7 @@ func TestLocalIpAddress(t *testing.T) {
 
 	fmt.Printf("Local ip string %s\n", ipString)
 
-	ipBytes,err := getLocalIpAsBytes()
+	ipBytes,err := util.GetLocalIpAsBytes()
 	assert.NoError(err)
 	assert.Equal(len(ipBytes), 4)
 

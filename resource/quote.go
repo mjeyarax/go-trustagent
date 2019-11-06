@@ -14,7 +14,6 @@
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -23,6 +22,7 @@
 	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
+	"intel/isecl/go-trust-agent/util"
 	"intel/isecl/lib/tpmprovider"
 )
 
@@ -78,71 +78,6 @@ type TpmQuoteRequest struct {
 	PcrBanks			[]string	`json:"pcrbanks"`
 }
 
-func getLocalIpAsString() (string, error) {
-
-	addr, err := getLocalIpAddr()
-	if err != nil {
-		return "", err
-	}
-
-	// trim "/24" from addr if present
-	ipString := addr.String()
-
-	idx := strings.Index(ipString, "/")
-	if(idx > -1) {
-		ipString = ipString[:idx]
-	}
-
-	return ipString, nil
-}
-
-//
-// This function attempts to create a byte array from the host's ip address.  This
-// is used to create a sha1 digest of the nonce that will make HVS happpy.
-//
-func getLocalIpAsBytes() ([]byte, error) {
-
-	addr, err := getLocalIpAddr()
-	if err != nil {
-		return nil, err
-	}
-
-	if ipnet, ok := addr.(*net.IPNet); ok {
-		return ipnet.IP[(len(ipnet.IP) - 4):len(ipnet.IP)], nil
-	}
-
-	return nil, errors.New("Could not collect local ip bytes")
-}
-
-func getLocalIpAddr() (net.Addr, error) {
-
-	var addr net.Addr
-
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, address := range addrs {
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				if !strings.HasPrefix(ipnet.String(), "192.") {
-					log.Debugf("Found local ip address %s", ipnet.String())
-					addr = ipnet
-					break
-				}
-			}
-		}
-	}
-
-	if addr == nil {
-		return nil, errors.New("Did not find the local ip address")
-	}
-
-	return addr, nil
-}
-
-
 // HVS generates a 20 byte random nonce that is sent in the tpmQuoteRequest.  However,
 // HVS expects the response nonce (in the TpmQuoteResponse.Quote binary) to be hashed with the bytes
 // of local ip address.  If this isn't performed, HVS will throw an error when the
@@ -152,7 +87,7 @@ func getLocalIpAddr() (net.Addr, error) {
 // and 'extends' it with value of asset tag (i.e. when tags have been set on the trust agent).
 func (tpmQuoteResponse *TpmQuoteResponse) getNonce(hvsNonce []byte) ([]byte, error) {
 
-	ipBytes, err := getLocalIpAsBytes()
+	ipBytes, err := util.GetLocalIpAsBytes()
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +277,7 @@ func createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) (*TpmQuoteResponse, error)
 	}
 
 	// clientIp
-	tpmQuoteResponse.ClientIp, err = getLocalIpAsString()
+	tpmQuoteResponse.ClientIp, err = util.GetLocalIpAsString()
 	if err != nil {
 		return nil, err
 	}

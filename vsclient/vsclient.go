@@ -3,20 +3,63 @@
  * Copyright (C) 2019 Intel Corporation
  * SPDX-License-Identifier: BSD-3-Clause
  */
-package tasks
+package vsclient
 
-//
-// This file contains structures and utility fx needed by GTA to access HVS.
-//
+//-------------------------------------------------------------------------------------------------
+// KWT:  THIS IS AN INTERMEDIATE STEP TO ALIGN WITH THE MTWILSON CLIENT REPO
+// WILL RECONCILE AFTER AAS/CMS INTEGRATION IS DONE IN 1.6
+//-------------------------------------------------------------------------------------------------
 
 import (
 	"crypto/tls"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	commonTls "intel/isecl/lib/common/tls"
 	"intel/isecl/go-trust-agent/config"
 )
+
+const TRUST_POLICY_TRUST_FIRST_CERTIFICATE = "TRUST_FIRST_CERTIFICATE"
+
+// {
+// 	"id": "068b5e88-1886-4ac2-a908-175cf723723d",
+// 	"host_name": "10.105.167.153",
+// 	"description": "GTA RHEL 8.0",
+// 	"connection_string": "https://10.105.167.153:1443",
+// 	"hardware_uuid": "8032632b-8fa4-e811-906e-00163566263e",
+// 	"tls_policy_id": "e1a1c631-e006-4ff2-aed1-6b42a2f5be6c"
+// }
+type Host struct {
+	Id string `json:"id"`
+	HostName string `json:"host_name"`
+	Description string `json:"description"`
+	ConnectionString string `json:"connection_string"`
+	HardwareUUID string `json:"hardware_uuid"`
+	TlsPolicyId string `json:"tls_policy_id"`
+}
+
+type HostCollection struct {
+	Hosts []Host `json:"hosts"`
+}
+
+type HostCreateCriteria struct {
+	ConnectionString string `json:"connection_string"`
+	HostName string `json:"host_name"`
+	TlsPolicyId string `json:"tls_policy_id"`
+}
+
+type HostFilterCriteria struct {
+	Id string `json:"id"`
+	NameEqualTo string `json:"nameEqualTo"`
+	NameContains string `json:"nameContains"`
+	DescriptionContains string `json:"descriptionContains"`
+}
+
+// type TlsPolicy struct {
+// 	Id string `json:"Id"`
+// }
 
 type TpmEndorsement struct {
 	HardwareUUID 	string 	`json:"hardware_uuid"`
@@ -91,8 +134,64 @@ type IdentityProofRequest struct {
 	EndorsementCertificateBlob	[]byte `json:"ek_blob"`
 }
 
-// KWT:  Merge this (or use) into mtwilson.Client
-func newMtwilsonClient() (*http.Client, error) {
+type VSClient interface {
+	
+	SearchHosts(hostFilterCriteria *HostFilterCriteria) (*HostCollection, error)
+	CreateHost(hostCreateCriteria *HostCreateCriteria) (*Host, error) 
+
+	//  Updates the host with the specified attributes. Except for the host name, all other attributes can be updated.
+	//
+	//  https://server.com:8181/mtwilson/v2/hosts/e43424ca-9e00-4cb9-b038-9259d0307888
+	//
+	//  Input: {"name":"192.168.0.2","connection_url":"https://192.168.0.1:443/sdk;admin;pwd","bios_mle_uuid":"823a4ae6-b8cd-4c14-b89b-2a3be2d13985",
+	//           "vmm_mle_uuid":"98101211-b617-4f59-8132-a5d05360acd6","tls_policy_id":"e1a527b5-2020-49c1-83be-6bd8bf641258"}
+	// 
+	//  Output: {"id":"e43424ca-9e00-4cb9-b038-9259d0307888","name":"192.168.0.2",
+	//           "connection_url":"https://192.168.0.1:443/sdk;admin;pwd","bios_mle_uuid":"823a4ae6-b8cd-4c14-b89b-2a3be2d13985",
+	//           "vmm_mle_uuid":"98101211-b617-4f59-8132-a5d05360acd6","tls_policy_id":"e1a527b5-2020-49c1-83be-6bd8bf641258"}
+	UpdateHost(host *Host) (*Host, error)
+}
+
+type VSClientFactory interface {
+	NewVSClient() (VSClient, error)
+}
+
+type VSClientConfig struct {
+	// BaseURL specifies the URL base for the HVS, for example https://hvs.server:8443/v2
+	BaseURL string
+	// Username used to authenticate with the HVS.
+	Username string
+	// Password to supply for the Username
+	Password string
+	// CertSha384 is a pointer to a 48 byte array that specifies the fingerprint of the immediate TLS certificate to trust.
+	// If the value is a non nil pointer to a 48 byte array, custom TLS verification will be used, where any valid chain of X509 certificates
+	// with a self signed CA at the root will be accepted as long as the Host Certificates Fingerprint matches what is provided here
+	// If the value is a nil pointer, then system standard TLS verification will be used.
+	CertSha384 *[48]byte
+}
+
+func NewVSClientFactory(vsClientConfig *VSClientConfig) (VSClientFactory, error) {
+
+	_, err := url.ParseRequestURI(vsClientConfig.BaseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(vsClientConfig.Username) == 0 {
+		return nil, errors.New("The VS client must have a user name")
+	}
+
+	if len(vsClientConfig.Password) == 0 {
+		return nil, errors.New("The VS client must have a password")
+	}
+
+	defaultFactory := defaultVSClientFactory {vsClientConfig}
+	return &defaultFactory, nil
+}
+
+
+// KWT:  Remove
+func NewVSClient() (*http.Client, error) {
 
 	var certificateDigest [48]byte
 
@@ -124,3 +223,4 @@ func newMtwilsonClient() (*http.Client, error) {
 	client := http.Client{Transport: &transport}
 	return &client, nil
 }
+

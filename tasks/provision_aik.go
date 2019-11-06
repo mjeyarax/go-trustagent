@@ -23,6 +23,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
+	"intel/isecl/go-trust-agent/util"
+	"intel/isecl/go-trust-agent/vsclient"
 	"intel/isecl/lib/tpmprovider"
 	"intel/isecl/lib/common/crypt"
 	"intel/isecl/lib/common/setup"
@@ -79,7 +81,7 @@ func (task* ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	} 
 
 	// create an IdentiryChallengeRequest and populate it with aik information
-	identityChallengeRequest := IdentityChallengeRequest {}
+	identityChallengeRequest := vsclient.IdentityChallengeRequest {}
 	err = task.populateIdentityRequest(&identityChallengeRequest.IdentityRequest)
 	if err != nil {
 		return err
@@ -114,7 +116,7 @@ func (task* ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	// log.Debugf("Decrypted1[%x]: %s", len(decrypted1), string(decrypted1))
 
 	// create an IdentityChallengeResponse to send back to HVS
-	identityChallengeResponse := IdentityChallengeResponse {}
+	identityChallengeResponse := vsclient.IdentityChallengeResponse {}
 	identityChallengeResponse.ResponseToChallenge, err = task.getEncryptedBytes(decrypted1)
 	if err != nil {
 		return err
@@ -232,7 +234,7 @@ func (task* ProvisionAttestationIdentityKey) createAik() error {
 // }
 
 func (task* ProvisionAttestationIdentityKey) getTpmSymetricKey(key []byte) ([]byte, error) {
-	privacyCa, err := GetPrivacyCA()
+	privacyCa, err := util.GetPrivacyCA()
 	if err != nil {
 		return nil, err
 	}
@@ -403,7 +405,7 @@ func (task* ProvisionAttestationIdentityKey) getEncryptedBytes(unencrypted []byt
 	return b, nil
 }
 
-func (task* ProvisionAttestationIdentityKey) populateIdentityRequest(identityRequest *IdentityRequest) error {
+func (task* ProvisionAttestationIdentityKey) populateIdentityRequest(identityRequest *vsclient.IdentityRequest) error {
 
 	tpm, err := tpmprovider.NewTpmProvider()
 	if err != nil {
@@ -432,10 +434,12 @@ func (task* ProvisionAttestationIdentityKey) populateIdentityRequest(identityReq
 	return nil
 }
 
-func (task* ProvisionAttestationIdentityKey) getIdentityProofRequest(identityChallengeRequest *IdentityChallengeRequest) (*IdentityProofRequest, error) {
-	var identityProofRequest IdentityProofRequest
+func (task* ProvisionAttestationIdentityKey) getIdentityProofRequest(identityChallengeRequest *vsclient.IdentityChallengeRequest) (*vsclient.IdentityProofRequest, error) {
+	var identityProofRequest vsclient.IdentityProofRequest
 
-	client, err := newMtwilsonClient()
+	// move to vs_client
+
+	client, err := vsclient.NewVSClient()
 	if err != nil {
 		return nil, err
 	}
@@ -497,9 +501,8 @@ func (task* ProvisionAttestationIdentityKey) getIdentityProofRequest(identityCha
 //       - encrypted byted (encrypted blob length - 16 (iv))
 //   - EndorsementKeyBlob:  SHA256 of this node's EK public using the Aik modules (TODO:  Verify hash)
 // - Use the symmetric key to decrypt the nonce (also requires iv) created by PrivacyCa.java::processV20
-
 //
-func (task* ProvisionAttestationIdentityKey) activateCredential(identityProofRequest *IdentityProofRequest) ([]byte, error) {
+func (task* ProvisionAttestationIdentityKey) activateCredential(identityProofRequest *vsclient.IdentityProofRequest) ([]byte, error) {
 
 	tpm, err := tpmprovider.NewTpmProvider()
 	if err != nil {
@@ -619,11 +622,13 @@ func (task* ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 
 }
 
-func (task* ProvisionAttestationIdentityKey) getIdentityProofResponse(identityChallengeResponse* IdentityChallengeResponse) (*IdentityProofRequest, error) {
+func (task* ProvisionAttestationIdentityKey) getIdentityProofResponse(identityChallengeResponse* vsclient.IdentityChallengeResponse) (*vsclient.IdentityProofRequest, error) {
 
-	var identityProofRequest IdentityProofRequest
+	var identityProofRequest vsclient.IdentityProofRequest
 
-	client, err := newMtwilsonClient()
+	// move to vs_client
+
+	client, err := vsclient.NewVSClient()
 	if err != nil {
 		return nil, err
 	}

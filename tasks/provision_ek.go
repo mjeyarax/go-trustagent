@@ -19,6 +19,7 @@ import (
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/platforminfo"
+	"intel/isecl/go-trust-agent/vsclient"
 	"intel/isecl/lib/tpmprovider"
 	"intel/isecl/lib/common/setup"
 //	commonTls "intel/isecl/lib/common/tls"
@@ -125,7 +126,9 @@ func (task* ProvisionEndorsementKey) readEndorsementKeyCertificate() error {
 
 func (task* ProvisionEndorsementKey) downloadEndorsementAuthorities() error {
 
-	client, err := newMtwilsonClient()
+	// move to vs_client
+
+	client, err := vsclient.NewVSClient()
 	if err != nil {
 		return err
 	}
@@ -199,7 +202,10 @@ func (task* ProvisionEndorsementKey) isEkRegisteredWithMtWilson() (bool, error) 
 
 	log.Debugf("HARDWARE-UUID: %s", hardwareUUID)
 
-	client, err := newMtwilsonClient()
+
+	// move to vs_client
+
+	client, err := vsclient.NewVSClient()
 	if err != nil {
 		return false, err
 	}
@@ -253,7 +259,7 @@ func (task* ProvisionEndorsementKey) registerEkWithMtWilson() error {
 	certificateString := base64.StdEncoding.EncodeToString([]byte(publicKeyDer))
 	
 
-	endorsementData := TpmEndorsement {}
+	endorsementData := vsclient.TpmEndorsement {}
 	endorsementData.HardwareUUID = hardwareUUID
 	endorsementData.Issuer = task.ekCert.Issuer.ToRDNSequence().String()
 	endorsementData.Revoked = false
@@ -267,7 +273,9 @@ func (task* ProvisionEndorsementKey) registerEkWithMtWilson() error {
 
 	log.Info(string(jsonData))
 
-	client, err := newMtwilsonClient()
+	// move to vs_client
+	
+	client, err := vsclient.NewVSClient()
 	if err != nil {
 		return err
 	}
