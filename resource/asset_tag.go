@@ -38,21 +38,21 @@ func setAssetTag(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 
 	data, err := ioutil.ReadAll(httpRequest.Body)
 	if err != nil {
-		log.Errorf("Error reading request body: %s", err)
+		log.Errorf("%s: Error reading request body: %s", httpRequest.URL.Path, err)
 		httpWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	err = json.Unmarshal(data, &tagWriteRequest)
 	if err != nil {
-		log.Errorf("Error marshaling json data: %s...\n%s", err, string(data))
+		log.Errorf("%s:  Error marshaling json data: %s...\n%s", httpRequest.URL.Path, err, string(data))
 		httpWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	tpm, err := tpmprovider.NewTpmProvider()
 	if err != nil {
-		log.Errorf("Error creating tpm provider: %s", err)
+		log.Errorf("%s: Error creating tpm provider: %s", httpRequest.URL.Path, err)
 		return
 	}
 
@@ -61,7 +61,7 @@ func setAssetTag(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 	// check if an asset tag already exists and delete it if needed
 	nvExists, err := tpm.NvIndexExists(tpmprovider.NV_IDX_ASSET_TAG)
 	if err != nil {
-		log.Errorf("Error checking if asset tag exists: %s", err)
+		log.Errorf("%s: Error checking if asset tag exists: %s", httpRequest.URL.Path, err)
 		httpWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -69,7 +69,7 @@ func setAssetTag(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 	if nvExists {
 		err = tpm.NvRelease(tpmSecretKey, tpmprovider.NV_IDX_ASSET_TAG)
 		if err != nil {
-			log.Errorf("Could not release asset tag nvram: %s", err)
+			log.Errorf("%s: Could not release asset tag nvram: %s", httpRequest.URL.Path, err)
 			httpWriter.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -78,7 +78,7 @@ func setAssetTag(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 	// create an index for the data
 	tpm.NvDefine(tpmSecretKey, tpmprovider.NV_IDX_ASSET_TAG, uint16(len(tagWriteRequest.Tag)))
 	if err != nil {
-		log.Errorf("Could not define tag nvram: %s", err)
+		log.Errorf("%s: Could not define tag nvram: %s", httpRequest.URL.Path, err)
 		httpWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -86,7 +86,7 @@ func setAssetTag(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 	// write the data
 	err = tpm.NvWrite(tpmSecretKey, tpmprovider.NV_IDX_ASSET_TAG, tagWriteRequest.Tag)
 	if err != nil {
-		log.Errorf("Error writing asset tag: %s", err)
+		log.Errorf("%s: Error writing asset tag: %s", httpRequest.URL.Path, err)
 		return
 	}
 

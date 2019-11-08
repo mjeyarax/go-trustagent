@@ -19,14 +19,14 @@ func getBindingKeyCertificate(httpWriter http.ResponseWriter, httpRequest *http.
 	log.Debugf("Request: %s", httpRequest.URL.Path)
 
 	if _, err := os.Stat(constants.BindingKeyCertificatePath); os.IsNotExist(err) {
-		log.Errorf("%s does not exist", constants.BindingKeyCertificatePath)
+		log.Errorf("%s: %s does not exist", httpRequest.URL.Path, constants.BindingKeyCertificatePath)
 		httpWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	bindingKeyBytes, err := ioutil.ReadFile(constants.BindingKeyCertificatePath)
 	if err != nil {
-		log.Errorf("There was an error reading %s", constants.BindingKeyCertificatePath)
+		log.Errorf("%s: There was an error reading %s", httpRequest.URL.Path, constants.BindingKeyCertificatePath)
 		httpWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}

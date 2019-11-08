@@ -316,20 +316,20 @@ func getTpmQuote(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 
 	data, err := ioutil.ReadAll(httpRequest.Body)
 	if err != nil {
-		log.Errorf("Error reading request body: %s", err)
+		log.Errorf("%s: Error reading request body: %s", httpRequest.URL.Path, err)
 		httpWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	err = json.Unmarshal(data, &tpmQuoteRequest)
 	if err != nil {
-		log.Errorf("Error marshaling json data: %s...\n%s", err, string(data))
+		log.Errorf("%s: Error marshaling json data: %s...\n%s", httpRequest.URL.Path, err, string(data))
 		httpWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	if len(tpmQuoteRequest.Nonce) == 0 {
-		log.Error("The TpmQuoteRequest does not contain a nonce")
+		log.Errorf("%s: The TpmQuoteRequest does not contain a nonce", httpRequest.URL.Path,)
 		httpWriter.WriteHeader(http.StatusBadRequest)
 		return
 	} 
@@ -343,7 +343,7 @@ func getTpmQuote(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 
 	xmlOutput, err := xml.MarshalIndent(tpmQuoteResonse, "  ", "    ")
 	if err != nil {
-		log.Errorf("There was an error serializing the tpm quote %s", err)
+		log.Errorf("%s: There was an error serializing the tpm quote %s", httpRequest.URL.Path, err)
 		httpWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}

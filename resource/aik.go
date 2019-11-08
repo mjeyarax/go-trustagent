@@ -19,14 +19,14 @@ func getAik(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 	log.Debugf("Request: %s", httpRequest.URL.Path)
 
 	if _, err := os.Stat(constants.AikCert); os.IsNotExist(err) {
-		log.Errorf("%s does not exist", constants.AikCert)
+		log.Errorf("%s: %s does not exist", httpRequest.URL.Path, constants.AikCert)
 		httpWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	aikBytes, err := ioutil.ReadFile(constants.AikCert)
 	if err != nil {
-		log.Errorf("There was an error reading %s", constants.AikCert)
+		log.Errorf("%s: There was an error reading %s", httpRequest.URL.Path, constants.AikCert)
 		httpWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}

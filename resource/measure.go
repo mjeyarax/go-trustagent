@@ -25,7 +25,7 @@ func getApplicationMeasurement(httpWriter http.ResponseWriter, httpRequest *http
 	// receive a manifest from hvs in the request body
 	manifestXml, err := ioutil.ReadAll(httpRequest.Body)
 	if err != nil {
-		log.Errorf("Application Measurement: Error reading manifest xml: %s", err)
+		log.Errorf("%s: Error reading manifest xml: %s", httpRequest.URL.Path, err)
 		httpWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -34,7 +34,7 @@ func getApplicationMeasurement(httpWriter http.ResponseWriter, httpRequest *http
 	// peformed by 'measure' cmd line below
 	err = xml.Unmarshal(manifestXml, new(interface{}))
 	if err != nil {
-		log.Errorf("Application Measurement: Invalid xml format: %s", err)
+		log.Errorf("%s: Invalid xml format: %s", httpRequest.URL.Path, err)
 		httpWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -52,14 +52,14 @@ func getApplicationMeasurement(httpWriter http.ResponseWriter, httpRequest *http
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Errorf("Error getting measure output: %s", err)
+		log.Errorf("%s: Error getting measure output: %s", httpRequest.URL.Path, err)
 		httpWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	err = cmd.Start()
 	if err != nil {
-		log.Errorf("Error starting measure: %s", err)
+		log.Errorf("%s: Error starting measure: %s", httpRequest.URL.Path, err)
 		httpWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -75,7 +75,7 @@ func getApplicationMeasurement(httpWriter http.ResponseWriter, httpRequest *http
 	// make sure we got valid xml from measure
 	err = xml.Unmarshal(measureBytes, new(interface{}))
 	if err != nil {
-		log.Errorf("Invalid measurement xml: %s", err)
+		log.Errorf("%s: Invalid measurement xml: %s", httpRequest.URL.Path, err)
 		httpWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
