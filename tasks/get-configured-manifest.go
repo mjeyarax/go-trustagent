@@ -19,7 +19,7 @@ import (
 
 type GetConfiguredManifest struct {
 	Flags 	[]string
-	vsClientFactory vsclient.VSClientFactory
+	manifestsClient vsclient.ManifestsClient
 	savedManifestFiles []string
 }
 
@@ -79,15 +79,8 @@ func (task* GetConfiguredManifest) Run(c setup.Context) error {
 		return fmt.Errorf("No manifests were specified via the '%s' or '%s' environment variables", constants.FlavorUUIDs, constants.FlavorLabels)
 	}
 
-	vsClient, err := task.vsClientFactory.NewVSClient()
-	if err != nil {
-		return err
-	}
-
-	manifestsClient := vsClient.Manifests()
-
 	for _, uuid := range flavorUUIDs {
-		manifestXml, err := manifestsClient.GetManifestXmlById(uuid)
+		manifestXml, err := task.manifestsClient.GetManifestXmlById(uuid)
 		if err != nil {
 			log.Errorf("An error occurred while getting manifest with id '%s': %s", uuid, err)
 			continue
@@ -101,7 +94,7 @@ func (task* GetConfiguredManifest) Run(c setup.Context) error {
 	}
 
 	for _, label := range flavorLabels {
-		manifestXml, err := manifestsClient.GetManifestXmlByLabel(label)
+		manifestXml, err := task.manifestsClient.GetManifestXmlByLabel(label)
 		if err != nil {
 			log.Errorf("An error occurred while getting manifest with label '%s': %s", label, err)
 			continue

@@ -57,12 +57,10 @@ type HostFilterCriteria struct {
 // Private implementation of HostClient
 //-------------------------------------------------------------------------------------------------
 
- 
-type hostsClientImpl struct {
+ type hostsClientImpl struct {
 	 httpClient *http.Client
 	 config *VSClientConfig
 }
-
 
 func (hostsClient *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteria) (*HostCollection, error) {
 

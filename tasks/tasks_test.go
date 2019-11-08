@@ -98,12 +98,14 @@ func TestCreateHostDefault(t *testing.T) {
 	config.GetConfiguration().TrustAgentService.Username = TAgentUser
 	config.GetConfiguration().TrustAgentService.Password = TAgentPassword 
 
-	mockVSClient := new(MockedVSClient)
-	mockVSClient.On("SearchHosts", mock.Anything).Return(&vsclient.HostCollection {Hosts: []vsclient.Host{}}, nil)	// no results from hvs
-	mockVSClient.On("CreateHost", mock.Anything).Return(&vsclient.Host{Id:"test"}, nil)
+	// create mocks that return no hosts on 'SearchHosts' (i.e. host does not exist in hvs) and
+	// host with an new id for 'CreateHost'
+	mockedHostsClient := new(vsclient.MockedHostsClient)
+	mockedHostsClient.On("SearchHosts", mock.Anything).Return(&vsclient.HostCollection {Hosts: []vsclient.Host{}}, nil)
+	mockedHostsClient.On("CreateHost", mock.Anything).Return(&vsclient.Host{Id:"068b5e88-1886-4ac2-a908-175cf723723f"}, nil)
 
 	context := setup.Context {}
-	createHost := CreateHost { Flags: nil, vsClientFactory : &MockedVSClientFactory {mockVSClient} }
+	createHost := CreateHost { Flags: nil, hostsClient : mockedHostsClient }
 	err := createHost.Run(context)
 	assert.NoError(err)
 }
@@ -124,58 +126,13 @@ func TestCreateHostExisting(t *testing.T) {
 		TlsPolicyId : "e1a1c631-e006-4ff2-aed1-6b42a2f5be6c",
 	}
 
-	mockVSClient := new(MockedVSClient)
-	mockVSClient.On("SearchHosts", mock.Anything).Return(&vsclient.HostCollection {Hosts: []vsclient.Host{existingHost,}}, nil)	// no results from hvs
-	mockVSClient.On("CreateHost", mock.Anything).Return(&vsclient.Host{Id:"test"}, nil)
+	// create mocks that return a host (i.e. it exists in hvs)
+	mockedHostsClient := new(vsclient.MockedHostsClient)
+	mockedHostsClient.On("SearchHosts", mock.Anything).Return(&vsclient.HostCollection {Hosts: []vsclient.Host{existingHost,}}, nil)	
+	mockedHostsClient.On("CreateHost", mock.Anything).Return(&vsclient.Host{Id:"068b5e88-1886-4ac2-a908-175cf723723f"}, nil)
 
 	context := setup.Context {}
-	createHost := CreateHost { Flags: nil, vsClientFactory : &MockedVSClientFactory {mockVSClient} }
+	createHost := CreateHost { Flags: nil, hostsClient : mockedHostsClient }
 	err := createHost.Run(context)
 	assert.Error(err)
-}
-
-//-------------------------------------------------------------------------------------------------
-// VSClient Mocks
-//-------------------------------------------------------------------------------------------------
-
-type MockedVSClient struct {
-	mock.Mock
-}
-
-func (mock *MockedVSClient) SearchHosts(hostFilterCriteria *vsclient.HostFilterCriteria) (*vsclient.HostCollection, error) {
-	args := mock.Called(hostFilterCriteria)
-	return args.Get(0).(*vsclient.HostCollection), args.Error(1)
-}
-
-func (mock *MockedVSClient) CreateHost(hostCreateCriteria *vsclient.HostCreateCriteria) (*vsclient.Host, error) {
-	args := mock.Called(hostCreateCriteria)
-	return args.Get(0).(*vsclient.Host), args.Error(1)
-}
-
-func (mock *MockedVSClient) UpdateHost(host *vsclient.Host) (*vsclient.Host, error) {
-	args := mock.Called(host)
-	return args.Get(0).(*vsclient.Host), args.Error(1)
-}
-
-func (mock *MockedVSClient) Hosts() vsclient.HostsClient {
-	args := mock.Called()
-	return args.Get(0).(vsclient.HostsClient)
-}
-
-func (mock *MockedVSClient) Flavors() vsclient.FlavorsClient {
-	args := mock.Called()
-	return args.Get(0).(vsclient.FlavorsClient)
-}
-
-func (mock *MockedVSClient) Manifests() vsclient.ManifestsClient {
-	args := mock.Called()
-	return args.Get(0).(vsclient.ManifestsClient)
-}
-
-type MockedVSClientFactory struct {
-	mockVsClient *MockedVSClient
-}
-
-func (mockFactory *MockedVSClientFactory) NewVSClient() (vsclient.VSClient, error) {
-	return mockFactory.mockVsClient, nil
 }

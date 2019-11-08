@@ -44,8 +44,8 @@ installer: gta
 	makeself out/installer out/trustagent-$(VERSION).bin "TrustAgent $(VERSION)" ./install.sh
 
 build_test: gta
-	cd resource && go test -c -o ../out/resource.test
-	cd tasks && go test -c -o ../out/tasks.test
+	cd resource && go test -c -o ../out/resource.test -tag=unit_test
+	cd tasks && go test -c -o ../out/tasks.test -tags=unit_test
 
 all: gt
 

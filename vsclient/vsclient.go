@@ -107,14 +107,22 @@ type IdentityProofRequest struct {
 	EndorsementCertificateBlob	[]byte `json:"ek_blob"`
 }
 
-type VSClient interface {
-	Hosts() HostsClient
-	Flavors() FlavorsClient
-	Manifests() ManifestsClient
+type VSClientFactory interface {
+	HostsClient() HostsClient
+	FlavorsClient() FlavorsClient
+	ManifestsClient() ManifestsClient
 }
 
 type HostsClient interface {
-	// TODO
+
+	//  Searches for the hosts with the specified criteria.
+	//
+	//  https://server.com:8181/mtwilson/v2/hosts?nameContains=192
+	//
+	//  KWT: UPDATE JSON...
+	// 
+	//  Output: {"hosts":[{"id":"de07c08a-7fc6-4c07-be08-0ecb2f803681","name":"192.168.0.2", "connection_url":"https://192.168.0.1:443/sdk;admin;pwd",
+	//  "bios_mle_uuid":"823a4ae6-b8cd-4c14-b89b-2a3be2d13985","vmm_mle_uuid":"45c03402-e33d-4b54-9893-de3bbd1f1681"}]}
 	SearchHosts(hostFilterCriteria *HostFilterCriteria) (*HostCollection, error)
 
 	// Registers the specified host with the Verfication Service. 
@@ -151,7 +159,7 @@ type HostsClient interface {
 	//  Output: {"id":"e43424ca-9e00-4cb9-b038-9259d0307888","name":"192.168.0.2",
 	//           "connection_url":"https://192.168.0.1:443/sdk;admin;pwd","bios_mle_uuid":"823a4ae6-b8cd-4c14-b89b-2a3be2d13985",
 	//           "vmm_mle_uuid":"98101211-b617-4f59-8132-a5d05360acd6","tls_policy_id":"e1a527b5-2020-49c1-83be-6bd8bf641258"}
-	UpdateHost(host *Host) (*Host, error)	
+	//UpdateHost(host *Host) (*Host, error)	
 }
 
 type FlavorsClient interface {
@@ -159,9 +167,8 @@ type FlavorsClient interface {
 	//
 	// TODO:  Document fx 
 	//
-	// Will not include a return 'flavor' structure at this time
-	CreateFlavor(flavorCreateCriteria *FlavorCreateCriteria) error
-
+	// KWT:  Does not return 'flavor' structure at this time (just json data)
+	CreateFlavor(flavorCreateCriteria *FlavorCreateCriteria) ([]byte, error)
 }
 
 type ManifestsClient interface {
@@ -174,10 +181,6 @@ type ManifestsClient interface {
 	// TODO:  Document fx 
 	//
 	GetManifestXmlByLabel(manifestLabel string) ([]byte, error)
-}
-
-type VSClientFactory interface {
-	NewVSClient() (VSClient, error)
 }
 
 type VSClientConfig struct {
@@ -214,7 +217,7 @@ func NewVSClientFactory(vsClientConfig *VSClientConfig) (VSClientFactory, error)
 }
 
 
-// KWT:  Remove
+// KWT:  Remove when refactoring existing tasks to vsclient interfaces
 func NewVSClient() (*http.Client, error) {
 
 	var certificateDigest [48]byte

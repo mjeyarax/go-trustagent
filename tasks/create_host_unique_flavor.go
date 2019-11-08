@@ -13,7 +13,6 @@ import (
 
 type CreateHostUniqueFlavor struct {
 	Flags 	[]string
-	vsClientFactory vsclient.VSClientFactory
 	flavorsClient vsclient.FlavorsClient
 	ip string
 }
@@ -25,13 +24,6 @@ func (task* CreateHostUniqueFlavor) Run(c setup.Context) error {
 	if err != nil {
 		return err
 	}
-
-	vsClient, err := task.vsClientFactory.NewVSClient()
-	if err != nil {
-		return err
-	}
-
-	task.flavorsClient = vsClient.Flavors()
 
 	connectionString, err := util.GetConnectionString()
 	if err != nil {
@@ -45,7 +37,7 @@ func (task* CreateHostUniqueFlavor) Run(c setup.Context) error {
 		TlsPolicyId : vsclient.TRUST_POLICY_TRUST_FIRST_CERTIFICATE,
 	}
 
-	err = task.flavorsClient.CreateFlavor(&flavorCreateCriteria)
+	_, err = task.flavorsClient.CreateFlavor(&flavorCreateCriteria)
 	if err != nil {
 		return err
 	}

@@ -14,7 +14,6 @@ import (
 
 type CreateHost struct {
 	Flags 	[]string
-	vsClientFactory vsclient.VSClientFactory
 	ip string
 	hostsClient vsclient.HostsClient
 }
@@ -33,13 +32,6 @@ func (task* CreateHost) Run(c setup.Context) error {
 	if err != nil {
 		return err
 	}
-
-	vsClient, err := task.vsClientFactory.NewVSClient()
-	if err != nil {
-		return err
-	}
-
-	task.hostsClient = vsClient.Hosts()
 
 	// tlsPolicy, err := GetTlsPolicyFromVS()
 	// if err != nil {

@@ -25,11 +25,11 @@ type flavorsClientImpl struct {
 	config *VSClientConfig
 }
 
-func (flavorsClient *flavorsClientImpl) CreateFlavor(flavorCreateCriteria *FlavorCreateCriteria) error {
+func (flavorsClient *flavorsClientImpl) CreateFlavor(flavorCreateCriteria *FlavorCreateCriteria) ([]byte, error) {
 
 	jsonData, err := json.Marshal(flavorCreateCriteria)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	url := fmt.Sprintf("%s/flavors", flavorsClient.config.BaseURL)
@@ -41,21 +41,21 @@ func (flavorsClient *flavorsClientImpl) CreateFlavor(flavorCreateCriteria *Flavo
 
 	response, err := flavorsClient.httpClient.Do(request)
     if err != nil {
-        return fmt.Errorf("%s request failed with error %s\n", url, err)
+        return nil, fmt.Errorf("%s request failed with error %s\n", url, err)
     }
 
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s returned status %d", url, response.StatusCode)
+		return nil, fmt.Errorf("%s returned status %d", url, response.StatusCode)
 	}
 
-	data, err := ioutil.ReadAll(response.Body)
+	jsonData, err = ioutil.ReadAll(response.Body)
 	if err != nil {
-		return fmt.Errorf("Error reading response: %s", err)
+		return nil, fmt.Errorf("Error reading response: %s", err)
 	}
 
-	log.Debugf("CreateFlavor returned json: %s", string(data))
+	log.Debugf("CreateFlavor returned json: %s", string(jsonData))
 
-	return nil
+	return jsonData, nil
 }

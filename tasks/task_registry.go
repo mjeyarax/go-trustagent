@@ -37,7 +37,8 @@ func CreateTaskRegistry(flags []string) (*TaskRegistry, error) {
 	var registry TaskRegistry
 	registry.taskMap = make(map[string][]setup.Task)
 
-	vsClientFactory, err := registry.initVSClientFactory()
+	// assumes that configuration has been populated
+	vsClientFactory, err := registry.newVSClientFactory()
 	if err != nil {
 		return nil, err
 	}
@@ -66,10 +67,10 @@ func CreateTaskRegistry(flags []string) (*TaskRegistry, error) {
 	}
 
 	// these are individual commands that are not included of setup
-	registry.taskMap[CreateHostCommand] = []setup.Task { &CreateHost { Flags: flags, vsClientFactory : vsClientFactory }}
-	registry.taskMap[CreateHostUniqueFlavorCommand] = []setup.Task { &CreateHostUniqueFlavor { Flags: flags, vsClientFactory : vsClientFactory }}
+	registry.taskMap[CreateHostCommand] = []setup.Task { &CreateHost { Flags: flags, hostsClient : vsClientFactory.HostsClient() }}
+	registry.taskMap[CreateHostUniqueFlavorCommand] = []setup.Task { &CreateHostUniqueFlavor { Flags: flags, flavorsClient : vsClientFactory.FlavorsClient() }}
 	registry.taskMap[ReplaceTLSKeyPairCommand] = []setup.Task { &DeleteTlsKeypair { Flags: flags }, &createTLSKeyPair,}
-	registry.taskMap[GetConfiguredManifestCommand] = []setup.Task { &GetConfiguredManifest { Flags: flags, vsClientFactory : vsClientFactory }}
+	registry.taskMap[GetConfiguredManifestCommand] = []setup.Task { &GetConfiguredManifest { Flags: flags, manifestsClient : vsClientFactory.ManifestsClient() }}
 
 	return &registry, nil
 }
@@ -93,7 +94,7 @@ func (registry *TaskRegistry) RunCommand(command string) error {
 	return nil
 }
 
-func (registry *TaskRegistry) initVSClientFactory() (vsclient.VSClientFactory, error) {
+func (registry *TaskRegistry) newVSClientFactory() (vsclient.VSClientFactory, error) {
 
 	var certificateDigest [48]byte
 
