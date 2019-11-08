@@ -68,7 +68,7 @@ func CreateTaskRegistry(flags []string) (*TaskRegistry, error) {
 	// these are individual commands that are not included of setup
 	registry.taskMap[CreateHostCommand] = []setup.Task { &CreateHost { Flags: flags, vsClientFactory : vsClientFactory }}
 	registry.taskMap[CreateHostUniqueFlavorCommand] = []setup.Task { &CreateHostUniqueFlavor { Flags: flags, vsClientFactory : vsClientFactory }}
-	registry.taskMap[ReplaceTLSKeyPairCommand] = []setup.Task { &ReplaceTlsKeypair { Flags: flags }}
+	registry.taskMap[ReplaceTLSKeyPairCommand] = []setup.Task { &DeleteTlsKeypair { Flags: flags }, &createTLSKeyPair,}
 	registry.taskMap[GetConfiguredManifestCommand] = []setup.Task { &GetConfiguredManifest { Flags: flags, vsClientFactory : vsClientFactory }}
 
 	return &registry, nil

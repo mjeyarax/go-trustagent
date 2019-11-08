@@ -5,14 +5,13 @@
 package constants
 
 const (
-	ServiceName					= "TrustAgent"
-	HomeDir						= "/opt/trustagent/"
-	ConfigDir					= HomeDir + "configuration/"
+	IstallationDir				= "/opt/trustagent/"
+	ConfigDir					= IstallationDir + "configuration/"
 	ConfigFilePath				= ConfigDir + "config.yml"
-	BinDir						= HomeDir + "bin/"
+	BinDir						= IstallationDir + "bin/"
 	TagentExe					= BinDir + "tagent"
 	ModuleAnalysis				= BinDir + "module_analysis.sh"
-	LogDir						= HomeDir + "logs/"
+	LogDir						= IstallationDir + "logs/"
 	LogFilePath					= LogDir + "trustagent.log"
 	TLSCertFilePath				= ConfigDir + "tls-cert.pem"
 	TLSKeyFilePath				= ConfigDir + "tls-key.pem"
@@ -20,7 +19,7 @@ const (
 	AikBlob						= ConfigDir + "aik.blob"
 	AikCert						= ConfigDir + "aik.cer"
 	PrivacyCA					= ConfigDir + "privacy-ca.cer"
-	VarDir						= HomeDir + "var/"
+	VarDir						= IstallationDir + "var/"
 	RamfsDir					= VarDir + "ramfs/"
 	SystemInfoDir				= VarDir + "system-info/"
 	PlatformInfoFilePath		= SystemInfoDir + "platform-info"
@@ -32,4 +31,10 @@ const (
 	DefaultPort					= 1443
 	FlavorUUIDs					= "FLAVOR_UUIDS"
 	FlavorLabels				= "FLAVOR_LABELS"
+	ServiceName					= "tagent.service"
+	ServiceStatusCommand		= "systemctl status " + ServiceName
+	ServiceStopCommand			= "systemctl stop " + ServiceName
+	ServiceStartCommand			= "systemctl start " + ServiceName
+	ServiceDisableCommand		= "systemctl disable " + ServiceName
+	UninstallTbootXmScript		= "/opt/tbootxm/bin/tboot-xm-uninstall.sh"
 )

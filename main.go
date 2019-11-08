@@ -21,6 +21,7 @@
 	"intel/isecl/go-trust-agent/resource"
 	"intel/isecl/go-trust-agent/tasks"
 	"intel/isecl/go-trust-agent/util"
+	commonExec "intel/isecl/lib/common/exec"
 )
 
 func printUsage() {
@@ -31,48 +32,24 @@ func printUsage() {
 	fmt.Println("Available Commands:")
 	fmt.Println("    help|-h|-help    Show this help message")
 	fmt.Println("    setup [task]     Run setup task")
-	// fmt.Println("    start            Start tagent")
-	// fmt.Println("    status           Show the status of tagent")
-	// fmt.Println("    stop             Stop tagent")
-	// fmt.Println("    tlscertsha384    Show the SHA384 of the certificate used for TLS")
 	fmt.Println("    uninstall        Uninstall tagent")
-	fmt.Println("    version          Show the version of tagent")
+	fmt.Println("    version          Show the version of trustagent")
+	fmt.Println("    start*           Used by systemd to start the trustagent")
+	fmt.Println("")
+	fmt.Println("    * Please use 'systemctl' to manage the trustagent service")
 	fmt.Println("")
 	fmt.Println("Available Tasks for setup:")
-	fmt.Println("    tagent setup all (or with empty setup argument)")
-	fmt.Println("        - Runs all setup tasks")
-	fmt.Println("    tagent setup server [--port=<port>]")
-	fmt.Println("        - Setup http server on <port>")
-	fmt.Println("        - Environment variable AAS_PORT=<port> can be set alternatively")
-	fmt.Println("    tagent setup tls [--force] [--host_names=<host_names>]")
-	fmt.Println("        - Use the key and certificate provided in /etc/threat-detection if files exist")
-	fmt.Println("        - Otherwise create its own self-signed TLS keypair in /etc/tagent for quality of life")
-	fmt.Println("        - Option [--force] overwrites any existing files, and always generate self-signed keypair")
-	fmt.Println("        - Argument <host_names> is a list of host names used by local machine, seperated by comma")
-	fmt.Println("        - Environment variable AAS_TLS_HOST_NAMES=<host_names> can be set alternatively")
-	fmt.Println("    tagent setup admin [--user=<username>] [--pass=<password>]")
-	fmt.Println("        - Environment variable AAS_ADMIN_USERNAME=<username> can be set alternatively")
-	fmt.Println("        - Environment variable AAS_ADMIN_PASSWORD=<password> can be set alternatively")
-	fmt.Println("    tagent setup reghost [--user=<username>] [--pass=<password>]")
-	fmt.Println("        - Environment variable AAS_REG_HOST_USERNAME=<username> can be set alternatively")
-	fmt.Println("        - Environment variable AAS_REG_HOST_PASSWORD=<password> can be set alternatively")
-	fmt.Println("    tagent setup download_ca_cert [--force]")
-	fmt.Println("        - Download CMS root CA certificate")
-	fmt.Println("        - Option [--force] overwrites any existing files, and always downloads new root CA cert")
-	fmt.Println("        - Environment variable CMS_BASE_URL=<url> for CMS API url")
-	fmt.Println("    tagent setup download_cert TLS [--force]")
-	fmt.Println("        - Generates Key pair and CSR, gets it signed from CMS")
-	fmt.Println("        - Option [--force] overwrites any existing files, and always downloads newly signed TLS cert")
-	fmt.Println("        - Environment variable CMS_BASE_URL=<url> for CMS API url")
-	fmt.Println("        - Environment variable BEARER_TOKEN=<token> for authenticating with CMS")
-	fmt.Println("        - Environment variable KEY_PATH=<key_path> to override default specified in config")
-	fmt.Println("        - Environment variable CERT_PATH=<cert_path> to override default specified in config")
-	fmt.Println("        - Environment variable AAS_TLS_CERT_CN=<TLS CERT COMMON NAME> to override default specified in config")
-	fmt.Println("        - Environment variable AAS_CERT_ORG=<CERTIFICATE ORGANIZATION> to override default specified in config")
-	fmt.Println("        - Environment variable AAS_CERT_COUNTRY=<CERTIFICATE COUNTRY> to override default specified in config")
-	fmt.Println("        - Environment variable AAS_CERT_LOCALITY=<CERTIFICATE LOCALITY> to override default specified in config")
-	fmt.Println("        - Environment variable AAS_CERT_PROVINCE=<CERTIFICATE PROVINCE> to override default specified in config")
-	fmt.Println("        - Environment variable SAN_LIST=<san> list of hosts which needs access to service")
+	fmt.Println("    tagent setup all (or with empty 3rd argument)")
+	fmt.Println("        - Runs all setup tasks to provision the trustagent.")
+	fmt.Println("    tagent setup create-host")
+	fmt.Println("        - Registers the trustagent with the verification service.")
+	fmt.Println("    tagent setup create-host-unique-flavor")
+	fmt.Println("        - Populates the verification service with the host unique flavor")
+	fmt.Println("    tagent setup get-configured-manifest")
+	fmt.Println("        - Uses environment variables to pull application-integrity")
+	fmt.Println("          manifests from the verification service.")
+	fmt.Println("    tagent setup replace-tls-keypair")
+	fmt.Println("        - Recreates the trustagent's tls key/pair.")
 	fmt.Println("")
 }
 
@@ -166,6 +143,68 @@ func printVersion() {
 		fmt.Printf("tagent %s-%s [%s]\n", util.Version, util.GitHash, util.CommitDate)
 	}
 }
+
+func uninstall() error {
+
+	// stop/disable tagent service (if installed and running)
+	//
+	// systemctl status tagent will...
+	// return 4 if not present on the system
+	// return 3 if stopped
+	// return 0 if running
+	//
+	// If not present, do nothing
+	// if stopped, remove
+	// if running, stop and remove
+	_, _, err := commonExec.RunCommandWithTimeout(constants.ServiceStatusCommand, 5)
+	if err == nil {
+		// installed and running, stop and disable
+		_, _, _ = commonExec.RunCommandWithTimeout(constants.ServiceStopCommand, 5)
+		_, _, _ = commonExec.RunCommandWithTimeout(constants.ServiceDisableCommand, 5)
+	} else {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			waitStatus := exitError.Sys().(syscall.WaitStatus)
+			if waitStatus.ExitStatus() == 3 {
+				// stopped, just disable
+				_, _, _ = commonExec.RunCommandWithTimeout(constants.ServiceDisableCommand, 5)
+			} else if waitStatus.ExitStatus() == 4 {
+				// do nothing if not installed
+			} else {
+				return fmt.Errorf("Uninstall: Service status returned unhandled error code %d", waitStatus.ExitStatus())
+			}
+		} else {
+			return fmt.Errorf("Uninstall: An unhandled error occurred with the tagent service: %s", err)
+		}
+	} 
+
+	log.Info("Uninstall: TrustAgent service removed successfully")
+
+	//
+	// uninstall tbootxml
+	//
+	if _, err := os.Stat(constants.UninstallTbootXmScript); os.IsNotExist(err) {
+		_, _, err = commonExec.RunCommandWithTimeout(constants.UninstallTbootXmScript, 15)
+		if err != nil {
+			return fmt.Errorf("Uninstall: An error occurred while uninstalling tboot: %s", err)
+		}
+	}
+
+	log.Info("Uninstall: tbootxm removed successfully")
+
+	//
+	// remove all of tagent files (in /opt/trustagent)
+	//
+	if _, err := os.Stat(constants.IstallationDir); os.IsNotExist(err) {
+		err = os.RemoveAll(constants.IstallationDir)
+		if err != nil {
+			log.Errorf("Uninstall: An error occurred removing the trustagent files: %s", err)
+		}
+	}
+
+	log.Info("Uninstall: trustagent files removed successfully")
+
+	return nil
+}
  
 func main() {
 
@@ -234,7 +273,7 @@ func main() {
 
 		// take ownership of all of the files in /opt/trusagent before forking the 
 		// tagent service
-		_ = filepath.Walk(constants.HomeDir, func(fileName string, info os.FileInfo, err error) error {
+		_ = filepath.Walk(constants.IstallationDir, func(fileName string, info os.FileInfo, err error) error {
 			//log.Infof("Owning file %s", fileName)
 			err = os.Chown(fileName, int(uid), int(gid))
 			if err != nil {
@@ -310,10 +349,21 @@ func main() {
 		}
 
 		printConfig(os.Args[2])
+
+	case "uninstall":
+		err = uninstall()
+		if err != nil {
+			panic(err)
+		}
+
 	case "help":
+		fallthrough
 	case "-help":
+		fallthrough
 	case "-h":
+		printUsage()
 	default:
+		fmt.Printf("Invalid option: '%s'\n\n", cmd)
 		printUsage()
 	}
 }
