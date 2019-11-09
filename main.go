@@ -180,9 +180,9 @@ func uninstall() error {
 	log.Info("Uninstall: TrustAgent service removed successfully")
 
 	//
-	// uninstall tbootxml
+	// uninstall tbootxml (if uninstall script is present)
 	//
-	if _, err := os.Stat(constants.UninstallTbootXmScript); os.IsNotExist(err) {
+	if _, err := os.Stat(constants.UninstallTbootXmScript); err == nil {
 		_, _, err = commonExec.RunCommandWithTimeout(constants.UninstallTbootXmScript, 15)
 		if err != nil {
 			return fmt.Errorf("Uninstall: An error occurred while uninstalling tboot: %s", err)
@@ -192,9 +192,9 @@ func uninstall() error {
 	log.Info("Uninstall: tbootxm removed successfully")
 
 	//
-	// remove all of tagent files (in /opt/trustagent)
+	// remove all of tagent files (in /opt/trustagent/)
 	//
-	if _, err := os.Stat(constants.IstallationDir); os.IsNotExist(err) {
+	if _, err := os.Stat(constants.IstallationDir); err == nil {
 		err = os.RemoveAll(constants.IstallationDir)
 		if err != nil {
 			log.Errorf("Uninstall: An error occurred removing the trustagent files: %s", err)

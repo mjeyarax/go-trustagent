@@ -154,6 +154,11 @@ fi
 chown -R $TRUSTAGENT_USERNAME:$TRUSTAGENT_USERNAME $TRUSTAGENT_HOME
 chmod 755 $TRUSTAGENT_BIN/*
 
+# make sure /tmp is writable -- this is needed when trustagent/v2/application-measurement calls
+# /opt/tbootxm/bin/measure.
+# KWT:  Resolve this in lib-workload-measure (hard coded path)
+ chmod 1777 /tmp
+
 #--------------------------------------------------------------------------------------------------
 # 5. Install application-agent (tboot-xm)
 #--------------------------------------------------------------------------------------------------

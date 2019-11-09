@@ -45,7 +45,7 @@ func getApplicationMeasurement(httpWriter http.ResponseWriter, httpRequest *http
 		os.OpenFile(WML_LOG_FILE, os.O_RDONLY|os.O_CREATE, 0600)
 	}
 
-	// call /opt/tbootxml/bin/meaure and return the xml from stdout
+	// call /opt/tbootxml/bin/measure and return the xml from stdout
 	// 'measure <manifestxml> /'
 	cmd := exec.Command(constants.TBootXmMeasurePath, string(manifestXml), "/")
 	cmd.Env = append(os.Environ(), "WML_LOG_FILE=" + WML_LOG_FILE,)
@@ -59,7 +59,7 @@ func getApplicationMeasurement(httpWriter http.ResponseWriter, httpRequest *http
 
 	err = cmd.Start()
 	if err != nil {
-		log.Errorf("%s: Error starting measure: %s", httpRequest.URL.Path, err)
+		log.Errorf("%s: %s failed to start: %s", httpRequest.URL.Path, constants.TBootXmMeasurePath, err)
 		httpWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -67,7 +67,7 @@ func getApplicationMeasurement(httpWriter http.ResponseWriter, httpRequest *http
 	measureBytes, _ := ioutil.ReadAll(stdout)
 	err = cmd.Wait()
 	if err != nil {
-		log.Errorf("Measure failed: '%s'.  Stdout: %s", err, string(measureBytes))
+		log.Errorf("%s: %s returned '%s': %s", httpRequest.URL.Path, constants.TBootXmMeasurePath, err, string(measureBytes))
 		httpWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -76,6 +76,7 @@ func getApplicationMeasurement(httpWriter http.ResponseWriter, httpRequest *http
 	err = xml.Unmarshal(measureBytes, new(interface{}))
 	if err != nil {
 		log.Errorf("%s: Invalid measurement xml: %s", httpRequest.URL.Path, err)
+		log.Errorf("%s: %s", httpRequest.URL.Path, string(measureBytes))
 		httpWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
