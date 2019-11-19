@@ -23,7 +23,7 @@ build:gta:
     - gta
   script:
     - make build_test
-    - make installer
+    - make package
   artifacts:
     paths:
       - "out/trustagent-*.bin"
