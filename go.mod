@@ -8,13 +8,14 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.4.0
-	golang.org/x/crypto v0.0.0-20190219172222-a4c6cb3142f2
+	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	gopkg.in/yaml.v2 v2.2.2
 	intel/isecl/lib/common v1.0.0-Beta
 	intel/isecl/lib/tpmprovider v1.0.0-Beta
 )
 
-replace intel/isecl/lib/common => github.com/intel-secl/common v1.0.0-Beta.0.20190920051932-22c16ec493a3
+replace intel/isecl/lib/common => gitlab.devtools.intel.com/sst/isecl/lib/common.git v1.6-beta
 
-replace intel/isecl/lib/tpmprovider => gitlab.devtools.intel.com/sst/isecl/lib/tpm-provider.git v0.0.0-20191031175459-2f621858eb7d
+//replace intel/isecl/lib/tpmprovider => gitlab.devtools.intel.com/sst/isecl/lib/tpm-provider.git v1.0/go-trust-agent
+replace intel/isecl/lib/tpmprovider => gitlab.devtools.intel.com/sst/isecl/lib/tpm-provider.git v1.0/tpm-unit-tests-3183

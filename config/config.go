@@ -7,13 +7,17 @@ package config
 import (
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
+	"intel/isecl/go-trust-agent/constants"
+	"intel/isecl/lib/common/validation"
 	"os"
 	"strconv"
 	"sync"
-	log "github.com/sirupsen/logrus"
-	"intel/isecl/go-trust-agent/constants"
-	"intel/isecl/lib/common/validation"
-	"gopkg.in/yaml.v2"
+)
+
+const (
+	AIK_SECRET_KEY = "aik.secret"
 )
 
 //
@@ -21,43 +25,41 @@ import (
 //
 
 type TrustAgentConfiguration struct {
-	configFile       		string
-	LogLevel         		log.Level
+	configFile        string
+	LogLevel          log.Level
 	TrustAgentService struct {
-		Port				int
-		Username			string
-		Password			string
+		Port     int
+		Username string
+		Password string
 	}
 	HVS struct {
-		Url					string
-		Username			string
-		Password			string
-		TLS384				string
+		Url      string
+		Username string
+		Password string
+		TLS384   string
 	}
 	Tpm struct {
-		SecretKey			string	// KWT:  Rname this to 'TPM' and 'TpmSecretKey'
-		AikSecretKey		string
+		OwnerSecretKey string
+		AikSecretKey   string
 	}
 }
+
 var mu sync.Mutex
 
-var instance *TrustAgentConfiguration
+func NewConfigFromYaml(pathToYaml string) (*TrustAgentConfiguration, error) {
 
-// This function is used by unit tests to intialize an empty configuration
-func InitConfiguration() {
-	instance = &TrustAgentConfiguration{}
-}
-
-func InitConfigFromYaml(pathToYaml string) {
-	instance = load(pathToYaml)
-}
-
-func GetConfiguration() *TrustAgentConfiguration {
-	if instance == nil {
-		panic("The trusta agent configuration has not been initialized")
+	var c TrustAgentConfiguration
+	file, err := os.Open(pathToYaml)
+	if err == nil {
+		defer file.Close()
+		yaml.NewDecoder(file).Decode(&c)
+	} else {
+		// file doesnt exist, create a new blank one
+		c.LogLevel = log.InfoLevel
 	}
 
-	return instance
+	c.configFile = pathToYaml
+	return &c, nil
 }
 
 var ErrNoConfigFile = errors.New("no config file")
@@ -94,8 +96,8 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	// TPM_OWNER_SECRET
 	//---------------------------------------------------------------------------------------------
 	environmentVariable := os.Getenv("TPM_OWNER_SECRET")
-	if environmentVariable != "" && cfg.Tpm.SecretKey != environmentVariable {
-		cfg.Tpm.SecretKey = environmentVariable
+	if environmentVariable != "" && cfg.Tpm.OwnerSecretKey != environmentVariable {
+		cfg.Tpm.OwnerSecretKey = environmentVariable
 		dirty = true
 	}
 
@@ -133,8 +135,8 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if environmentVariable != "" {
 		if len(environmentVariable) != 96 {
 			return fmt.Errorf("Setup error:  Invalid length MTWILSON_TLS_CERT_SHA384: %d", len(environmentVariable))
-		} 
-	
+		}
+
 		if err = validation.ValidateHexString(environmentVariable); err != nil {
 			return fmt.Errorf("Setup error:  MTWILSON_TLS_CERT_SHA384 is not a valid hex string: %s", environmentVariable)
 		}
@@ -156,7 +158,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 			return fmt.Errorf("Setup error: Invalid TRUSTAGENT_PORT value '%s' [%s]", environmentVariable, err.Error())
 		}
 	}
-	
+
 	// always apply the default port of 1443
 	if port == 0 {
 		port = constants.DefaultPort
@@ -228,17 +230,27 @@ func (cfg *TrustAgentConfiguration) Validate() error {
 	return nil
 }
 
-func load(path string) *TrustAgentConfiguration {
-	var c TrustAgentConfiguration
-	file, err := os.Open(path)
-	if err == nil {
-		defer file.Close()
-		yaml.NewDecoder(file).Decode(&c)
-	} else {
-		// file doesnt exist, create a new blank one
-		c.LogLevel = log.InfoLevel
-	}
+func (cfg *TrustAgentConfiguration) PrintConfigSetting(settingKey string) {
 
-	c.configFile = path
-	return &c
+	switch settingKey {
+	case AIK_SECRET_KEY:
+		fmt.Printf("%s\n", cfg.Tpm.AikSecretKey)
+	default:
+		fmt.Printf("Unknown config parameter: %s\n", settingKey)
+	}
 }
+
+// func load(path string) *TrustAgentConfiguration {
+// 	var c TrustAgentConfiguration
+// 	file, err := os.Open(path)
+// 	if err == nil {
+// 		defer file.Close()
+// 		yaml.NewDecoder(file).Decode(&c)
+// 	} else {
+// 		// file doesnt exist, create a new blank one
+// 		c.LogLevel = log.InfoLevel
+// 	}
+
+// 	c.configFile = path
+// 	return &c
+// }

@@ -6,13 +6,13 @@ package util
 
 import (
 	"fmt"
-	"strings"
 	"strconv"
+	"strings"
 )
 
-var Version = "unknown"
-var GitHash = "unknown"
-var CommitDate = "unknown"
+var Version = "0.0.0"
+var GitHash = "fffffff"
+var CommitDate = "1970-01-01T00:00:00-00:00"
 
 func GetMajorVersion() (int, error) {
 	endIdx := strings.Index(Version, ".")
@@ -26,7 +26,7 @@ func GetMajorVersion() (int, error) {
 	}
 
 	return major, nil
-} 
+}
 
 func GetMinorVersion() (int, error) {
 	startIdx := strings.Index(Version, ".")
@@ -39,9 +39,9 @@ func GetMinorVersion() (int, error) {
 		return 0, fmt.Errorf("Could not parse version string %s", Version)
 	}
 
-	endIdx += startIdx+1
+	endIdx += startIdx + 1
 
-	minor, err := strconv.Atoi(Version[startIdx+1:endIdx])
+	minor, err := strconv.Atoi(Version[startIdx+1 : endIdx])
 	if err != nil {
 		return 0, err
 	}
@@ -54,7 +54,6 @@ func GetPatchVersion() (int, error) {
 	if startIdx <= 0 {
 		return 0, fmt.Errorf("Could not parse version string %s", Version)
 	}
-
 
 	patch, err := strconv.Atoi(Version[startIdx+1:])
 	if err != nil {

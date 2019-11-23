@@ -1,21 +1,22 @@
 /*
 * Copyright (C) 2019 Intel Corporation
 * SPDX-License-Identifier: BSD-3-Clause
-*/
+ */
 package tasks
 
 import (
 	"fmt"
+	log "github.com/sirupsen/logrus"
+	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/util"
 	"intel/isecl/go-trust-agent/vsclient"
 	"intel/isecl/lib/common/setup"
-	log "github.com/sirupsen/logrus"
 )
 
 type CreateHost struct {
-	Flags 	[]string
-	ip string
+	ip          string
 	hostsClient vsclient.HostsClient
+	cfg         *config.TrustAgentConfiguration
 }
 
 //
@@ -24,7 +25,7 @@ type CreateHost struct {
 //
 // If the host already exists, create-host will return an error.
 //
-func (task* CreateHost) Run(c setup.Context) error {
+func (task *CreateHost) Run(c setup.Context) error {
 
 	var err error
 
@@ -33,17 +34,12 @@ func (task* CreateHost) Run(c setup.Context) error {
 		return err
 	}
 
-	// tlsPolicy, err := GetTlsPolicyFromVS()
-	// if err != nil {
-	// 	return err
-	// }
-
-	connectionString, err := util.GetConnectionString()
+	connectionString, err := util.GetConnectionString(task.cfg)
 	if err != nil {
 		return err
 	}
-	
-	hostFilterCriteria := vsclient.HostFilterCriteria {NameEqualTo: task.ip}
+
+	hostFilterCriteria := vsclient.HostFilterCriteria{NameEqualTo: task.ip}
 	hostCollection, err := task.hostsClient.SearchHosts(&hostFilterCriteria)
 	if err != nil {
 		return err
@@ -65,28 +61,14 @@ func (task* CreateHost) Run(c setup.Context) error {
 	} else {
 		return fmt.Errorf("Host with IP address %s already exists", task.ip)
 	}
-	
-	// KWT: NEED TO UNDERSTAND THE SUCCESSFUL UPDATE TLS POLICY USE CASE -- IS IT NEEDED WITH AAS/CMS...?
-	// } else {
-	// 	host := Host{}
-	// 	host.Id = hosts[0].Id
-	// 	host.TlsPolicyId = tlsPolicy.Id
-
-	// 	updatedHost, err := UpdateHostInVS(&host)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	log.Debugf("Successully updated host id %s", updatedHost.Id)
-	// }
 
 	return nil
 }
 
 // Using the ip address, query VS to verify if this host is registered
-func (task* CreateHost) Validate(c setup.Context) error {
+func (task *CreateHost) Validate(c setup.Context) error {
 
-	hostFilterCriteria := vsclient.HostFilterCriteria {NameEqualTo: task.ip}
+	hostFilterCriteria := vsclient.HostFilterCriteria{NameEqualTo: task.ip}
 	hostCollection, err := task.hostsClient.SearchHosts(&hostFilterCriteria)
 	if err != nil {
 		return err

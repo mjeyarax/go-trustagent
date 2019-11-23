@@ -154,9 +154,9 @@ fi
 chown -R $TRUSTAGENT_USERNAME:$TRUSTAGENT_USERNAME $TRUSTAGENT_HOME
 chmod 755 $TRUSTAGENT_BIN/*
 
-# make sure /tmp is writable -- this is needed when trustagent/v2/application-measurement calls
-# /opt/tbootxm/bin/measure.
-# KWT:  Resolve this in lib-workload-measure (hard coded path)
+# make sure /tmp is writable -- this is needed when the 'trustagent/v2/application-measurement' endpoint
+# calss /opt/tbootxm/bin/measure.
+# TODO:  Resolve this in lib-workload-measure (hard coded path)
 chmod 1777 /tmp
 
 #--------------------------------------------------------------------------------------------------
@@ -189,8 +189,7 @@ else
     echo "application-agent will not be installed"
 fi
 
-# KWT:  tpmextend looks for the tpm version in /opt/trustagent/configuration/tpm-version
-# let's remove this dependency at a later date
+# TODO:  remove the depdendency that tpmextend has on the tpm version in /opt/trustagent/configuration/tpm-version
 if [ -f "$TRUSTAGENT_CFG_DIR/tpm-version" ]; then
     rm -f $TRUSTAGENT_CFG_DIR/tpm-version
 fi
@@ -227,7 +226,7 @@ if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PR
         systemctl start $TPM2_ABRMD_SERVICE 2>&1 > /dev/null
         sleep 3
 
-        # todo:  in production we want to check that is is running, but in development
+        # TODO:  in production we want to check that is is running, but in development
         # the simulator needs to be started first -- for now warn, don't error...
         systemctl status $TPM2_ABRMD_SERVICE 2>&1 > /dev/null
         if [ $? -ne 0 ]; then

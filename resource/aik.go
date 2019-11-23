@@ -2,18 +2,21 @@
  * Copyright (C) 2019 Intel Corporation
  * SPDX-License-Identifier: BSD-3-Clause
  */
- package resource
+package resource
 
- import (
+import (
 	"bytes"
+	log "github.com/sirupsen/logrus"
+	"intel/isecl/go-trust-agent/constants"
 	"io/ioutil"
 	"net/http"
 	"os"
-	log "github.com/sirupsen/logrus"
-	"intel/isecl/go-trust-agent/constants"
 )
 
-// curl --request GET --user tagentadmin:TAgentAdminPassword https://localhost:1443/v2/aik -k --noproxy "*"
+//
+// Reads the provision aik certificate from /opt/trustagent/configuration/aik.cert
+//
+// Ex. curl --request GET --user tagentadmin:TAgentAdminPassword https://localhost:1443/v2/aik -k --noproxy "*"
 func getAik(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 
 	log.Debugf("Request: %s", httpRequest.URL.Path)

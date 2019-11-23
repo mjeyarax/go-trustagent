@@ -9,24 +9,20 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
-	"intel/isecl/lib/tpmprovider"
 	"intel/isecl/lib/common/setup"
+	"intel/isecl/lib/tpmprovider"
 )
 
-//
-// This task is used to persist a primary public key at handle TPM_HANDLE_PRIMARY
-// ()
-//
-
 type ProvisionPrimaryKey struct {
-	Flags 					[]string
+	tpmFactory tpmprovider.TpmFactory
+	cfg        *config.TrustAgentConfiguration
 }
 
-// if the TPM's public key used for WLA signing/binding has not been created, 
-// do so now
-func (task* ProvisionPrimaryKey) Run(c setup.Context) error {
+// This task is used to persist a primary public key at handle TPM_HANDLE_PRIMARY
+// to be used by WLA for signing/binding keys.
+func (task *ProvisionPrimaryKey) Run(c setup.Context) error {
 
-	tpm, err := tpmprovider.NewTpmProvider()
+	tpm, err := task.tpmFactory.NewTpmProvider()
 	if err != nil {
 		return fmt.Errorf("Setup error: Could not create TpmProvider: %s", err)
 	}
@@ -39,7 +35,7 @@ func (task* ProvisionPrimaryKey) Run(c setup.Context) error {
 	}
 
 	if !exists {
-		ownerSecret, err := hex.DecodeString(config.GetConfiguration().Tpm.SecretKey)
+		ownerSecret, err := hex.DecodeString(task.cfg.Tpm.OwnerSecretKey)
 		if err != nil {
 			return err
 		}
@@ -53,9 +49,9 @@ func (task* ProvisionPrimaryKey) Run(c setup.Context) error {
 	return nil
 }
 
-func (task* ProvisionPrimaryKey) Validate(c setup.Context) error {
+func (task *ProvisionPrimaryKey) Validate(c setup.Context) error {
 
-	tpm, err := tpmprovider.NewTpmProvider()
+	tpm, err := task.tpmFactory.NewTpmProvider()
 	if err != nil {
 		return fmt.Errorf("Setup error: Could not create TpmProvider: %s", err)
 	}

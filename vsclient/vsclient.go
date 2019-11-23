@@ -1,14 +1,8 @@
-
 /*
  * Copyright (C) 2019 Intel Corporation
  * SPDX-License-Identifier: BSD-3-Clause
  */
 package vsclient
-
-//-------------------------------------------------------------------------------------------------
-// KWT:  THIS IS AN INTERMEDIATE STEP TO ALIGN WITH THE MTWILSON CLIENT REPO
-// WILL RECONCILE AFTER AAS/CMS INTEGRATION IS DONE IN 1.6
-//-------------------------------------------------------------------------------------------------
 
 import (
 	"crypto/tls"
@@ -28,11 +22,6 @@ const (
 	FLAVOR_OS								= "OS"
 	FLAVOR_PLATFORM							= "PLATFORM"
 )
-
-
-// type TlsPolicy struct {
-// 	Id string `json:"Id"`
-// }
 
 type TpmEndorsement struct {
 	HardwareUUID 	string 	`json:"hardware_uuid"`
@@ -119,8 +108,6 @@ type HostsClient interface {
 	//
 	//  https://server.com:8181/mtwilson/v2/hosts?nameContains=192
 	//
-	//  KWT: UPDATE JSON...
-	// 
 	//  Output: {"hosts":[{"id":"de07c08a-7fc6-4c07-be08-0ecb2f803681","name":"192.168.0.2", "connection_url":"https://192.168.0.1:443/sdk;admin;pwd",
 	//  "bios_mle_uuid":"823a4ae6-b8cd-4c14-b89b-2a3be2d13985","vmm_mle_uuid":"45c03402-e33d-4b54-9893-de3bbd1f1681"}]}
 	SearchHosts(hostFilterCriteria *HostFilterCriteria) (*HostCollection, error)
@@ -150,8 +137,6 @@ type HostsClient interface {
 	//  Updates the host with the specified attributes. Except for the host name, all other attributes can be updated.
 	//
 	//  https://server.com:8181/mtwilson/v2/hosts/e43424ca-9e00-4cb9-b038-9259d0307888
-	//
-	//  KWT: UPDATE JSON...
 	//
 	//  Input: {"name":"192.168.0.2","connection_url":"https://192.168.0.1:443/sdk;admin;pwd","bios_mle_uuid":"823a4ae6-b8cd-4c14-b89b-2a3be2d13985",
 	//           "vmm_mle_uuid":"98101211-b617-4f59-8132-a5d05360acd6","tls_policy_id":"e1a527b5-2020-49c1-83be-6bd8bf641258"}
@@ -217,12 +202,12 @@ func NewVSClientFactory(vsClientConfig *VSClientConfig) (VSClientFactory, error)
 }
 
 
-// KWT:  Remove when refactoring existing tasks to vsclient interfaces
-func NewVSClient() (*http.Client, error) {
+// ISECL-7703:  Remove this code when refactoring existing tasks to vsclient interfaces
+func NewVSClient(cfg *config.TrustAgentConfiguration) (*http.Client, error) {
 
 	var certificateDigest [48]byte
 
-	tls384 := config.GetConfiguration().HVS.TLS384
+	tls384 := cfg.HVS.TLS384
 
 	certDigestBytes, err := hex.DecodeString(tls384)
 	if err != nil {
@@ -250,4 +235,3 @@ func NewVSClient() (*http.Client, error) {
 	client := http.Client{Transport: &transport}
 	return &client, nil
 }
-

@@ -2,81 +2,83 @@
  * Copyright (C) 2019 Intel Corporation
  * SPDX-License-Identifier: BSD-3-Clause
  */
- package resource
+package resource
 
 import (
 	"context"
-	"errors"
-	"net/http"
 	"crypto/tls"
-	"os"
-	"time"
-	"os/signal"
-	"syscall"
+	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
-	stdlog "log"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
+	"intel/isecl/lib/tpmprovider"
+	stdlog "log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 type TrustAgentService struct {
-	port			int
-	router			*mux.Router
+	port   int
+	router *mux.Router
 }
 
-func CreateTrustAgentService (port int) (*TrustAgentService, error) {
+func CreateTrustAgentService(config *config.TrustAgentConfiguration, tpmFactory tpmprovider.TpmFactory) (*TrustAgentService, error) {
 
-	if(port == 0) {
+	if config.TrustAgentService.Port == 0 {
 		return nil, errors.New("Port cannot be zero")
 	}
 
-	trustAgentService := TrustAgentService {
-		port : port,
+	trustAgentService := TrustAgentService{
+		port: config.TrustAgentService.Port,
 	}
 
 	// Register routes...
 	trustAgentService.router = mux.NewRouter()
-	trustAgentService.router.HandleFunc("/v2/aik", basicAuth(getAik)).Methods("GET")
-	trustAgentService.router.HandleFunc("/v2/host", basicAuth(getPlatformInfo)).Methods("GET")
-	trustAgentService.router.HandleFunc("/v2/tpm/quote", basicAuth(getTpmQuote)).Methods("POST")
-	trustAgentService.router.HandleFunc("/v2/binding-key-certificate", basicAuth(getBindingKeyCertificate)).Methods("GET")
-	trustAgentService.router.HandleFunc("/v2/tag", basicAuth(setAssetTag)).Methods("POST")
-	trustAgentService.router.HandleFunc("/v2/host/application-measurement", basicAuth(getApplicationMeasurement)).Methods("POST")
-	trustAgentService.router.HandleFunc("/v2/deploy/manifest", basicAuth(deployManifest)).Methods("POST")
-	
+	trustAgentService.router.Use(newBasicAuth(config.TrustAgentService.Username, config.TrustAgentService.Password))
+	trustAgentService.router.HandleFunc("/v2/aik", getAik).Methods("GET")
+	trustAgentService.router.HandleFunc("/v2/host", getPlatformInfo).Methods("GET")
+	trustAgentService.router.HandleFunc("/v2/tpm/quote", getTpmQuote(config, tpmFactory)).Methods("POST")
+	trustAgentService.router.HandleFunc("/v2/binding-key-certificate", getBindingKeyCertificate).Methods("GET")
+	trustAgentService.router.HandleFunc("/v2/tag", setAssetTag(config, tpmFactory)).Methods("POST")
+	trustAgentService.router.HandleFunc("/v2/host/application-measurement", getApplicationMeasurement).Methods("POST")
+	trustAgentService.router.HandleFunc("/v2/deploy/manifest", deployManifest).Methods("POST")
+
 	return &trustAgentService, nil
 }
 
-func basicAuth(handler http.HandlerFunc) http.HandlerFunc {
-	return func(httpWriter http.ResponseWriter, httpRequest *http.Request) {
+func newBasicAuth(username string, password string) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(httpWriter http.ResponseWriter, httpRequest *http.Request) {
+			user, pass, ok := httpRequest.BasicAuth()
 
-		user, pass, ok := httpRequest.BasicAuth()
-		
-		if !ok {
-			http.Error(httpWriter, "authorization failed", http.StatusUnauthorized)
-			return
-		}
+			if !ok {
+				http.Error(httpWriter, "authorization failed", http.StatusUnauthorized)
+				return
+			}
 
-		if user != config.GetConfiguration().TrustAgentService.Username {
-			http.Error(httpWriter, "authorization failed", http.StatusUnauthorized)
-			return
-		}
+			if user != username {
+				http.Error(httpWriter, "authorization failed", http.StatusUnauthorized)
+				return
+			}
 
-		if pass != config.GetConfiguration().TrustAgentService.Password {
-			http.Error(httpWriter, "authorization failed", http.StatusUnauthorized)
-			return
-		}
+			if pass != password {
+				http.Error(httpWriter, "authorization failed", http.StatusUnauthorized)
+				return
+			}
 
-		handler(httpWriter, httpRequest)
+			next.ServeHTTP(httpWriter, httpRequest)
+		})
 	}
 }
 
-
 func (service *TrustAgentService) Start() error {
-	tlsconfig := &tls.Config {
+	tlsconfig := &tls.Config{
 		MinVersion: tls.VersionTLS12,
 		CipherSuites: []uint16{tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
@@ -88,7 +90,7 @@ func (service *TrustAgentService) Start() error {
 	stop := make(chan os.Signal)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	httpLog := stdlog.New(log.StandardLogger().Writer(), "", 0)
-	h := &http.Server {
+	h := &http.Server{
 		Addr:      fmt.Sprintf(":%d", service.port),
 		Handler:   handlers.RecoveryHandler(handlers.RecoveryLogger(httpLog), handlers.PrintRecoveryStack(true))(handlers.CombinedLoggingHandler(os.Stderr, service.router)),
 		ErrorLog:  httpLog,

@@ -1,4 +1,4 @@
-//+build integration
+//+build unit_test
 
 /*
  * Copyright (C) 2019 Intel Corporation
@@ -13,9 +13,9 @@ package platforminfo
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestBiosName(t *testing.T) {

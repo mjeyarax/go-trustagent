@@ -2,16 +2,16 @@
  * Copyright (C) 2019 Intel Corporation
  * SPDX-License-Identifier: BSD-3-Clause
  */
- package platforminfo
+package platforminfo
 
- import (
-	 "os"
-	 "runtime"
-	 "strings"
-	 "intel/isecl/go-trust-agent/constants"
- )
+import (
+	"intel/isecl/go-trust-agent/constants"
+	"os"
+	"runtime"
+	"strings"
+)
 
-// Struct used to hold the current host's platform information that can be encoded/decoded to 
+// Struct used to hold the current host's platform information that can be encoded/decoded to
 // json (see example below).
 //
 // PLEASE NOTE THAT THE PLATFORMINFO NEEDS TO BE RUN AS ROOT ON LINUX.
@@ -55,74 +55,73 @@
 //     ]
 // }
 type PlatformInfo struct {
-	ErrorCode int   				`json:"errorCode"`
-	OSName string 					`json:"os_name"`
-	OSVersion string				`json:"os_version"`
-	BiosVersion string				`json:"bios_version"`
-	VMMName string					`json:"vmm_name"`
-	VMMVersion string				`json:"vmm_version"`
-	ProcessorInfo string			`json:"processor_info"`
-	HostName string					`json:"host_name"`
-	BiosName string					`json:"bios_name"`
-	HardwareUUID string				`json:"hardware_uuid"`
-	ProcessorFlags string			`json:"process_flags"`
-	TPMVersion string				`json:"tpm_version"`
-	PCRBanks []string				`json:"pcr_banks"`
-	NumberOfSockets int				`json:"no_of_sockets,string"`
-	TPMEnabled bool					`json:"tpm_enabled,string"`
-	TXTEnabled bool					`json:"txt_enabled,string"`
-	TbootInstalled bool				`json:"tboot_installed,string"`
-	IsDockerEnvironment bool		`json:"is_docker_env,string"`
-	HardwareFeatures struct {
+	ErrorCode           int      `json:"errorCode"`
+	OSName              string   `json:"os_name"`
+	OSVersion           string   `json:"os_version"`
+	BiosVersion         string   `json:"bios_version"`
+	VMMName             string   `json:"vmm_name"`
+	VMMVersion          string   `json:"vmm_version"`
+	ProcessorInfo       string   `json:"processor_info"`
+	HostName            string   `json:"host_name"`
+	BiosName            string   `json:"bios_name"`
+	HardwareUUID        string   `json:"hardware_uuid"`
+	ProcessorFlags      string   `json:"process_flags"`
+	TPMVersion          string   `json:"tpm_version"`
+	PCRBanks            []string `json:"pcr_banks"`
+	NumberOfSockets     int      `json:"no_of_sockets,string"`
+	TPMEnabled          bool     `json:"tpm_enabled,string"`
+	TXTEnabled          bool     `json:"txt_enabled,string"`
+	TbootInstalled      bool     `json:"tboot_installed,string"`
+	IsDockerEnvironment bool     `json:"is_docker_env,string"`
+	HardwareFeatures    struct {
 		TXT struct {
-			Enabled bool			`json:"enabled,string"`
-		}							`json:"TXT"`
+			Enabled bool `json:"enabled,string"`
+		} `json:"TXT"`
 		TPM struct {
-			Enabled bool			`json:"enabled,string"`
-			Meta struct {
-				TPMVersion string	`json:"tpm_version"`
-				PCRBanks string 	`json:"pcr_banks"`
-			}						`json:"meta"`
-		}							`json:"TPM"`
-	}								`json:"hardware_features"`
-	InstalledComponents []string	`json:"installed_components"`
+			Enabled bool `json:"enabled,string"`
+			Meta    struct {
+				TPMVersion string `json:"tpm_version"`
+				PCRBanks   string `json:"pcr_banks"`
+			} `json:"meta"`
+		} `json:"TPM"`
+	} `json:"hardware_features"`
+	InstalledComponents []string `json:"installed_components"`
 }
 
 func GetPlatformInfo() (PlatformInfo, error) {
-    platformInfo := PlatformInfo {}
-    
-    // TODO:  Handle error conditions...
-    platformInfo.ErrorCode = 0
-    platformInfo.OSName, _ = OSName()
-    platformInfo.OSVersion, _ = OSVersion()
-    platformInfo.BiosVersion, _ = BiosVersion()
-    platformInfo.VMMName, _ = VMMName()
-    platformInfo.VMMVersion, _ = VMMVersion()
-    platformInfo.ProcessorInfo, _  = ProcessorID()
+	platformInfo := PlatformInfo{}
+
+	// TODO:  Handle error conditions...
+	platformInfo.ErrorCode = 0
+	platformInfo.OSName, _ = OSName()
+	platformInfo.OSVersion, _ = OSVersion()
+	platformInfo.BiosVersion, _ = BiosVersion()
+	platformInfo.VMMName, _ = VMMName()
+	platformInfo.VMMVersion, _ = VMMVersion()
+	platformInfo.ProcessorInfo, _ = ProcessorID()
 	platformInfo.HostName, _ = HostName()
 	platformInfo.BiosName, _ = BiosName()
 	platformInfo.HardwareUUID, _ = HardwareUUID()
-	
-	processorFlags, _ := ProcessorFlags()
-    platformInfo.ProcessorFlags = strings.Join(processorFlags, " ")
-	
-	platformInfo.TPMVersion, _ = TPMVersion()               // TODO:  delegate to tpm
-	platformInfo.PCRBanks = []string { "SHA1", "SHA256",}   // TODO:  delegate to tpm
-    platformInfo.NumberOfSockets, _ = NoOfSockets()
-    platformInfo.TPMEnabled, _ = TPMEnabled()               // TODO:  delegate to tpm
-    platformInfo.TXTEnabled, _ = TXTEnabled()               // TODO:  delegate to tpm
-	platformInfo.TbootInstalled = runtime.GOOS == "linux" 
-	platformInfo.IsDockerEnvironment = strings.Contains(strings.ToLower(platformInfo.VMMName), "docker")
-    platformInfo.HardwareFeatures.TXT.Enabled = platformInfo.TXTEnabled
-    platformInfo.HardwareFeatures.TPM.Enabled = platformInfo.TPMEnabled
-    platformInfo.HardwareFeatures.TPM.Meta.TPMVersion = platformInfo.TPMVersion
-	platformInfo.HardwareFeatures.TPM.Meta.PCRBanks = strings.Join(platformInfo.PCRBanks, "_")
-	platformInfo.InstalledComponents = []string {"tagent"}
 
-	// KWT:  This logic checks to see if /etc/workload-agent/bindingkey.pem exists to determine
-	// if WLA is installed (and updates 'InstalledComponents').
+	processorFlags, _ := ProcessorFlags()
+	platformInfo.ProcessorFlags = strings.Join(processorFlags, " ")
+
+	platformInfo.TPMVersion, _ = TPMVersion()
+	platformInfo.PCRBanks = []string{"SHA1", "SHA256"} // TODO
+	platformInfo.NumberOfSockets, _ = NoOfSockets()
+	platformInfo.TPMEnabled, _ = TPMEnabled()
+	platformInfo.TXTEnabled, _ = TXTEnabled()
+	platformInfo.TbootInstalled = runtime.GOOS == "linux"
+	platformInfo.IsDockerEnvironment = strings.Contains(strings.ToLower(platformInfo.VMMName), "docker")
+	platformInfo.HardwareFeatures.TXT.Enabled = platformInfo.TXTEnabled
+	platformInfo.HardwareFeatures.TPM.Enabled = platformInfo.TPMEnabled
+	platformInfo.HardwareFeatures.TPM.Meta.TPMVersion = platformInfo.TPMVersion
+	platformInfo.HardwareFeatures.TPM.Meta.PCRBanks = strings.Join(platformInfo.PCRBanks, "_")
+	platformInfo.InstalledComponents = []string{"tagent"}
+
+	// if /etc/workload-agent/bindingkey.pem exists, communicate that 'WLA' is installed.
 	_, err := os.Stat(constants.BindingKeyCertificatePath)
-	if err == nil  {
+	if err == nil {
 		platformInfo.InstalledComponents = append(platformInfo.InstalledComponents, "wlagent")
 	}
 

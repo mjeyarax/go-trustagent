@@ -1,23 +1,23 @@
 /*
 * Copyright (C) 2019 Intel Corporation
 * SPDX-License-Identifier: BSD-3-Clause
-*/
+ */
 package resource
 
 import (
 	"bytes"
 	"encoding/xml"
+	log "github.com/sirupsen/logrus"
+	"intel/isecl/go-trust-agent/constants"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
-//	"strings"
-	log "github.com/sirupsen/logrus"
-	"intel/isecl/go-trust-agent/constants"
 )
 
 const WML_LOG_FILE = constants.LogDir + "wml.log"
 
+// Uses /opt/tbootxml/bin/measure to measure the supplied manifest
 func getApplicationMeasurement(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 
 	log.Debugf("Request: %s", httpRequest.URL.Path)
@@ -30,7 +30,7 @@ func getApplicationMeasurement(httpWriter http.ResponseWriter, httpRequest *http
 		return
 	}
 
-	// make sure the xml is well formed, all other validation will be 
+	// make sure the xml is well formed, all other validation will be
 	// peformed by 'measure' cmd line below
 	err = xml.Unmarshal(manifestXml, new(interface{}))
 	if err != nil {
@@ -48,7 +48,7 @@ func getApplicationMeasurement(httpWriter http.ResponseWriter, httpRequest *http
 	// call /opt/tbootxml/bin/measure and return the xml from stdout
 	// 'measure <manifestxml> /'
 	cmd := exec.Command(constants.TBootXmMeasurePath, string(manifestXml), "/")
-	cmd.Env = append(os.Environ(), "WML_LOG_FILE=" + WML_LOG_FILE,)
+	cmd.Env = append(os.Environ(), "WML_LOG_FILE="+WML_LOG_FILE)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

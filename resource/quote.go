@@ -2,9 +2,9 @@
  * Copyright (C) 2019 Intel Corporation
  * SPDX-License-Identifier: BSD-3-Clause
  */
- package resource
+package resource
 
- import (
+import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/base64"
@@ -13,17 +13,17 @@
 	"encoding/xml"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
+	"intel/isecl/go-trust-agent/config"
+	"intel/isecl/go-trust-agent/constants"
+	"intel/isecl/go-trust-agent/util"
+	"intel/isecl/lib/tpmprovider"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-	log "github.com/sirupsen/logrus"
-	"intel/isecl/go-trust-agent/config"
-	"intel/isecl/go-trust-agent/constants"
-	"intel/isecl/go-trust-agent/util"
-	"intel/isecl/lib/tpmprovider"
 )
 
 // HVS expects...
@@ -46,46 +46,52 @@
 //     <isTagProvisioned>false</isTagProvisioned>
 // </tpm_quote_response>
 type TpmQuoteResponse struct {
-	XMLName				 xml.Name	`xml:"tpm_quote_response"`
-	TimeStamp			 int64		`xml:"timestamp"`
-	ClientIp			 string		`xml:"clientIp"`
-	ErrorCode			 int		`xml:"errorCode"`
-	ErrorMessage		 string		`xml:"errorMessage"`
-	Aik					 string		`xml:"aik"`
-	Quote				 string		`xml:"quote"`
-	EventLog			 string		`xml:"eventLog"`
-	TcbMeasurements	struct {
-		XMLName			 xml.Name	`xml:"tcbMeasurements"`
-		TcbMeasurements	 []string	`xml:"tcbMeasurements"`
+	XMLName         xml.Name `xml:"tpm_quote_response"`
+	TimeStamp       int64    `xml:"timestamp"`
+	ClientIp        string   `xml:"clientIp"`
+	ErrorCode       int      `xml:"errorCode"`
+	ErrorMessage    string   `xml:"errorMessage"`
+	Aik             string   `xml:"aik"`
+	Quote           string   `xml:"quote"`
+	EventLog        string   `xml:"eventLog"`
+	TcbMeasurements struct {
+		XMLName         xml.Name `xml:"tcbMeasurements"`
+		TcbMeasurements []string `xml:"tcbMeasurements"`
 	}
 	SelectedPcrBanks struct {
-		XMLName			 xml.Name	`xml:"selectedPcrBanks"`
-		SelectedPcrBanks []string	`xml:"selectedPcrBanks"`
+		XMLName          xml.Name `xml:"selectedPcrBanks"`
+		SelectedPcrBanks []string `xml:"selectedPcrBanks"`
 	}
-	IsTagProvisioned	 bool		`xml:"isTagProvisioned"`
-	AssetTag			 string		`xml:"assetTag,omitempty"`
+	IsTagProvisioned bool   `xml:"isTagProvisioned"`
+	AssetTag         string `xml:"assetTag,omitempty"`
 }
 
 // HVS will provide json like...
-// { 
-//		"nonce":"ZGVhZGJlZWZkZWFkYmVlZmRlYWRiZWVmZGVhZGJlZWZkZWFkYmVlZiA=", 
+// {
+//		"nonce":"ZGVhZGJlZWZkZWFkYmVlZmRlYWRiZWVmZGVhZGJlZWZkZWFkYmVlZiA=",
 //		"pcrs": [0,1,2,3,18,19,22],
-//		"pcrbanks" : ["SHA1", "SHA256"] 
+//		"pcrbanks" : ["SHA1", "SHA256"]
 // }
 type TpmQuoteRequest struct {
-	Nonce				[]byte		`json:"nonce"`
-	Pcrs				[]int		`json:"pcrs"`
-	PcrBanks			[]string	`json:"pcrbanks"`
+	Nonce    []byte   `json:"nonce"`
+	Pcrs     []int    `json:"pcrs"`
+	PcrBanks []string `json:"pcrbanks"`
+}
+
+type TpmQuoteContext struct {
+	tpmQuoteResponse TpmQuoteResponse
+	tpm              tpmprovider.TpmProvider
+	cfg              *config.TrustAgentConfiguration
 }
 
 // HVS generates a 20 byte random nonce that is sent in the tpmQuoteRequest.  However,
 // HVS expects the response nonce (in the TpmQuoteResponse.Quote binary) to be hashed with the bytes
 // of local ip address.  If this isn't performed, HVS will throw an error when the
 // response is received.
-// 
+//
 // Also, HVS takes into account the asset tag in the nonce -- it takes the ip hashed nonce
 // and 'extends' it with value of asset tag (i.e. when tags have been set on the trust agent).
-func (tpmQuoteResponse *TpmQuoteResponse) getNonce(hvsNonce []byte) ([]byte, error) {
+func (ctx *TpmQuoteContext) getNonce(hvsNonce []byte) ([]byte, error) {
 
 	ipBytes, err := util.GetLocalIpAsBytes()
 	if err != nil {
@@ -95,26 +101,26 @@ func (tpmQuoteResponse *TpmQuoteResponse) getNonce(hvsNonce []byte) ([]byte, err
 	log.Debugf("Received HVS nonce '%s', raw[%s]", base64.StdEncoding.EncodeToString(hvsNonce), hex.EncodeToString(hvsNonce))
 
 	// similar to HVS' SHA1.digestOf(hvsNonce).extend(ipBytes)
-    hash := sha1.New()
-    hash.Write(hvsNonce)
-    taNonce := hash.Sum(nil)
+	hash := sha1.New()
+	hash.Write(hvsNonce)
+	taNonce := hash.Sum(nil)
 
-    hash = sha1.New()
-    hash.Write(taNonce)
-    hash.Write(ipBytes)
+	hash = sha1.New()
+	hash.Write(taNonce)
+	hash.Write(ipBytes)
 	taNonce = hash.Sum(nil)
 
 	log.Debugf("Used ip bytes '%s' to extend nonce to '%s', raw[%s]", hex.EncodeToString(ipBytes), base64.StdEncoding.EncodeToString(taNonce), hex.EncodeToString(taNonce))
 
-	if tpmQuoteResponse.IsTagProvisioned {
+	if ctx.tpmQuoteResponse.IsTagProvisioned {
 
-		if tpmQuoteResponse.AssetTag == "" {
+		if ctx.tpmQuoteResponse.AssetTag == "" {
 			return nil, errors.New("The quote is 'tag provisioned', but the tag was not provided")
 		}
 
 		// TpmQuoteResponse is used to share data with HVS and stores the asset tag
 		// as base64 -- apply the raw bytes to the hash similar to HVS.
-		tagBytes, err := base64.StdEncoding.DecodeString(tpmQuoteResponse.AssetTag)
+		tagBytes, err := base64.StdEncoding.DecodeString(ctx.tpmQuoteResponse.AssetTag)
 		if err != nil {
 			return nil, err
 		}
@@ -127,15 +133,15 @@ func (tpmQuoteResponse *TpmQuoteResponse) getNonce(hvsNonce []byte) ([]byte, err
 		hash = sha1.New()
 		hash.Write(taNonce)
 		hash.Write(tagBytes)
-		taNonce = hash.Sum(nil)	
+		taNonce = hash.Sum(nil)
 
 		log.Debugf("Used tag bytes '%s' to extend nonce to '%s', raw[%s]", hex.EncodeToString(tagBytes), base64.StdEncoding.EncodeToString(taNonce), hex.EncodeToString(taNonce))
 	}
 
-    return taNonce, nil
+	return taNonce, nil
 }
 
-func (tpmQuoteResponse *TpmQuoteResponse) readAikAsBase64() error {
+func (ctx *TpmQuoteContext) readAikAsBase64() error {
 	if _, err := os.Stat(constants.AikCert); os.IsNotExist(err) {
 		return err
 	}
@@ -145,11 +151,11 @@ func (tpmQuoteResponse *TpmQuoteResponse) readAikAsBase64() error {
 		return err
 	}
 
-	tpmQuoteResponse.Aik = base64.StdEncoding.EncodeToString(aikBytes)
+	ctx.tpmQuoteResponse.Aik = base64.StdEncoding.EncodeToString(aikBytes)
 	return nil
 }
 
-func (tpmQuoteResponse *TpmQuoteResponse) readEventLog() error {
+func (ctx *TpmQuoteContext) readEventLog() error {
 	if _, err := os.Stat(constants.MeasureLogFilePath); os.IsNotExist(err) {
 		return err
 	}
@@ -172,39 +178,32 @@ func (tpmQuoteResponse *TpmQuoteResponse) readEventLog() error {
 	xml = strings.Replace(xml, "\t", "", -1)
 	xml = strings.Replace(xml, "\n", "", -1)
 
-	tpmQuoteResponse.EventLog = base64.StdEncoding.EncodeToString([]byte(xml))
+	ctx.tpmQuoteResponse.EventLog = base64.StdEncoding.EncodeToString([]byte(xml))
 	return nil
 }
 
-func (tpmQuoteResponse *TpmQuoteResponse) getQuote(tpmQuoteRequest *TpmQuoteRequest) error {
+func (ctx *TpmQuoteContext) getQuote(tpmQuoteRequest *TpmQuoteRequest) error {
 
-	nonce, err := tpmQuoteResponse.getNonce(tpmQuoteRequest.Nonce)
+	nonce, err := ctx.getNonce(tpmQuoteRequest.Nonce)
 	if err != nil {
 		return err
 	}
 
 	log.Debugf("Providing tpm nonce value '%s', raw[%s]", base64.StdEncoding.EncodeToString(nonce), hex.EncodeToString(nonce))
 
-	tpmProvider, err := tpmprovider.NewTpmProvider()
+	quoteBytes, err := ctx.tpm.GetTpmQuote(ctx.cfg.Tpm.AikSecretKey, nonce, tpmQuoteRequest.PcrBanks, tpmQuoteRequest.Pcrs)
 	if err != nil {
 		return err
 	}
 
-	defer tpmProvider.Close()
-
-	quoteBytes, err := tpmProvider.GetTpmQuote(config.GetConfiguration().Tpm.AikSecretKey, nonce, tpmQuoteRequest.PcrBanks, tpmQuoteRequest.Pcrs)
-	if err != nil {
-		return err
-	}
-
-	tpmQuoteResponse.Quote = base64.StdEncoding.EncodeToString(quoteBytes)
+	ctx.tpmQuoteResponse.Quote = base64.StdEncoding.EncodeToString(quoteBytes)
 
 	return nil
 }
 
-// create an array of "tcbMeasurments", each from the  xml escaped string 
+// create an array of "tcbMeasurments", each from the  xml escaped string
 // of the files located in /opt/trustagent/var/ramfs
-func (tpmQuoteResponse *TpmQuoteResponse) getTcbMeasurements() error {
+func (ctx *TpmQuoteContext) getTcbMeasurements() error {
 
 	fileInfo, err := ioutil.ReadDir(constants.RamfsDir)
 	if err != nil {
@@ -212,144 +211,153 @@ func (tpmQuoteResponse *TpmQuoteResponse) getTcbMeasurements() error {
 	}
 
 	for _, file := range fileInfo {
-		log.Debugf("Examining measurement file %s with ext %s", file.Name(), filepath.Ext(file.Name()))
 		if filepath.Ext(file.Name()) == ".xml" {
+			log.Debugf("Including measurement file '%s/%s'", constants.RamfsDir, file.Name())
 			xml, err := ioutil.ReadFile(constants.RamfsDir + file.Name())
 			if err != nil {
 				return fmt.Errorf("There was an error reading manifest file %s", file.Name())
 			}
 
-			tpmQuoteResponse.TcbMeasurements.TcbMeasurements = append(tpmQuoteResponse.TcbMeasurements.TcbMeasurements, string(xml))
+			ctx.tpmQuoteResponse.TcbMeasurements.TcbMeasurements = append(ctx.tpmQuoteResponse.TcbMeasurements.TcbMeasurements, string(xml))
 		}
 	}
 
-	return nil 
+	return nil
 }
 
-func (tpmQuoteResponse *TpmQuoteResponse) getAssetTags() error {
+func (ctx *TpmQuoteContext) getAssetTags() error {
 
-	tpm, err := tpmprovider.NewTpmProvider()
+	tagExists, err := ctx.tpm.NvIndexExists(tpmprovider.NV_IDX_ASSET_TAG)
 	if err != nil {
 		return err
 	}
 
-	defer tpm.Close()
-	
-	tagExists, err := tpm.NvIndexExists(tpmprovider.NV_IDX_ASSET_TAG)
-	if err != nil {
-		return err
-	}
+	if tagExists {
 
-	if tagExists  {
+		ctx.tpmQuoteResponse.IsTagProvisioned = true
 
-		tpmQuoteResponse.IsTagProvisioned = true
-		
-		tagBytes, err := tpm.NvRead(config.GetConfiguration().Tpm.SecretKey, tpmprovider.NV_IDX_ASSET_TAG)
+		tagBytes, err := ctx.tpm.NvRead(ctx.cfg.Tpm.OwnerSecretKey, tpmprovider.NV_IDX_ASSET_TAG)
 		if err != nil {
 			return err
-		} 
+		}
 
-		tpmQuoteResponse.AssetTag = base64.StdEncoding.EncodeToString(tagBytes);	// this data will be evaluated in 'getNonce'
+		ctx.tpmQuoteResponse.AssetTag = base64.StdEncoding.EncodeToString(tagBytes) // this data will be evaluated in 'getNonce'
 
 	} else {
-		tpmQuoteResponse.IsTagProvisioned = false
+		ctx.tpmQuoteResponse.IsTagProvisioned = false
 	}
-	
-	return nil 
+
+	return nil
 }
 
-func createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) (*TpmQuoteResponse, error) {
+func (ctx *TpmQuoteContext) createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) error {
 	var err error
 
-	tpmQuoteResponse := TpmQuoteResponse {}
-	tpmQuoteResponse.TimeStamp = time.Now().Unix()
+	ctx.tpmQuoteResponse.TimeStamp = time.Now().Unix()
 
 	// getAssetTags must be called before getQuote so that the nonce is created correctly - see comments for getNonce()
-	err = tpmQuoteResponse.getAssetTags()
+	err = ctx.getAssetTags()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// get the quote from tpmprovider
-	err = tpmQuoteResponse.getQuote(tpmQuoteRequest)
+	err = ctx.getQuote(tpmQuoteRequest)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// clientIp
-	tpmQuoteResponse.ClientIp, err = util.GetLocalIpAsString()
+	ctx.tpmQuoteResponse.ClientIp, err = util.GetLocalIpAsString()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// aik --> read from disk and convert to PEM string
-	err = tpmQuoteResponse.readAikAsBase64()
+	err = ctx.readAikAsBase64()
 	if err != nil {
-		return nil, err
-	}
-	
-	// eventlog: read /opt/trustagent/var/measureLog.xml (created during ) --> needs to integrate with module_analysis.sh
-	err = tpmQuoteResponse.readEventLog()
-	if err != nil {
-		return nil, err
+		return err
 	}
 
-	err = tpmQuoteResponse.getTcbMeasurements()
+	// eventlog: read /opt/trustagent/var/measureLog.xml (created during ) --> needs to integrate with module_analysis.sh
+	err = ctx.readEventLog()
 	if err != nil {
-		return nil, err
+		return err
+	}
+
+	err = ctx.getTcbMeasurements()
+	if err != nil {
+		return err
 	}
 
 	// selected pcr banks (just return what was requested similar to java implementation)
-	tpmQuoteResponse.SelectedPcrBanks.SelectedPcrBanks = tpmQuoteRequest.PcrBanks
+	ctx.tpmQuoteResponse.SelectedPcrBanks.SelectedPcrBanks = tpmQuoteRequest.PcrBanks
 
-	tpmQuoteResponse.ErrorCode = 0				// Question: does HVS handle specific error codes or is just a pass through?
-	tpmQuoteResponse.ErrorMessage = "OK"
-	return &tpmQuoteResponse, nil
+	ctx.tpmQuoteResponse.ErrorCode = 0 // Question: does HVS handle specific error codes or is just a pass through?
+	ctx.tpmQuoteResponse.ErrorMessage = "OK"
+	return nil
 }
 
-// curl --user tagentadmin:TAgentAdminPassword -d '{ "nonce":"ZGVhZGJlZWZkZWFkYmVlZmRlYWRiZWVmZGVhZGJlZWZkZWFkYmVlZiA=", "pcrs": [0,1,2,3,18,19,22] }' -H "Content-Type: application/json" -X POST https://localhost:1443/v2/tpm/quote -k --noproxy "*"
-func getTpmQuote(httpWriter http.ResponseWriter, httpRequest *http.Request) {
+// Returns 'quote' json provided parameters such as a nonce, pcr banks and pcrs
+// Ex. curl --user tagentadmin:TAgentAdminPassword -d '{ "nonce":"ZGVhZGJlZWZkZWFkYmVlZmRlYWRiZWVmZGVhZGJlZWZkZWFkYmVlZiA=", "pcrs": [0,1,2,3,18,19,22] }' -H "Content-Type: application/json" -X POST https://localhost:1443/v2/tpm/quote -k --noproxy "*"
+func getTpmQuote(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.TpmFactory) http.HandlerFunc {
+	return func(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 
-	log.Debugf("Request: %s", httpRequest.URL.Path)
+		log.Debugf("Request: %s", httpRequest.URL.Path)
 
-	var tpmQuoteRequest TpmQuoteRequest
+		tpm, err := tpmFactory.NewTpmProvider()
+		if err != nil {
+			log.Errorf("%s: Could not create tpm provider: %s", httpRequest.URL.Path, err)
+			httpWriter.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
-	data, err := ioutil.ReadAll(httpRequest.Body)
-	if err != nil {
-		log.Errorf("%s: Error reading request body: %s", httpRequest.URL.Path, err)
-		httpWriter.WriteHeader(http.StatusBadRequest)
+		defer tpm.Close()
+
+		ctx := TpmQuoteContext{
+			cfg: cfg,
+			tpm: tpm,
+		}
+
+		var tpmQuoteRequest TpmQuoteRequest
+
+		data, err := ioutil.ReadAll(httpRequest.Body)
+		if err != nil {
+			log.Errorf("%s: Error reading request body: %s", httpRequest.URL.Path, err)
+			httpWriter.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		err = json.Unmarshal(data, &tpmQuoteRequest)
+		if err != nil {
+			log.Errorf("%s: Error marshaling json data: %s...\n%s", httpRequest.URL.Path, err, string(data))
+			httpWriter.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if len(tpmQuoteRequest.Nonce) == 0 {
+			log.Errorf("%s: The TpmQuoteRequest does not contain a nonce", httpRequest.URL.Path)
+			httpWriter.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		err = ctx.createTpmQuote(&tpmQuoteRequest)
+		if err != nil {
+			log.Errorf("There was an error creating the tpm quote: %s", err)
+			httpWriter.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		xmlOutput, err := xml.MarshalIndent(&ctx.tpmQuoteResponse, "  ", "    ")
+		if err != nil {
+			log.Errorf("%s: There was an error serializing the tpm quote %s", httpRequest.URL.Path, err)
+			httpWriter.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		httpWriter.Header().Set("Content-Type", "application/xml")
+		httpWriter.WriteHeader(http.StatusOK)
+		_, _ = bytes.NewBuffer(xmlOutput).WriteTo(httpWriter)
 		return
 	}
-
-	err = json.Unmarshal(data, &tpmQuoteRequest)
-	if err != nil {
-		log.Errorf("%s: Error marshaling json data: %s...\n%s", httpRequest.URL.Path, err, string(data))
-		httpWriter.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	if len(tpmQuoteRequest.Nonce) == 0 {
-		log.Errorf("%s: The TpmQuoteRequest does not contain a nonce", httpRequest.URL.Path,)
-		httpWriter.WriteHeader(http.StatusBadRequest)
-		return
-	} 
-
-	tpmQuoteResonse, err := createTpmQuote(&tpmQuoteRequest) 
-	if err != nil {
-		log.Errorf("There was an error creating the tpm quote: %s", err)
-		httpWriter.WriteHeader(http.StatusInternalServerError)
-		return
-	} 
-
-	xmlOutput, err := xml.MarshalIndent(tpmQuoteResonse, "  ", "    ")
-	if err != nil {
-		log.Errorf("%s: There was an error serializing the tpm quote %s", httpRequest.URL.Path, err)
-		httpWriter.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	httpWriter.Header().Set("Content-Type", "application/xml")
-	httpWriter.WriteHeader(http.StatusOK)
-	_, _ = bytes.NewBuffer(xmlOutput).WriteTo(httpWriter)
-	return
 }

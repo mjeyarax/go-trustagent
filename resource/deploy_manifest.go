@@ -1,21 +1,21 @@
 /*
 * Copyright (C) 2019 Intel Corporation
 * SPDX-License-Identifier: BSD-3-Clause
-*/
+ */
 package resource
 
 import (
 	"encoding/xml"
-	"io/ioutil"
-	"net/http"
-	"strings"
 	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/vsclient"
 	"intel/isecl/lib/common/validation"
+	"io/ioutil"
+	"net/http"
+	"strings"
 )
 
-
+// Writes the manifest xml received to /opt/trustagent/var/manifest_{UUID}.xml.
 func deployManifest(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 
 	log.Debugf("Request: %s", httpRequest.URL.Path)
@@ -45,13 +45,13 @@ func deployManifest(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 	}
 
 	if len(manifest.Label) == 0 {
-		log.Errorf("%s: The manifest did not contain a label", httpRequest.URL.Path,)
+		log.Errorf("%s: The manifest did not contain a label", httpRequest.URL.Path)
 		httpWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if (strings.Contains(manifest.Label, vsclient.DEFAULT_APPLICATION_FLAVOR_PREFIX) || 
-		strings.Contains(manifest.Label, vsclient.DEFAULT_WORKLOAD_FLAVOR_PREFIX)) {
+	if strings.Contains(manifest.Label, vsclient.DEFAULT_APPLICATION_FLAVOR_PREFIX) ||
+		strings.Contains(manifest.Label, vsclient.DEFAULT_WORKLOAD_FLAVOR_PREFIX) {
 		log.Infof("%s: Default flavor's manifest (%s) is part of installation, no need to deploy default flavor's manifest", httpRequest.URL.Path, manifest.Label)
 		httpWriter.WriteHeader(http.StatusBadRequest)
 		return

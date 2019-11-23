@@ -1,25 +1,24 @@
 /*
 * Copyright (C) 2019 Intel Corporation
 * SPDX-License-Identifier: BSD-3-Clause
-*/
+ */
 package tasks
 
 import (
 	"encoding/xml"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"strings"
 	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/vsclient"
 	"intel/isecl/lib/common/setup"
 	"intel/isecl/lib/common/validation"
+	"io/ioutil"
+	"os"
+	"strings"
 )
 
 type GetConfiguredManifest struct {
-	Flags 	[]string
-	manifestsClient vsclient.ManifestsClient
+	manifestsClient    vsclient.ManifestsClient
 	savedManifestFiles []string
 }
 
@@ -31,8 +30,8 @@ func (task GetConfiguredManifest) saveManifest(manifestXml []byte) error {
 		return err
 	}
 
-	if (strings.Contains(manifest.Label, vsclient.DEFAULT_APPLICATION_FLAVOR_PREFIX) || 
-		strings.Contains(manifest.Label, vsclient.DEFAULT_WORKLOAD_FLAVOR_PREFIX)) {
+	if strings.Contains(manifest.Label, vsclient.DEFAULT_APPLICATION_FLAVOR_PREFIX) ||
+		strings.Contains(manifest.Label, vsclient.DEFAULT_WORKLOAD_FLAVOR_PREFIX) {
 		log.Infof("Default flavor's manifest (%s) is part of installation, no need to deploy default flavor's manifest", manifest.Label)
 		return nil
 	}
@@ -49,8 +48,8 @@ func (task GetConfiguredManifest) saveManifest(manifestXml []byte) error {
 }
 
 // Uses "FLAVOR_UUIDS" and "FLAVOR_LABELS" environment variables to download
-// application manifests from VS. 
-func (task* GetConfiguredManifest) Run(c setup.Context) error {
+// application manifests from VS.
+func (task *GetConfiguredManifest) Run(c setup.Context) error {
 
 	var err error
 	var flavorUUIDs []string
@@ -110,8 +109,8 @@ func (task* GetConfiguredManifest) Run(c setup.Context) error {
 	return nil
 }
 
-func (task* GetConfiguredManifest) Validate(c setup.Context) error {
-	
+func (task *GetConfiguredManifest) Validate(c setup.Context) error {
+
 	missing := false
 
 	for _, manifestFile := range task.savedManifestFiles {
@@ -119,7 +118,7 @@ func (task* GetConfiguredManifest) Validate(c setup.Context) error {
 			log.Errorf("Validation error: Could not validate manifest '%s' was created", manifestFile)
 			missing = true
 		}
-	} 
+	}
 
 	if missing {
 		return fmt.Errorf("One or manifest files were not created.")

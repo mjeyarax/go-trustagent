@@ -5,59 +5,54 @@
 package tasks
 
 import (
-	"encoding/hex"
 	"errors"
-	"fmt"
-	"intel/isecl/lib/common/setup"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/vsclient"
+	"intel/isecl/lib/common/setup"
+	"intel/isecl/lib/tpmprovider"
 )
 
+// The TaskRegistry is used to aggregate commands into logical groups
+// that can be invoked at once (in specific order).
 type TaskRegistry struct {
 	taskMap map[string][]setup.Task
 }
 
 const (
-	DefaultSetupCommand						= "all"
-	TakeOwnershipCommand 					= "takeownership"
-	TrustAgentConfigCommand					= "config"
-	CreateTLSKeyPairCommand					= "createtlskeypair"
-	ReplaceTLSKeyPairCommand				= "replace-tls-keypair"
-	ProvisionEndorsementKeyCommand			= "provisionek"
-	ProvisionAttestationIdentityKeyCommand	= "provisionaik"
-	DownloadPrivacyCACommand				= "downloadprivacyca"
-	ProvisionPrimaryKeyCommand				= "provisionprimarykey"
-	CreateHostCommand						= "create-host"
-	CreateHostUniqueFlavorCommand			= "create-host-unique-flavor"
-	GetConfiguredManifestCommand			= "get-configured-manifest"
+	DefaultSetupCommand                    = "all"
+	TakeOwnershipCommand                   = "takeownership"
+	TrustAgentConfigCommand                = "config"
+	CreateTLSKeyPairCommand                = "createtlskeypair"
+	ReplaceTLSKeyPairCommand               = "replace-tls-keypair"
+	ProvisionEndorsementKeyCommand         = "provisionek"
+	ProvisionAttestationIdentityKeyCommand = "provisionaik"
+	DownloadPrivacyCACommand               = "downloadprivacyca"
+	ProvisionPrimaryKeyCommand             = "provisionprimarykey"
+	CreateHostCommand                      = "create-host"
+	CreateHostUniqueFlavorCommand          = "create-host-unique-flavor"
+	GetConfiguredManifestCommand           = "get-configured-manifest"
 )
 
-func CreateTaskRegistry(flags []string) (*TaskRegistry, error) {
+func CreateTaskRegistry(vsClientFactory vsclient.VSClientFactory, tpmFactory tpmprovider.TpmFactory, cfg *config.TrustAgentConfiguration, flags []string) (*TaskRegistry, error) {
 
 	var registry TaskRegistry
 	registry.taskMap = make(map[string][]setup.Task)
 
-	// assumes that configuration has been populated
-	vsClientFactory, err := registry.newVSClientFactory()
-	if err != nil {
-		return nil, err
-	}
+	takeOwnership := TakeOwnership{tpmFactory: tpmFactory, cfg: cfg}
+	createTLSKeyPair := CreateTLSKeyPair{}
+	provisionEndorsementKey := ProvisionEndorsementKey{tpmFactory: tpmFactory, cfg: cfg}
+	provisionAttestationIdentityKey := ProvisionAttestationIdentityKey{tpmFactory: tpmFactory, cfg: cfg}
+	downloadPrivacyCA := DownloadPrivacyCA{cfg: cfg}
+	provisionPrimaryKey := ProvisionPrimaryKey{tpmFactory: tpmFactory, cfg: cfg}
 
-	takeOwnership := TakeOwnership { Flags : flags }
-	createTLSKeyPair := CreateTLSKeyPair { Flags: flags }
-	provisionEndorsementKey := ProvisionEndorsementKey { Flags: flags }
-	provisionAttestationIdentityKey := ProvisionAttestationIdentityKey { Flags: flags }
-	downloadPrivacyCA := DownloadPrivacyCA { Flags: flags }
-	provisionPrimaryKey := ProvisionPrimaryKey { Flags: flags }
+	registry.taskMap[TakeOwnershipCommand] = []setup.Task{&takeOwnership}
+	registry.taskMap[CreateTLSKeyPairCommand] = []setup.Task{&createTLSKeyPair}
+	registry.taskMap[ProvisionEndorsementKeyCommand] = []setup.Task{&provisionEndorsementKey}
+	registry.taskMap[ProvisionAttestationIdentityKeyCommand] = []setup.Task{&provisionAttestationIdentityKey}
+	registry.taskMap[DownloadPrivacyCACommand] = []setup.Task{&downloadPrivacyCA}
+	registry.taskMap[ProvisionPrimaryKeyCommand] = []setup.Task{&provisionPrimaryKey}
 
-	registry.taskMap[TakeOwnershipCommand] = []setup.Task { &takeOwnership, }
-	registry.taskMap[CreateTLSKeyPairCommand] = []setup.Task { &createTLSKeyPair, }
-	registry.taskMap[ProvisionEndorsementKeyCommand] = []setup.Task { &provisionEndorsementKey, }
-	registry.taskMap[ProvisionAttestationIdentityKeyCommand] = []setup.Task { &provisionAttestationIdentityKey, }
-	registry.taskMap[DownloadPrivacyCACommand] = []setup.Task { &downloadPrivacyCA, }
-	registry.taskMap[ProvisionPrimaryKeyCommand] = []setup.Task { &provisionPrimaryKey, }
-
-	registry.taskMap[DefaultSetupCommand] = []setup.Task {
+	registry.taskMap[DefaultSetupCommand] = []setup.Task{
 		&createTLSKeyPair,
 		&downloadPrivacyCA,
 		&takeOwnership,
@@ -67,10 +62,10 @@ func CreateTaskRegistry(flags []string) (*TaskRegistry, error) {
 	}
 
 	// these are individual commands that are not included of setup
-	registry.taskMap[CreateHostCommand] = []setup.Task { &CreateHost { Flags: flags, hostsClient : vsClientFactory.HostsClient() }}
-	registry.taskMap[CreateHostUniqueFlavorCommand] = []setup.Task { &CreateHostUniqueFlavor { Flags: flags, flavorsClient : vsClientFactory.FlavorsClient() }}
-	registry.taskMap[ReplaceTLSKeyPairCommand] = []setup.Task { &DeleteTlsKeypair { Flags: flags }, &createTLSKeyPair,}
-	registry.taskMap[GetConfiguredManifestCommand] = []setup.Task { &GetConfiguredManifest { Flags: flags, manifestsClient : vsClientFactory.ManifestsClient() }}
+	registry.taskMap[CreateHostCommand] = []setup.Task{&CreateHost{hostsClient: vsClientFactory.HostsClient(), cfg: cfg}}
+	registry.taskMap[CreateHostUniqueFlavorCommand] = []setup.Task{&CreateHostUniqueFlavor{flavorsClient: vsClientFactory.FlavorsClient(), cfg: cfg}}
+	registry.taskMap[ReplaceTLSKeyPairCommand] = []setup.Task{&DeleteTlsKeypair{}, &createTLSKeyPair}
+	registry.taskMap[GetConfiguredManifestCommand] = []setup.Task{&GetConfiguredManifest{manifestsClient: vsClientFactory.ManifestsClient()}}
 
 	return &registry, nil
 }
@@ -78,11 +73,11 @@ func CreateTaskRegistry(flags []string) (*TaskRegistry, error) {
 func (registry *TaskRegistry) RunCommand(command string) error {
 	tasks, ok := registry.taskMap[command]
 	if !ok {
-		return errors.New("Command '" + command +"' is not a valid setup option")
+		return errors.New("Command '" + command + "' is not a valid setup option")
 	}
 
-	setupRunner := &setup.Runner {
-		Tasks: tasks,
+	setupRunner := &setup.Runner{
+		Tasks:    tasks,
 		AskInput: false,
 	}
 
@@ -92,36 +87,4 @@ func (registry *TaskRegistry) RunCommand(command string) error {
 	}
 
 	return nil
-}
-
-func (registry *TaskRegistry) newVSClientFactory() (vsclient.VSClientFactory, error) {
-
-	var certificateDigest [48]byte
-
-	cfg := config.GetConfiguration()
-
-	certDigestBytes, err := hex.DecodeString(cfg.HVS.TLS384)
-	if err != nil {
-		return nil, fmt.Errorf("error converting certificate digest to hex: %s", err)
-	}
-
-	if len(certDigestBytes) != 48 {
-		return nil, fmt.Errorf("Incorrect TLS384 string length %d", len(certDigestBytes))
-	}
-
-	copy(certificateDigest[:], certDigestBytes)
-
-	vsClientConfig := vsclient.VSClientConfig {
-		BaseURL: cfg.HVS.Url,
-		Username : cfg.HVS.Username,
-		Password : cfg.HVS.Password,
-		CertSha384 : &certificateDigest,
-	}
-
-	vsClientFactory, err := vsclient.NewVSClientFactory(&vsClientConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return vsClientFactory, nil
 }

@@ -6,9 +6,9 @@ package util
 
 import (
 	"errors"
+	log "github.com/sirupsen/logrus"
 	"net"
 	"strings"
-	log "github.com/sirupsen/logrus"
 )
 
 func GetLocalIpAsString() (string, error) {
@@ -22,7 +22,7 @@ func GetLocalIpAsString() (string, error) {
 	ipString := addr.String()
 
 	idx := strings.Index(ipString, "/")
-	if(idx > -1) {
+	if idx > -1 {
 		ipString = ipString[:idx]
 	}
 

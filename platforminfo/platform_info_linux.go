@@ -1,5 +1,4 @@
- // +build linux
-
+// +build linux
 
 /*
  * Copyright (C) 2019 Intel Corporation
@@ -106,7 +105,7 @@ func OSName() (string, error) {
 	// ISECL-7227:  This is a hack to get flavors to work in hvs.  HVS is expecting "RedHatEnterpriseServer",
 	// but on RHEL8 'lsb_release -a' is returning "RedHatEnterprise".  This needs to be
 	// fixed in HVS.
-	if(osName == "RedHatEnterprise") {
+	if osName == "RedHatEnterprise" {
 		osName = "RedHatEnterpriseServer"
 	}
 

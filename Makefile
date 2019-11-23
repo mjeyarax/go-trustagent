@@ -7,14 +7,11 @@ GITLAB-TOKEN = gpgtQ5xyjKwDYECNjc9T
 TBOOTXM-BRANCH = v1.0%2Fgo-trust-agent
 TBOOTXM-PROJECT-ID = 21861
 
+# TODO:  Update make file to support debug/release builds (release build to use secure gcflags)
+# See https://gitlab.devtools.intel.com/sst/isecl/lib-java/lib-workload-measurement/commit/db18532cccb1aabce8444b1ed4844bf8e54d8915 ...
+# -fno-strict-overflow -fno-delete-null-pointer-checks -fwrapv -fPIE -fPIC -fstack-protector-strong -O2 -D
 gta:
 	env GOOS=linux go build -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/util.Version=$(VERSION) -X intel/isecl/go-trust-agent/util.GitHash=$(GITCOMMIT) -X intel/isecl/go-trust-agent/util.CommitDate=$(GITCOMMITDATE)" -o out/tagent
-
-# KWT
-# Pass the '-w' flag to the linker to omit the debug information (for example, go build -ldflags=-w prog.go).
-# https://golang.org/doc/gdb
-# https://gitlab.devtools.intel.com/sst/isecl/lib-java/lib-workload-measurement/commit/db18532cccb1aabce8444b1ed4844bf8e54d8915 ...
-# -fno-strict-overflow -fno-delete-null-pointer-checks -fwrapv -fPIE -fPIC -fstack-protector-strong -O2 -D
 
 package: gta
 	mkdir -p out/installer
@@ -41,19 +38,17 @@ package: gta
 	# This will not work in github (ISECL-7447)
 	if [ ! -f out/installer/$(APPLICATION-AGENT-ARTIFACT) ] ; \
 	then \
-		curl --header 'PRIVATE-TOKEN: $(GITLAB-TOKEN)' https://gitlab.devtools.intel.com/api/v4/projects/$(TBOOTXM-PROJECT-ID)/jobs/artifacts/$(TBOOTXM-BRANCH)/raw/out/$(APPLICATION-AGENT-ARTIFACT)?job=tbootxm --noproxy '*' --out out/installer/$(APPLICATION-AGENT-ARTIFACT) --noproxy '*'; \
+		curl --header "PRIVATE-TOKEN: $(GITLAB-TOKEN)" https://gitlab.devtools.intel.com/api/v4/projects/$(TBOOTXM-PROJECT-ID)/jobs/artifacts/$(TBOOTXM-BRANCH)/raw/out/$(APPLICATION-AGENT-ARTIFACT)?job=tbootxm --noproxy '*' --out out/installer/$(APPLICATION-AGENT-ARTIFACT) --noproxy '*'; \
 	fi;
 
 	cp out/tagent out/installer/tagent
 	makeself out/installer out/trustagent-$(VERSION).bin "TrustAgent $(VERSION)" ./install.sh
 
 build_test: gta
-	cd resource && go test -c -o ../out/resource.test -tag=unit_test
+	cd resource && go test -c -o ../out/resource.test -tags=unit_test
 	cd tasks && go test -c -o ../out/tasks.test -tags=unit_test
 
-all: gt
+all: gta
 
 clean:
-	rm -f cover.*
 	rm -rf out/
-	rm -rf builds/

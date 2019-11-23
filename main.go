@@ -2,18 +2,12 @@
  * Copyright (C) 2019 Intel Corporation
  * SPDX-License-Identifier: BSD-3-Clause
  */
- package main
- 
- import (
+package main
+
+import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
-	"os/exec"
-	"os/user"
-	"path/filepath"
-	"strconv"
-	"syscall"
 	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
@@ -21,7 +15,16 @@
 	"intel/isecl/go-trust-agent/resource"
 	"intel/isecl/go-trust-agent/tasks"
 	"intel/isecl/go-trust-agent/util"
+	"intel/isecl/go-trust-agent/vsclient"
 	commonExec "intel/isecl/lib/common/exec"
+	"intel/isecl/lib/tpmprovider"
+	"io"
+	"os"
+	"os/exec"
+	"os/user"
+	"path/filepath"
+	"strconv"
+	"syscall"
 )
 
 func printUsage() {
@@ -53,16 +56,16 @@ func printUsage() {
 	fmt.Println("")
 }
 
-func setupLogging() error {
+func setupLogging(cfg *config.TrustAgentConfiguration) error {
 
 	logFile, err := os.OpenFile(constants.LogFilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
- 
+
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
 	log.SetOutput(multiWriter)
-	log.SetLevel(config.GetConfiguration().LogLevel)
+	log.SetLevel(cfg.LogLevel)
 
 	return nil
 }
@@ -85,7 +88,7 @@ func updatePlatformInfo() error {
 	// collect the platform info
 	platformInfo, err := platforminfo.GetPlatformInfo()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// serialize to json
@@ -104,7 +107,7 @@ func updatePlatformInfo() error {
 }
 
 func updateMeasureLog() error {
-	cmd:= exec.Command(constants.ModuleAnalysis)
+	cmd := exec.Command(constants.ModuleAnalysis)
 	cmd.Dir = constants.BinDir
 	results, err := cmd.Output()
 	if err != nil {
@@ -115,27 +118,19 @@ func updateMeasureLog() error {
 	return nil
 }
 
-func printConfig(setting string) {
-
-	switch setting {
-	case "aik.secret" :
-		fmt.Printf("%s\n", config.GetConfiguration().Tpm.AikSecretKey)
-	default:
-		fmt.Printf("Unknown config parameter: %s\n", setting)
-	}
-}
-
 func printVersion() {
 
 	if len(os.Args) > 2 && os.Args[2] == "short" {
 		major, err := util.GetMajorVersion()
 		if err != nil {
-			panic(err)
+			fmt.Printf("ERROR: %+v\n", err)
+			os.Exit(1)
 		}
 
 		minor, err := util.GetMinorVersion()
 		if err != nil {
-			panic(err)
+			fmt.Printf("ERROR: %+v\n", err)
+			os.Exit(1)
 		}
 
 		fmt.Printf("%d.%d\n", major, minor)
@@ -175,7 +170,7 @@ func uninstall() error {
 		} else {
 			return fmt.Errorf("Uninstall: An unhandled error occurred with the tagent service: %s", err)
 		}
-	} 
+	}
 
 	log.Info("Uninstall: TrustAgent service removed successfully")
 
@@ -194,8 +189,8 @@ func uninstall() error {
 	//
 	// remove all of tagent files (in /opt/trustagent/)
 	//
-	if _, err := os.Stat(constants.IstallationDir); err == nil {
-		err = os.RemoveAll(constants.IstallationDir)
+	if _, err := os.Stat(constants.InstallationDir); err == nil {
+		err = os.RemoveAll(constants.InstallationDir)
 		if err != nil {
 			log.Errorf("Uninstall: An error occurred removing the trustagent files: %s", err)
 		}
@@ -205,16 +200,33 @@ func uninstall() error {
 
 	return nil
 }
- 
-func main() {
 
-	// Initialize the config from the yaml file (may be empty)
-	config.InitConfigFromYaml(constants.ConfigFilePath)
+func newVSClientConfig(cfg *config.TrustAgentConfiguration) (*vsclient.VSClientConfig, error) {
 
-	err := setupLogging()
+	var certificateDigest [48]byte
+
+	certDigestBytes, err := hex.DecodeString(cfg.HVS.TLS384)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("error converting certificate digest to hex: %s", err)
 	}
+
+	if len(certDigestBytes) != 48 {
+		return nil, fmt.Errorf("Incorrect TLS384 string length %d", len(certDigestBytes))
+	}
+
+	copy(certificateDigest[:], certDigestBytes)
+
+	vsClientConfig := vsclient.VSClientConfig{
+		BaseURL:    cfg.HVS.Url,
+		Username:   cfg.HVS.Username,
+		Password:   cfg.HVS.Password,
+		CertSha384: &certificateDigest,
+	}
+
+	return &vsClientConfig, nil
+}
+
+func main() {
 
 	if len(os.Args) <= 1 {
 		fmt.Printf("Invalid arguments: %s\n\n", os.Args)
@@ -222,14 +234,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	cfg, err := config.NewConfigFromYaml(constants.ConfigFilePath)
+	if err != nil {
+		fmt.Printf("ERROR: %+v\n", err)
+		os.Exit(1)
+	}
+
 	currentUser, _ := user.Current()
+
 	cmd := os.Args[1]
 	switch cmd {
 	case "version":
 		printVersion()
 	case "start":
 
-		// 
+		//
 		// The legacy trust agent was a shell script that did work like creating platform-info,
 		// measureLog.xml, etc.  The systemd service ran that script as root.  Now, systemd is
 		// starting tagent (go exec) which shells out to module_anlaysis.sh to create measureLog.xml
@@ -242,7 +261,13 @@ func main() {
 			fmt.Printf("'tagent start' must be run as root, not  user '%s'\n", currentUser.Username)
 			os.Exit(1)
 		}
-	
+
+		err = setupLogging(cfg)
+		if err != nil {
+			fmt.Printf("ERROR: %+v\n", err)
+			os.Exit(1)
+		}
+
 		err = updatePlatformInfo()
 		if err != nil {
 			log.Printf("There was an error creating platform-info: %s\n", err.Error())
@@ -271,9 +296,9 @@ func main() {
 			os.Exit(1)
 		}
 
-		// take ownership of all of the files in /opt/trusagent before forking the 
+		// take ownership of all of the files in /opt/trusagent before forking the
 		// tagent service
-		_ = filepath.Walk(constants.IstallationDir, func(fileName string, info os.FileInfo, err error) error {
+		_ = filepath.Walk(constants.InstallationDir, func(fileName string, info os.FileInfo, err error) error {
 			//log.Infof("Owning file %s", fileName)
 			err = os.Chown(fileName, int(uid), int(gid))
 			if err != nil {
@@ -298,28 +323,41 @@ func main() {
 
 	case "startService":
 		if currentUser.Username != constants.TagentUserName {
-			log.Errorf("'tagent startService' must be run as the agent user, not  user '%s'\n", currentUser.Username)
+			fmt.Printf("'tagent startService' must be run as the agent user, not  user '%s'\n", currentUser.Username)
+			os.Exit(1)
+		}
+
+		err = setupLogging(cfg)
+		if err != nil {
+			fmt.Printf("ERROR: %+v\n", err)
 			os.Exit(1)
 		}
 
 		// make sure the config is valid before starting the trust agent service
-		err = config.GetConfiguration().Validate()
+		err = cfg.Validate()
 		if err != nil {
-			log.Errorf("Configuratoin error: %s", err)
+			log.Errorf("Configuration error: %s", err)
+			os.Exit(1)
+		}
+
+		tpmFactory, err := tpmprovider.NewTpmFactory()
+		if err != nil {
+			log.Errorf("Could not create the tpm factory: %s", err)
 			os.Exit(1)
 		}
 
 		// create and start webservice
-		service, err := resource.CreateTrustAgentService(config.GetConfiguration().TrustAgentService.Port)
+		service, err := resource.CreateTrustAgentService(cfg, tpmFactory)
 		if err != nil {
-			panic(err)
+			log.Errorf("ERROR: %+v\n", err)
+			os.Exit(1)
 		}
 
 		service.Start()
 	case "setup":
-		
-		// make sure config is updated with env vars before starting setup tasks
-		config.GetConfiguration().LoadEnvironmentVariables()
+
+		// only apply env vars to config before starting 'setup' tasks
+		cfg.LoadEnvironmentVariables()
 
 		if currentUser.Username != constants.RootUserName {
 			log.Errorf("'tagent setup' must be run as root, not  user '%s'\n", currentUser.Username)
@@ -327,33 +365,54 @@ func main() {
 		}
 
 		var setupCommand string
-		if(len(os.Args) > 2) {
+		if len(os.Args) > 2 {
 			setupCommand = os.Args[2]
 		} else {
 			setupCommand = tasks.DefaultSetupCommand
 		}
 
-		registry, err := tasks.CreateTaskRegistry(os.Args)
+		vsClientConfig, err := newVSClientConfig(cfg)
 		if err != nil {
-			panic(err)
+			log.Errorf("Could not create the vsclient config: %s", err)
+			os.Exit(1)
+		}
+
+		vsClientFactory, err := vsclient.NewVSClientFactory(vsClientConfig)
+		if err != nil {
+			log.Errorf("Could not create the vsclient factory: %s", err)
+			os.Exit(1)
+		}
+
+		tpmFactory, err := tpmprovider.NewTpmFactory()
+		if err != nil {
+			log.Errorf("Could not create the tpm factory: %s", err)
+			os.Exit(1)
+		}
+
+		registry, err := tasks.CreateTaskRegistry(vsClientFactory, tpmFactory, cfg, os.Args)
+		if err != nil {
+			fmt.Printf("ERROR: %+v\n", err)
+			os.Exit(1)
 		}
 
 		err = registry.RunCommand(setupCommand)
 		if err != nil {
-			panic(err)
+			fmt.Printf("ERROR: %+v\n", err)
+			os.Exit(1)
 		}
 
 	case "config":
-		if(len(os.Args) != 3) {
+		if len(os.Args) != 3 {
 			fmt.Printf("'config' requires an additional parameter.\n")
 		}
 
-		printConfig(os.Args[2])
+		cfg.PrintConfigSetting(os.Args[2])
 
 	case "uninstall":
 		err = uninstall()
 		if err != nil {
-			panic(err)
+			fmt.Printf("ERROR: %+v\n", err)
+			os.Exit(1)
 		}
 
 	case "help":
