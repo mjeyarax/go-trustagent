@@ -237,9 +237,6 @@ if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PR
     $TRUSTAGENT_EXE setup
     setup_results=$?
 
-    # this script is run by root, so own any setup generated files by 'tagent'
-    chown -R $TRUSTAGENT_USERNAME:$TRUSTAGENT_USERNAME $TRUSTAGENT_HOME
-
     if [ $setup_results -eq 0 ]; then         
 
         systemctl start $TRUSTAGENT_SERVICE

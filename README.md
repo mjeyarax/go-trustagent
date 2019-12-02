@@ -41,11 +41,3 @@ To debug GTA in a 'gta-devel' container, it must run 'systemd' so that services 
 6. Start the trustagent service: `systemctl start tagent`
 7. Make sure the service is running: `systemctl status tagent` does not show errors.
 8. Confirm the REST API is accessible: `curl --request GET --user user:password https://localhost:1443/v2/host -k --noproxy "*"` returns without error.
-
-
-    
-
-
-
-
-
