@@ -16,8 +16,6 @@ See 'GTA High Level Design v1.0.docx'
 # Installation
 Installation is reponsible for ensuring the presence of 3rd party libraries, deploying GTA files, creating system users/services, etc.  GTA is distributed as a self extracting makeself/.bin file that supports the following two use cases...
 
-KWT:  Installation constraints:  RHEL8, TSS...
-
 | Use Case | Description |
 |----------|-------------|
 |Minimal Install| The GTA installer only deploys files and creates system users/services.  It does not attempt to provision the agent, which needs to be performed before operation.|
