@@ -11,12 +11,10 @@ This is a low level design specification of Go Trust Agent (GTA) which is a part
 
 See 'GTA High Level Design v1.0.docx'
 
-*Note:  This document does not include details regarding the installation and operation of application-integity.*
+*Note:  This document does not include details regarding the installation and operation of application-integity or workload-agent.*
 
 # Installation
 Installation is reponsible for ensuring the presence of 3rd party libraries, deploying GTA files, creating system users/services, etc.  GTA is distributed as a self extracting makeself/.bin file that supports the following two use cases...
-
-KWT:  Installation constraints:  RHEL8, TSS...
 
 | Use Case | Description |
 |----------|-------------|
@@ -26,12 +24,7 @@ KWT:  Installation constraints:  RHEL8, TSS...
 
 ## Minimal Install
 During minimal installation, the installer performs the following activities...
-1. Ensure that the system has the appropriate prerequisites...
-    1. tpm2-abrmd-2 and tpm2-tss-2.0
-    2. dmidecode-3
-    3. redhat-lsb-core-4.1
-    4. tboot-1.9.7
-    5. compat-openssl10-1.0
+1. Ensure that the system has the appropriate prerequisites ([see Software Dependencies](#Software-Dependencies)])
 2. Creates the 'tagent' user, adding it to the 'tss' group so that it can access TPM (ex. /dev/tpm0)
 3. Deploys the files for GTA.
 4. Deploys application-integrity (tboot-xm, libwml).
@@ -75,7 +68,7 @@ By default, the `tagent setup` command (or `tagent setup all`) is used to provis
 *Note:  While GTA supports the option of executing these tasks independently (ex. `tagent setup create-tls-keypair`), it is not recommended due to complex order and interdependencies.*
 
 # Operations
-The following sub-sections describe GTA operations, provided it has been installed and provisioned (aka 'setup').
+Provided the trust-agent has been installed and provisioned (aka 'setup'), administrators are then able to manage the service and register the host with HVS (to integrate the host into the ISecL platform). 
 
 ## Service Management
 During installation, /opt/trustagent/tagent.service is created and enabled with systemd.  Managing the tagent service is done via `systemctl`.  The following table shows the `systemctl` commands for managing GTA...
@@ -85,6 +78,8 @@ During installation, /opt/trustagent/tagent.service is created and enabled with 
 |Start tagent service|`systemctl start tagent`|
 |Stop tagent service|`systemctl stop tagent`|
 |Get the status tagent service|`systemctl status tagent`|
+
+Once the trust-agent is successfully operating under systemd, it will be restarted after reboots.
 
 ## HVS Registration/Configuration
 Provided GTA service is running, the agent can be registered with HVS to support remote-attestation, asset-tagging, etc.  Registration entails adding the host to HVS' list of known hosts and establishing flavors for the host.  There are two ways to register the host with HVS...
@@ -172,9 +167,14 @@ The following sections are provided as a reference of GTA.
 
     Authentication: TODO (currently requires basic auth using trust-agent username/password)
 
-    Input: KWT
+    Input: json with the base64 encoded asset tag hash form HVS...
+    
+        {
+            "tag"             : "tHgfRQED1+pYgEZpq3dZC9ONmBCZKdx10LErTZs1k/k=",
+            "hardware_uuid"   : "7a569dad-2d82-49e4-9156-069b0065b262"
+        }
 
-    Output:
+    Output: STATUS OK (200) on success.
 
 ### /tpm/quote (POST)
     Description: The TPM quote operation returns signed data and a signature. The data that is signed contains the PCRs selected for the operation, the composite hash for the selected PCRs, and a nonce provided as input, and used to prevent replay attacks. At provisioning time, the data that is signed is stored, not just the composite hash. The signature is discarded. This API is used to retrieve the AIK signed quote from TPM.
@@ -257,12 +257,21 @@ The following sections are provided as a reference of GTA.
 
     Output: Contents of /etc/workload-agent/bindingkey.pem (generated during WLA installation) with Content-Type 'application/octet-stream'.
 
-## CLI Reference
-|Option|Description|Example|
-|------|-----------|-------|
-|version|Prints version information to stdout.|`tagent version`|
+## CLI Options
+|Option|Description| Required Env Var(s)|
+|------|-----------|-----------|
+|`tagent config aik.secret`|When populated in /opt/trustagent/configuration/config.yml, prints the aik secret key to stdout (supports WLA to create signing/binding keys.).||
+|`tagent help`|Prints usage to stdout.||
+|`tagent setup` or `tagent setup all`|Analogous to the legacy TA's "provision-attestation" command.  [See Setup](#Setup)||
+|`tagent setup create-host`|Adds the local host to the list of HVS' known hosts.| MTWILSON_API_URL, MTWILSON_API_USERNAME, MTWILSON_API_PASSWORD|
+|`tagent setup create-host-unique-flavor`|Registers the local hosts' unique flavor with HVS.| MTWILSON_API_URL, MTWILSON_API_USERNAME, MTWILSON_API_PASSWORD|
+|`tagent setup get-configured-manifest`|Use environment variables, adds an application manifest from HVS to the local host to be measured at boot.  When invoked, the setup command will look for a comma seperated list of environment variables with the name 'FLAVOR_UUIDS' or 'FLAVOR_LABELS'.  It will then use that list to pull one or more manifest from HVS into the /opt/trustagent/var directory (so the manifest will be measured at next boot).  | MTWILSON_API_URL, MTWILSON_API_USERNAME, MTWILSON_API_PASSWORD, (FLAVOR_UUIDS or FLAVOR_LABELS)|
+|`tagent setup replace-tls-keypair`|Regenerates TLS certs by deleting `tls-key.pem` and `tls-cert.pem` from `/opt/trustagent/configuration` and reruns 'create-tls-keypair' command.| MTWILSON_API_URL, MTWILSON_API_USERNAME, MTWILSON_API_PASSWORD|
+|`tagent start`|Starts the trust-agent service/http host. <p/>*This command should not be invoked directly.  Instead, use `systemctl` ([see Service Management](#Service-Management)).*||
+|`tagent uninstall`|Uninstalls the trust-agent.  [See Uninstall](#Uninstall)||
+|`tagent version`|Prints version information to stdout.  Ex. "```tagent v1.0.0-da14377 [2019-11-22T10:37:52-08:00]```".||
+|`tagent version short`|Prints 'short' (major/minor) version information to stdout (to support the creation of application-integrity manifest files.) Ex. "```1.0```".||
 
-KWT
 
 ## trustagent.env Reference
 If the GTA installer is run with a valid 'trustagent.env' file, it will parse the file's values and export them as environment variables that are then evaluated by `tagent setup`.  Below is a table of environment variables used by GTA...
@@ -302,6 +311,16 @@ The following files are created on the host during a 'minimal installation'...
     ├── ramfs
     └── system-info
 ```
+
+## Software Dependencies
+For the ISecL v2.0 release, GTA will target RHEL 8.0 only.  The following dependencies must be present on the host for the installer to run.
+
+    1. tpm2-abrmd-2.1
+    2. tpm2-tss-2.0
+    2. dmidecode-3
+    3. redhat-lsb-core-4.1
+    4. tboot-1.9.7
+    5. compat-openssl10-1.0
 
 ## Platform/Feature Matrix (TBD)
 KWT
