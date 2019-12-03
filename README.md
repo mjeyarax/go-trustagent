@@ -34,6 +34,6 @@ GTA use the `tpm-provider` libary to acces the TPM 2.0 device.  The following in
 Note: The `gta-devel` docker contianer can be used in this fashion to build GTA, but cannot be used to run or debug GTA because `tpm2-abrmd` must run as a service under `systemd`.  See `Unit Testing and TPM Simulator` in the `tpm-provider` project for instructions to run `systemd`, `tpm2-abrmd` and the TPM simulator in the `gta-devel` container.
 
 # Links
-- [Installation instructions](doc/install.md)
+- [Installation instructions](doc/INSTALL.md)
 - [GTA LLD](doc/LLD.md)
 - https://01.org/intel-secl/
