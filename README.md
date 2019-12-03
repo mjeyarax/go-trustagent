@@ -1,43 +1,39 @@
-# Go Trust Agent (GTA)
+# ISecL Go Trust Agent (GTA)
+The Trust Agent resides on physical servers and enables both remote attestation and the extended chain of trust capabilities. The Trust Agent maintains ownership of the server's Trusted Platform Module, allowing secure attestation quotes to be sent to the Verification Service.
 
+## Key features
+- Provides host specific information
+- Provides secure attestation quotes
+- RESTful APIs for easy and versatile access to above features
 
-## Build Instructions
-GTA uses the same build instructions as the `tpm-provider` (see the `tpm-provider` project for more details).  The following instructions assumed that `gta-devel` docker image and container have been created as described in `Building tpm-provider` in the `tpm-provider` project.
+## System Requirements
+- RHEL 8.0
+- TPM 2.0 device
+- Packages
+    - tpm2-abrmd (v2.0.x)
+    - dmidecode (v3.x)
+    - redhat-lsb-core (v4.1.x)
+    - tboot (v1.9.7.x)
+    - compat-openssl10 (v1.0.x)
+- Proxy settings if applicable
+
+*See [docs/install.md](doc/install.md) for additional installation instructions.*
+
+## Software requirements
+- git
+- go 11.4 or newer
+- docker
+
+# Build Instructions
+GTA use the `tpm-provider` libary to acces the TPM 2.0 device.  The following instructions assume that `gta-devel` docker image and container have been created as described in the 'Build Instructions' section of the `tpm-provider` project (see the README.md in that project for more details).
 
 1. cd `/docker_host/go-trust-agent`
 3. `make package`
-4. tagent and trustagent*.bin will be in the `/out` subdirectory
+4. `tagent` and `trustagent-v1.0.0.bin` will be in the /out subdirectory
 
-Note: The `gta-devel` docker contianer can be used in this fashion to build GTA, but cannot be used to run `tpm2-abrmd` because it must run as a service under `systemd`.  See `Unit Testing and TPM Simulator` in the `tpm-provider` for instructions to run `systemd`, `tpm2-abrmd` and the TPM simulator in the `gta-devel` container.
+Note: The `gta-devel` docker contianer can be used in this fashion to build GTA, but cannot be used to run or debug GTA because `tpm2-abrmd` must run as a service under `systemd`.  See `Unit Testing and TPM Simulator` in the `tpm-provider` project for instructions to run `systemd`, `tpm2-abrmd` and the TPM simulator in the `gta-devel` container.
 
-# Installing GTA
-See docs/INSTALL.md
-
-# gta-devel Debugging Instructions
-
-## Installing GTA on 'gta-devel'
-To debug GTA in a 'gta-devel' container, it must run 'systemd' so that services that support http, tpm2-abrmd, dmidecode (for platform-info), etc. can run.
-
-1. Start an container of `gta-devel` that runs `systemd`: `docker run --rm --privileged -ti -e 'container=docker' -v /sys/fs/cgroup:/sys/fs/cgroup:ro -v $(pwd):/docker_host -p 9443:1443 gta-devel /usr/sbin/init`
-2. Use Docker/vscode to 'attach' to the container.
-3. Change directory to where trustagent*.bin file exists.
-4. Create a `trustagent.env` file...
-    ```
-    MTWILSON_API_URL=https://{hvs_url}:{hvs_port}/mtwilson/v2
-    MTWILSON_TLS_CERT_SHA384=7ff464fdd47192d7218e9bc7a80043641196762b840c5c79
-    MTWILSON_API_USERNAME=admin
-    MTWILSON_API_PASSWORD=password
-    TPM_OWNER_SECRET=625d6d8a18f98bf794760fd392b8c01be0b4e959
-    TRUSTAGENT_ADMIN_USERNAME=tagentadmin
-    TRUSTAGENT_ADMIN_PASSWORD=TAgentAdminPassword
-    TRUSTAGENT_LOGIN_REGISTER=true
-    CURRENT_IP={ip of compute-node}
-    GRUB_FILE=/boot/efi/EFI/redhat/grub.cfg
-    REGISTER_TPM_PASSWORD=y
-    AUTOMATIC_PULL_MANIFEST=n
-    PROVISION_ATTESTATION=y
-    ```
-5. Run `./trustagent_v1.0.0.bin`
-6. Start the trustagent service: `systemctl start tagent`
-7. Make sure the service is running: `systemctl status tagent` does not show errors.
-8. Confirm the REST API is accessible: `curl --request GET --user user:password https://localhost:1443/v2/host -k --noproxy "*"` returns without error.
+# Links
+- [Installation instructions](doc/install.md)
+- [GTA LLD](doc/LLD.md)
+- https://01.org/intel-secl/
