@@ -12,9 +12,12 @@ require (
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	gopkg.in/yaml.v2 v2.2.2
 	intel/isecl/lib/common v1.0.0-Beta
-	intel/isecl/lib/tpmprovider v1.0.0-Beta
+	intel/isecl/lib/platform-info v1.0.0
+	intel/isecl/lib/tpmprovider v1.0.0
 )
 
 replace intel/isecl/lib/common => gitlab.devtools.intel.com/sst/isecl/lib/common.git v1.6-beta
 
 replace intel/isecl/lib/tpmprovider => gitlab.devtools.intel.com/sst/isecl/lib/tpm-provider.git v1.0/go-trust-agent
+
+replace intel/isecl/lib/platform-info => gitlab.devtools.intel.com/sst/isecl/lib/platform-info.git v1.0/go-trust-agent
