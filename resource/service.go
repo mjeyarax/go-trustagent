@@ -107,7 +107,6 @@ func (service *TrustAgentService) Start() error {
 
 	log.Infof("TrustAgent service is running: %d", service.port)
 
-	// TODO dispatch Service status checker goroutine
 	<-stop
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

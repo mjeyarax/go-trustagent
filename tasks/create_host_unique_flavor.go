@@ -13,9 +13,9 @@ import (
 )
 
 type CreateHostUniqueFlavor struct {
-	flavorsClient vsclient.FlavorsClient
-	cfg           *config.TrustAgentConfiguration
-	ip            string
+	flavorsClient	vsclient.FlavorsClient
+	cfg 			*config.TrustAgentConfiguration
+	ip 				string
 }
 
 // Communicates with HVS to create the host-unique-flavor from the current compute node.

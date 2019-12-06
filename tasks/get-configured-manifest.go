@@ -18,8 +18,8 @@ import (
 )
 
 type GetConfiguredManifest struct {
-	manifestsClient    vsclient.ManifestsClient
-	savedManifestFiles []string
+	manifestsClient 	vsclient.ManifestsClient
+	savedManifestFiles  []string
 }
 
 func (task GetConfiguredManifest) saveManifest(manifestXml []byte) error {

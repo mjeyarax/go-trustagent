@@ -13,7 +13,6 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
@@ -25,7 +24,6 @@ import (
 	"intel/isecl/lib/tpmprovider"
 	"io/ioutil"
 	"math/big"
-	"net/http"
 	"os"
 )
 
@@ -54,8 +52,8 @@ import (
 
 type ProvisionAttestationIdentityKey struct {
 	tpmFactory      tpmprovider.TpmFactory
-	vsClientFactory vsclient.VSClientFactory
 	cfg             *config.TrustAgentConfiguration
+	privacyCAClient vsclient.PrivacyCAClient
 }
 
 func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
@@ -68,7 +66,7 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 		return err
 	}
 
-	// create an IdentiryChallengeRequest and populate it with aik information
+	// create an IdentityChallengeRequest and populate it with aik information
 	identityChallengeRequest := vsclient.IdentityChallengeRequest{}
 	err = task.populateIdentityRequest(&identityChallengeRequest.IdentityRequest)
 	if err != nil {
@@ -88,7 +86,7 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	}
 
 	// send the 'challenge request' to HVS and get an 'proof request' back
-	identityProofRequest, err := task.getIdentityProofRequest(&identityChallengeRequest)
+	identityProofRequest, err := task.privacyCAClient.GetIdentityProofRequest(&identityChallengeRequest)
 	if err != nil {
 		return err
 	}
@@ -114,7 +112,7 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	}
 
 	// send the decrypted nonce data back to HVS and get a 'proof request' back
-	identityProofRequest2, err := task.getIdentityProofResponse(&identityChallengeResponse)
+	identityProofRequest2, err := task.privacyCAClient.GetIdentityProofResponse(&identityChallengeResponse)
 	if err != nil {
 		return err
 	}
@@ -371,51 +369,6 @@ func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityReq
 	return nil
 }
 
-func (task *ProvisionAttestationIdentityKey) getIdentityProofRequest(identityChallengeRequest *vsclient.IdentityChallengeRequest) (*vsclient.IdentityProofRequest, error) {
-	var identityProofRequest vsclient.IdentityProofRequest
-
-	// ISECL-7703:  Refactor setup tasks to use vsclient
-
-	client, err := vsclient.NewVSClient(task.cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	jsonData, err := json.Marshal(*identityChallengeRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Debugf("ChallengeRequest: %s", jsonData)
-
-	url := fmt.Sprintf("%s/privacyca/identity-challenge-request", task.cfg.HVS.Url)
-	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	request.SetBasicAuth(task.cfg.HVS.Username, task.cfg.HVS.Password)
-	request.Header.Set("Content-Type", "application/json")
-
-	response, err := client.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("%s request failed with error %s\n", url, err)
-	} else {
-		if response.StatusCode != http.StatusOK {
-			b, _ := ioutil.ReadAll(response.Body)
-			return nil, fmt.Errorf("%s returned status '%d': %s", url, response.StatusCode, string(b))
-		}
-
-		data, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			return nil, fmt.Errorf("Error reading response: %s", err)
-		}
-
-		err = json.Unmarshal(data, &identityProofRequest)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &identityProofRequest, nil
-}
-
 //
 // - Input: IdentityProofRequest (Secret, Credential, SymmetricBlob, EndorsementCertifiateBlob)
 //		HVS has encrypted a nonce in the SymmetricBlob
@@ -531,52 +484,4 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 	decrypted = decrypted[:(length - unpadding)]
 
 	return decrypted, nil
-}
-
-func (task *ProvisionAttestationIdentityKey) getIdentityProofResponse(identityChallengeResponse *vsclient.IdentityChallengeResponse) (*vsclient.IdentityProofRequest, error) {
-
-	var identityProofRequest vsclient.IdentityProofRequest
-
-	// ISECL-7703:  Refactor setup tasks to use vsclient
-
-	client, err := vsclient.NewVSClient(task.cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	jsonData, err := json.Marshal(*identityChallengeResponse)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Debugf("identityChallengeResponse: %s\n", string(jsonData))
-
-	url := fmt.Sprintf("%s/privacyca/identity-challenge-response", task.cfg.HVS.Url)
-	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	request.SetBasicAuth(task.cfg.HVS.Username, task.cfg.HVS.Password)
-	request.Header.Set("Content-Type", "application/json")
-
-	response, err := client.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("%s request failed with error %s\n", url, err)
-	} else {
-		if response.StatusCode != http.StatusOK {
-			b, _ := ioutil.ReadAll(response.Body)
-			return nil, fmt.Errorf("%s returned status '%d': %s", url, response.StatusCode, string(b))
-		}
-
-		data, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			return nil, fmt.Errorf("Error reading response: %s", err)
-		}
-
-		log.Debugf("Proof Response: %s\n", string(data))
-
-		err = json.Unmarshal(data, &identityProofRequest)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &identityProofRequest, nil
 }

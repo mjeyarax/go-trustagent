@@ -5,10 +5,8 @@
 package tasks
 
 import (
-	"bytes"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
@@ -18,7 +16,6 @@ import (
 	"intel/isecl/lib/platform-info/platforminfo"
 	"intel/isecl/lib/tpmprovider"
 	"io/ioutil"
-	"net/http"
 )
 
 //-------------------------------------------------------------------------------------------------
@@ -36,6 +33,8 @@ type ProvisionEndorsementKey struct {
 	ekCert                 *x509.Certificate
 	endorsementAuthorities *x509.CertPool
 	cfg                    *config.TrustAgentConfiguration
+	caCertificatesClient   vsclient.CACertificatesClient
+	tpmEndorsementsClient  vsclient.TpmEndorsementsClient
 }
 
 func (task *ProvisionEndorsementKey) Run(c setup.Context) error {
@@ -43,28 +42,42 @@ func (task *ProvisionEndorsementKey) Run(c setup.Context) error {
 	var registered bool
 	var isEkSigned bool
 
-	if err = task.readEndorsementKeyCertificate(); err != nil {
+	tpmProvider, err := task.tpmFactory.NewTpmProvider()
+	if err != nil {
 		return err
 	}
 
+	defer tpmProvider.Close()
+
+	// read the manufacture's endorsement key from the TPM
+	if err = task.readEndorsementKeyCertificate(tpmProvider); err != nil {
+		return err
+	}
+
+	// download the list of public endorsement authority certs from VS
 	if err := task.downloadEndorsementAuthorities(); err != nil {
 		return err
 	}
 
+	// make sure manufacture's endorsement key is signed by one of the ea certs
+	// provided by VS.
 	if isEkSigned, err = task.isEkSignedByEndorsementAuthority(); err != nil {
 		return err
 	}
 
+	// if the ek verifies, we're done/ok
 	if isEkSigned {
 		log.Debug("EC is already issued by endorsement authority; no need to request new EC")
 		return nil
 	}
 
+	// if the ek does not verify, see if is already registered with VS
 	if registered, err = task.isEkRegisteredWithMtWilson(); err != nil {
 		log.Debug("EK is already registered with Mt Wilson; no need to request an EC")
 		return err
 	}
 
+	// if not registered with vs, do so now
 	if !registered {
 		if err = task.registerEkWithMtWilson(); err != nil {
 			return err
@@ -75,20 +88,12 @@ func (task *ProvisionEndorsementKey) Run(c setup.Context) error {
 }
 
 func (task *ProvisionEndorsementKey) Validate(c setup.Context) error {
-
 	// assume valid if error did not occur during 'Run'
 	log.Info("Setup: Provisioning the endorsement key was successful.")
 	return nil
 }
 
-func (task *ProvisionEndorsementKey) readEndorsementKeyCertificate() error {
-
-	tpm, err := task.tpmFactory.NewTpmProvider()
-	if err != nil {
-		return fmt.Errorf("Setup error: Provision aik could not create TpmProvider: %s", err)
-	}
-
-	defer tpm.Close()
+func (task *ProvisionEndorsementKey) readEndorsementKeyCertificate(tpm tpmprovider.TpmProvider) error {
 
 	ekCertBytes, err := tpm.NvRead(task.cfg.Tpm.OwnerSecretKey, tpmprovider.NV_IDX_ENDORSEMENT_KEY)
 	if err != nil {
@@ -123,39 +128,19 @@ func (task *ProvisionEndorsementKey) readEndorsementKeyCertificate() error {
 
 func (task *ProvisionEndorsementKey) downloadEndorsementAuthorities() error {
 
-	// ISECL-7703:  Refactor setup tasks to use vsclient
-
-	client, err := vsclient.NewVSClient(task.cfg)
+	ea, err := task.caCertificatesClient.DownloadEndorsementAuthorities()
 	if err != nil {
 		return err
 	}
 
-	url := fmt.Sprintf("%s/ca-certificates?domain=ek", task.cfg.HVS.Url)
-	request, _ := http.NewRequest("GET", url, nil)
-	request.SetBasicAuth(task.cfg.HVS.Username, task.cfg.HVS.Password)
+	task.endorsementAuthorities = x509.NewCertPool()
+	if !task.endorsementAuthorities.AppendCertsFromPEM(ea) {
+		return fmt.Errorf("Could not load endorsement authorities")
+	}
 
-	response, err := client.Do(request)
+	err = ioutil.WriteFile(constants.EndorsementAuthoritiesFile, ea, 0644)
 	if err != nil {
-		return fmt.Errorf("%s request failed with error %s\n", url, err)
-	} else {
-		if response.StatusCode != http.StatusOK {
-			return fmt.Errorf("%s returned status %d", url, response.StatusCode)
-		}
-
-		data, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			return fmt.Errorf("Error reading response: %s", err)
-		}
-
-		task.endorsementAuthorities = x509.NewCertPool()
-		if !task.endorsementAuthorities.AppendCertsFromPEM(data) {
-			return fmt.Errorf("Could not load endorsement authorities")
-		}
-
-		err = ioutil.WriteFile(constants.EndorsementAuthoritiesFile, data, 0644)
-		if err != nil {
-			return fmt.Errorf("Error saving endorsement authority file '%s': %s", constants.EndorsementAuthoritiesFile, err)
-		}
+		return fmt.Errorf("Error saving endorsement authority file '%s': %s", constants.EndorsementAuthoritiesFile, err)
 	}
 
 	return nil
@@ -193,45 +178,9 @@ func (task *ProvisionEndorsementKey) isEkRegisteredWithMtWilson() (bool, error) 
 		return false, err
 	}
 
-	log.Debugf("HARDWARE-UUID: %s", hardwareUUID)
+	log.Tracef("HARDWARE-UUID: %s", hardwareUUID)
 
-	// ISECL-7703:  Refactor setup tasks to use vsclient
-
-	client, err := vsclient.NewVSClient(task.cfg)
-	if err != nil {
-		return false, err
-	}
-
-	url := fmt.Sprintf("%s/tpm-endorsements?hardwareUuidEqualTo=%s", task.cfg.HVS.Url, hardwareUUID)
-	request, _ := http.NewRequest("GET", url, nil)
-	request.SetBasicAuth(task.cfg.HVS.Username, task.cfg.HVS.Password)
-
-	response, err := client.Do(request)
-	if err != nil {
-		return false, fmt.Errorf("%s request failed with error %s\n", url, err)
-	} else {
-		if response.StatusCode != http.StatusOK {
-			return false, fmt.Errorf("IsEkRegistered: %s returned status %d", url, response.StatusCode)
-		}
-
-		data, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			return false, fmt.Errorf("Error reading response: %s", err)
-		}
-
-		var objmap map[string]interface{}
-		if err := json.Unmarshal(data, &objmap); err != nil {
-			return false, fmt.Errorf("Error parsing json: %s", err)
-		}
-
-		if objmap["tpm_endorsements"] != nil && len(objmap["tpm_endorsements"].([]interface{})) > 0 {
-			// a endorsement was found with this hardware uuid
-			return true, nil
-		}
-
-	}
-
-	return false, nil
+	return task.tpmEndorsementsClient.IsEkRegistered(hardwareUUID)
 }
 
 func (task *ProvisionEndorsementKey) registerEkWithMtWilson() error {
@@ -255,33 +204,5 @@ func (task *ProvisionEndorsementKey) registerEkWithMtWilson() error {
 	endorsementData.Certificate = certificateString
 	endorsementData.Command = "registered by trust agent"
 
-	jsonData, err := json.Marshal(endorsementData)
-	if err != nil {
-		return err
-	}
-
-	log.Info(string(jsonData))
-
-	// ISECL-7703:  Refactor setup tasks to use vsclient
-
-	client, err := vsclient.NewVSClient(task.cfg)
-	if err != nil {
-		return err
-	}
-
-	url := fmt.Sprintf("%s/tpm-endorsements", task.cfg.HVS.Url)
-	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	request.SetBasicAuth(task.cfg.HVS.Username, task.cfg.HVS.Password)
-	request.Header.Set("Content-Type", "application/json")
-
-	response, err := client.Do(request)
-	if err != nil {
-		return fmt.Errorf("RegisterEndorsementKey: %s request failed with error %s\n", url, err)
-	} else {
-		if response.StatusCode != http.StatusOK {
-			return fmt.Errorf("RegisterEndorsementKey: %s returned status %d", url, response.StatusCode)
-		}
-	}
-
-	return nil
+	return task.tpmEndorsementsClient.RegisterEk(&endorsementData)
 }

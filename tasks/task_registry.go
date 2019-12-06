@@ -37,11 +37,28 @@ func CreateTaskRegistry(vsClientFactory vsclient.VSClientFactory, tpmFactory tpm
 	var registry TaskRegistry
 	registry.taskMap = make(map[string][]setup.Task)
 
-	takeOwnership := TakeOwnership{tpmFactory: tpmFactory, cfg: cfg}
-	createTLSKeyPair := CreateTLSKeyPair{}
-	provisionEndorsementKey := ProvisionEndorsementKey{tpmFactory: tpmFactory, cfg: cfg}
-	provisionAttestationIdentityKey := ProvisionAttestationIdentityKey{tpmFactory: tpmFactory, cfg: cfg}
-	downloadPrivacyCA := DownloadPrivacyCA{cfg: cfg}
+	takeOwnership := TakeOwnership {tpmFactory: tpmFactory, cfg: cfg}
+	
+	createTLSKeyPair := CreateTLSKeyPair {}
+
+	provisionEndorsementKey := ProvisionEndorsementKey {
+		caCertificatesClient: vsClientFactory.CACertificatesClient(), 
+		tpmEndorsementsClient: vsClientFactory.TpmEndorsementsClient(), 
+		tpmFactory: tpmFactory, 
+		cfg: cfg,
+	}
+
+	provisionAttestationIdentityKey := ProvisionAttestationIdentityKey {
+		privacyCAClient: vsClientFactory.PrivacyCAClient(), 
+		tpmFactory: tpmFactory, 
+		cfg: cfg,
+	}
+
+	downloadPrivacyCA := DownloadPrivacyCA {
+		privacyCAClient: vsClientFactory.PrivacyCAClient(), 
+		cfg: cfg,
+	}
+
 	provisionPrimaryKey := ProvisionPrimaryKey{tpmFactory: tpmFactory, cfg: cfg}
 
 	registry.taskMap[TakeOwnershipCommand] = []setup.Task{&takeOwnership}
@@ -51,7 +68,7 @@ func CreateTaskRegistry(vsClientFactory vsclient.VSClientFactory, tpmFactory tpm
 	registry.taskMap[DownloadPrivacyCACommand] = []setup.Task{&downloadPrivacyCA}
 	registry.taskMap[ProvisionPrimaryKeyCommand] = []setup.Task{&provisionPrimaryKey}
 
-	registry.taskMap[DefaultSetupCommand] = []setup.Task{
+	registry.taskMap[DefaultSetupCommand] = []setup.Task {
 		&createTLSKeyPair,
 		&downloadPrivacyCA,
 		&takeOwnership,
@@ -61,10 +78,30 @@ func CreateTaskRegistry(vsClientFactory vsclient.VSClientFactory, tpmFactory tpm
 	}
 
 	// these are individual commands that are not included of setup
-	registry.taskMap[CreateHostCommand] = []setup.Task{&CreateHost{hostsClient: vsClientFactory.HostsClient(), cfg: cfg}}
-	registry.taskMap[CreateHostUniqueFlavorCommand] = []setup.Task{&CreateHostUniqueFlavor{flavorsClient: vsClientFactory.FlavorsClient(), cfg: cfg}}
-	registry.taskMap[ReplaceTLSKeyPairCommand] = []setup.Task{&DeleteTlsKeypair{}, &createTLSKeyPair}
-	registry.taskMap[GetConfiguredManifestCommand] = []setup.Task{&GetConfiguredManifest{manifestsClient: vsClientFactory.ManifestsClient()}}
+	registry.taskMap[CreateHostCommand] = []setup.Task {
+		&CreateHost{
+			hostsClient : vsClientFactory.HostsClient(), 
+			cfg: cfg,
+		},
+	}
+
+	registry.taskMap[CreateHostUniqueFlavorCommand] = []setup.Task {
+		&CreateHostUniqueFlavor {
+			flavorsClient: vsClientFactory.FlavorsClient(), 
+			cfg: cfg,
+		},
+	}
+
+	registry.taskMap[ReplaceTLSKeyPairCommand] = []setup.Task {
+		&DeleteTlsKeypair{}, 
+		&createTLSKeyPair,
+	}
+
+	registry.taskMap[GetConfiguredManifestCommand] = []setup.Task {
+		&GetConfiguredManifest{
+			manifestsClient: vsClientFactory.ManifestsClient(),
+		},
+	}
 
 	return &registry, nil
 }

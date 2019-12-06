@@ -13,6 +13,19 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+//-------------------------------------------------------------------------------------------------
+// Public interface/structures
+//-------------------------------------------------------------------------------------------------
+
+type FlavorsClient interface {
+
+	//
+	// TODO:  Document fx 
+	//
+	// KWT:  Does not return 'flavor' structure at this time (just json data)
+	CreateFlavor(flavorCreateCriteria *FlavorCreateCriteria) ([]byte, error)
+}
+
 type FlavorCreateCriteria struct {
 	ConnectionString string `json:"connection_string"`
 	FlavorGroupName string `json:"flavor_group_name"`
@@ -20,26 +33,30 @@ type FlavorCreateCriteria struct {
 	TlsPolicyId string `json:"tls_policy_id"`
 }
 
+//-------------------------------------------------------------------------------------------------
+// Implementation
+//-------------------------------------------------------------------------------------------------
+
 type flavorsClientImpl struct {
 	httpClient *http.Client
-	config *VSClientConfig
+	cfg *VSClientConfig
 }
 
-func (flavorsClient *flavorsClientImpl) CreateFlavor(flavorCreateCriteria *FlavorCreateCriteria) ([]byte, error) {
+func (client *flavorsClientImpl) CreateFlavor(flavorCreateCriteria *FlavorCreateCriteria) ([]byte, error) {
 
 	jsonData, err := json.Marshal(flavorCreateCriteria)
 	if err != nil {
 		return nil, err
 	}
 
-	url := fmt.Sprintf("%s/flavors", flavorsClient.config.BaseURL)
+	url := fmt.Sprintf("%s/flavors", client.cfg.BaseURL)
 	request, _:= http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	request.Header.Set("Content-Type", "application/json")
-	request.SetBasicAuth(flavorsClient.config.Username, flavorsClient.config.Password)
+	request.SetBasicAuth(client.cfg.Username, client.cfg.Password)
 
 	log.Debugf("CreateFlavor: Posting to url %s, json: %s ", url, string(jsonData))
 
-	response, err := flavorsClient.httpClient.Do(request)
+	response, err := client.httpClient.Do(request)
     if err != nil {
         return nil, fmt.Errorf("%s request failed with error %s\n", url, err)
     }

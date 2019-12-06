@@ -12,6 +12,22 @@
 	 log "github.com/sirupsen/logrus"
 )
 
+//-------------------------------------------------------------------------------------------------
+// Public interface/structures
+//-------------------------------------------------------------------------------------------------
+
+type ManifestsClient interface {
+	//
+	// TODO:  Document fx 
+	//
+	GetManifestXmlById(manifestUUID string) ([]byte, error)
+
+	//
+	// TODO:  Document fx 
+	//
+	GetManifestXmlByLabel(manifestLabel string) ([]byte, error)
+}
+
 // The Manifest xml (below) is pretty extensive, this endpoint just needs the UUID and Label
 // for validating the request body.
 //
@@ -29,17 +45,20 @@ const (
     DEFAULT_WORKLOAD_FLAVOR_PREFIX 		= "ISecL_Default_Workload_Flavor_v"
 )
 
+//-------------------------------------------------------------------------------------------------
+// Implementation
+//-------------------------------------------------------------------------------------------------
 
 type manifestsClientImpl struct {
 	httpClient *http.Client
-	config *VSClientConfig
+	cfg *VSClientConfig
 }
 
-func (manifestsClient * manifestsClientImpl) getManifestXml(params map[string]string) ([]byte, error) {
+func (client * manifestsClientImpl) getManifestXml(params map[string]string) ([]byte, error) {
 
-	url := fmt.Sprintf("%s/manifests", manifestsClient.config.BaseURL)
+	url := fmt.Sprintf("%s/manifests", client.cfg.BaseURL)
 	request, _:= http.NewRequest("GET", url, nil)
-	request.SetBasicAuth(manifestsClient.config.Username, manifestsClient.config.Password)
+	request.SetBasicAuth(client.cfg.Username, client.cfg.Password)
 
 	query := request.URL.Query()
 
@@ -51,7 +70,7 @@ func (manifestsClient * manifestsClientImpl) getManifestXml(params map[string]st
 
 	log.Debugf("GetManifestXml: %s", request.URL.RawQuery)
 
-	response, err := manifestsClient.httpClient.Do(request)
+	response, err := client.httpClient.Do(request)
     if err != nil {
         return nil, fmt.Errorf("%s request failed with error %s\n", url, err)
 	}
@@ -72,7 +91,7 @@ func (manifestsClient * manifestsClientImpl) getManifestXml(params map[string]st
 	return xml, nil
 }
 
-func (manifestsClient *manifestsClientImpl) GetManifestXmlById(manifestUUID string) ([]byte, error) {
+func (client *manifestsClientImpl) GetManifestXmlById(manifestUUID string) ([]byte, error) {
 
 	err := validation.ValidateUUIDv4(manifestUUID)
 	if err != nil {
@@ -80,10 +99,10 @@ func (manifestsClient *manifestsClientImpl) GetManifestXmlById(manifestUUID stri
 	}
 
 	params := map[string]string{ "id" : manifestUUID, };
-	return manifestsClient.getManifestXml(params)
+	return client.getManifestXml(params)
 }
 
-func (manifestsClient *manifestsClientImpl) GetManifestXmlByLabel(manifestLabel string) ([]byte, error) {
+func (client *manifestsClientImpl) GetManifestXmlByLabel(manifestLabel string) ([]byte, error) {
 	params := map[string]string{ "key" : "label", "value" : manifestLabel };
-	return manifestsClient.getManifestXml(params)
+	return client.getManifestXml(params)
 }
