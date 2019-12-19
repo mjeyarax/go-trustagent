@@ -6,9 +6,8 @@
 # 2. Load trustagent.env if present and apply exports.
 # 3. Create tagent user
 # 4. Create directories, copy files and own them by tagent user.
-# 5. Install application-agent (tbootxm)
-# 6. Make sure tpm2-abrmd is started and deploy tagent service.
-# 7. If 'automatic provisioning' is enabled (PROVISION_ATTESTATION=y), initiate 'tagent setup'. 
+# 5. Make sure tpm2-abrmd is started and deploy tagent service.
+# 6. If 'automatic provisioning' is enabled (PROVISION_ATTESTATION=y), initiate 'tagent setup'. 
 #    Otherwise, exit with a message that the user must provision the trust agent and start the
 #    service.
 #--------------------------------------------------------------------------------------------------
@@ -127,12 +126,6 @@ ln -sfT $TRUSTAGENT_BIN_DIR/$TRUSTAGENT_EXE /usr/bin/$TRUSTAGENT_EXE
 # Install systemd script
 cp $TRUSTAGENT_SERVICE $TRUSTAGENT_HOME 
 
-# deploy hex2bin (used by tbootxm's measure_host) to the installation directory
-# TODO: Move hex2bin into /opt/tbootxm/bin and affiliated scripts
-mkdir -p $TRUSTAGENT_HOME/share/hex2bin/bin
-chmod +x hex2bin
-cp hex2bin $TRUSTAGENT_HOME/share/hex2bin/bin
-
 # copy default and workload software manifest to /opt/trustagent/var/ (application-agent)
 if ! stat $TRUSTAGENT_VAR_DIR/manifest_* 1> /dev/null 2>&1; then
   TA_VERSION=`tagent version short`
@@ -152,39 +145,9 @@ chown -R $TRUSTAGENT_USERNAME:$TRUSTAGENT_USERNAME $TRUSTAGENT_HOME
 chmod 755 $TRUSTAGENT_BIN/*
 
 # make sure /tmp is writable -- this is needed when the 'trustagent/v2/application-measurement' endpoint
-# calss /opt/tbootxm/bin/measure.
+# calls /opt/tbootxm/bin/measure.
 # TODO:  Resolve this in lib-workload-measure (hard coded path)
 chmod 1777 /tmp
-
-#--------------------------------------------------------------------------------------------------
-# 5. Install application-agent (tboot-xm)
-#--------------------------------------------------------------------------------------------------
-if [ "$TBOOTXM_INSTALL" != "N" ] && [ "$TBOOTXM_INSTALL" != "No" ] && [ "$TBOOTXM_INSTALL" != "n" ] && [ "$TBOOTXM_INSTALL" != "no" ]; then
-    echo "Installing application agent..."
-    TBOOTXM_PACKAGE=`ls -1 application-agent*.bin 2>/dev/null | tail -n 1`
-
-    if [ -z "$TBOOTXM_PACKAGE" ]; then
-        echo_failure "Failed to find application agent installer package"
-        exit -1
-    fi
-
-    chmod +x $TBOOTXM_PACKAGE
-    ./$TBOOTXM_PACKAGE
-
-    if [ $? -ne 0 ]; then 
-        echo "Failed to install application agent"
-        exit -1
-    fi
-
-    # add execute permission for measure binary
-    chmod o+x /opt/tbootxm
-    chmod o+x /opt/tbootxm/bin/
-    chmod o+x /opt/tbootxm/lib/
-    chmod o+x /opt/tbootxm/bin/measure
-    chmod o+x /opt/tbootxm/lib/libwml.so
-else
-    echo "application-agent will not be installed"
-fi
 
 # TODO:  remove the depdendency that tpmextend has on the tpm version in /opt/trustagent/configuration/tpm-version
 if [ -f "$TRUSTAGENT_CFG_DIR/tpm-version" ]; then
@@ -193,7 +156,7 @@ fi
 echo "2.0" > $TRUSTAGENT_CFG_DIR/tpm-version
 
 #--------------------------------------------------------------------------------------------------
-# 6. Enable/configure services, etc.
+# 5. Enable/configure services, etc.
 #--------------------------------------------------------------------------------------------------
 # make sure the tss user owns /dev/tpm0 or tpm2-abrmd service won't start (this file does not
 # exist when using the tpm simulator, so check for its existence)
@@ -211,7 +174,7 @@ systemctl enable $TRUSTAGENT_HOME/$TRUSTAGENT_SERVICE
 systemctl daemon-reload
 
 #--------------------------------------------------------------------------------------------------
-# 7. If automatic provisioning is enabled, do it here...
+# 6. If automatic provisioning is enabled, do it here...
 #--------------------------------------------------------------------------------------------------
 if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PROVISION_ATTESTATION" == "yes" ]]; then
     echo "Automatic provisioning is enabled, using mtwilson url $MTWILSON_API_URL"
