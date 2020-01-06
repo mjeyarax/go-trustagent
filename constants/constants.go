@@ -39,4 +39,6 @@ const (
 	ServiceDisableCommand      = "systemctl disable " + ServiceName
 	UninstallTbootXmScript     = "/opt/tbootxm/bin/tboot-xm-uninstall.sh"
 	LogEntryMaxlengthEnv       = 300
+	TrustedJWTSigningCertsDir  = ConfigDir + "jwt/"
+	TrustedCaCertsDir          = ConfigDir + "cacerts/"
 )
