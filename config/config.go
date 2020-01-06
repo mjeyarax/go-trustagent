@@ -11,14 +11,15 @@ import (
 	"intel/isecl/lib/common/setup"
 	"errors"
 	"fmt"
-	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/lib/common/validation"
 	"io"
 	"os"
 	"strings"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -40,17 +41,17 @@ type TrustAgentConfiguration struct {
 		Password string
 	}
 	HVS struct {
-		Url      string
+		Url string
 	}
 	Tpm struct {
 		OwnerSecretKey string
 		AikSecretKey   string
 	}
-	AAS struct{
+	AAS struct {
 		BaseURL string
 	}
 	CMS struct {
-		BaseURL string
+		BaseURL       string
 		TlsCertDigest string
 	}
 }
@@ -128,45 +129,6 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	}
 
 	//---------------------------------------------------------------------------------------------
-	// MTWILSON_API_USERNAME
-	//---------------------------------------------------------------------------------------------
-	hvsUsername, err = c.GetenvString("MTWILSON_API_USERNAME")
-	if err != nil && hvsUsername != "" && cfg.HVS.Username != hvsUsername {
-		cfg.HVS.Username = hvsUsername
-		dirty = true
-	} else if strings.TrimSpace(hvsUsername) == ""{
-		return errors.Wrap(err, "MTWILSON_API_USERNAME is not defined in environment or configuration file")
-	}
-
-	//---------------------------------------------------------------------------------------------
-	// MTWILSON_API_PASSWORD
-	//---------------------------------------------------------------------------------------------
-	environmentVariable, _ = c.GetenvString("MTWILSON_API_PASSWORD")
-	if environmentVariable != "" && cfg.HVS.Password != environmentVariable {
-		cfg.HVS.Password = environmentVariable
-		dirty = true
-	}
-
-	//---------------------------------------------------------------------------------------------
-	// MTWILSON_TLS_CERT_SHA384
-	//---------------------------------------------------------------------------------------------
-	environmentVariable, _ = c.GetenvString("MTWILSON_TLS_CERT_SHA384")
-	if environmentVariable != "" {
-		if len(environmentVariable) != 96 {
-			return fmt.Errorf("Setup error:  Invalid length MTWILSON_TLS_CERT_SHA384: %d", len(environmentVariable))
-		}
-
-		if err = validation.ValidateHexString(environmentVariable); err != nil {
-			return fmt.Errorf("Setup error:  MTWILSON_TLS_CERT_SHA384 is not a valid hex string: %s", environmentVariable)
-		}
-
-		if cfg.HVS.TLS384 != environmentVariable {
-			cfg.HVS.TLS384 = environmentVariable
-			dirty = true
-		}
-	}
-
-	//---------------------------------------------------------------------------------------------
 	// TRUSTAGENT_PORT
 	//---------------------------------------------------------------------------------------------
 	port := 0
@@ -228,6 +190,43 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 		}
 	}
 	//---------------------------------------------------------------------------------------------
+	// AAS_API_URL
+	//---------------------------------------------------------------------------------------------
+	environmentVariable = os.Getenv("AAS_API_URL")
+	if environmentVariable != "" && cfg.AAS.BaseURL != environmentVariable {
+		cfg.AAS.BaseURL = environmentVariable
+		dirty = true
+	}
+
+	//---------------------------------------------------------------------------------------------
+	// CMS_BASE_URL
+	//---------------------------------------------------------------------------------------------
+	environmentVariable = os.Getenv("CMS_BASE_URL")
+	if environmentVariable != "" && cfg.CMS.BaseURL != environmentVariable {
+		cfg.CMS.BaseURL = environmentVariable
+		dirty = true
+	}
+
+	//---------------------------------------------------------------------------------------------
+	// CMS_TLS_CERT_SHA384
+	//---------------------------------------------------------------------------------------------
+	environmentVariable = os.Getenv("CMS_TLS_CERT_SHA384")
+	if environmentVariable != "" {
+		if len(environmentVariable) != 96 {
+			return fmt.Errorf("Setup error:  Invalid length CMS_TLS_CERT_SHA384: %d", len(environmentVariable))
+		}
+
+		if err = validation.ValidateHexString(environmentVariable); err != nil {
+			return fmt.Errorf("Setup error:  CMS_TLS_CERT_SHA384 is not a valid hex string: %s", environmentVariable)
+		}
+
+		if cfg.CMS.TlsCertDigest != environmentVariable {
+			cfg.CMS.TlsCertDigest = environmentVariable
+			dirty = true
+		}
+	}
+
+	//---------------------------------------------------------------------------------------------
 	// Save config if 'dirty'
 	//---------------------------------------------------------------------------------------------
 	if dirty {
@@ -252,19 +251,19 @@ func (cfg *TrustAgentConfiguration) Validate() error {
 	}
 
 	if cfg.HVS.Url == "" {
-		return errors.New("config/config:Validate() Mtwilson api url is required")
+		return fmt.Errorf("Validation error: HVS API URL is required")
 	}
 
-	if cfg.HVS.Username == "" {
-		return errors.New("config/config:Validate() Mtwilson user is required")
+	if cfg.AAS.BaseURL == "" {
+		return fmt.Errorf("Validation error: AAS API URL is required")
 	}
 
-	if cfg.HVS.Password == "" {
-		return errors.New("config/config:Validate() Mtwilson password is required")
+	if cfg.CMS.BaseURL == "" {
+		return fmt.Errorf("Validation error: CMS Base URL is required")
 	}
 
-	if cfg.HVS.TLS384 == "" {
-		return errors.New("config/config:Validate() Mtwilson tls 384 is required")
+	if cfg.CMS.TlsCertDigest == "" {
+		return fmt.Errorf("Validation error: CMS TLS Cert Digest is required")
 	}
 
 	return nil
