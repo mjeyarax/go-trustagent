@@ -41,13 +41,17 @@ type TrustAgentConfiguration struct {
 	}
 	HVS struct {
 		Url      string
-		Username string
-		Password string
-		TLS384   string
 	}
 	Tpm struct {
 		OwnerSecretKey string
 		AikSecretKey   string
+	}
+	AAS struct{
+		BaseURL string
+	}
+	CMS struct {
+		BaseURL string
+		TlsCertDigest string
 	}
 }
 
