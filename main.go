@@ -5,7 +5,6 @@
 package main
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
@@ -17,8 +16,8 @@ import (
 	"intel/isecl/go-trust-agent/util"
 	"intel/isecl/go-trust-agent/vsclient"
 	commonExec "intel/isecl/lib/common/exec"
-	"intel/isecl/lib/tpmprovider"
 	"intel/isecl/lib/platform-info/platforminfo"
+	"intel/isecl/lib/tpmprovider"
 	"io"
 	"os"
 	"os/exec"
@@ -26,6 +25,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"syscall"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var log = commLog.GetDefaultLogger()
@@ -207,10 +208,7 @@ func newVSClientConfig(cfg *config.TrustAgentConfiguration) (*vsclient.VSClientC
 	copy(certificateDigest[:], certDigestBytes)
 
 	vsClientConfig := vsclient.VSClientConfig{
-		BaseURL:    cfg.HVS.Url,
-		Username:   cfg.HVS.Username,
-		Password:   cfg.HVS.Password,
-		CertSha384: &certificateDigest,
+		BaseURL: cfg.HVS.Url,
 	}
 
 	return &vsClientConfig, nil
