@@ -11,8 +11,9 @@ const (
 	BinDir                     = InstallationDir + "bin/"
 	TagentExe                  = BinDir + "tagent"
 	ModuleAnalysis             = BinDir + "module_analysis.sh"
-	LogDir                     = InstallationDir + "logs/"
-	LogFilePath                = LogDir + "trustagent.log"
+	LogDir                     = "/var/log/trustagent/"
+	DefaultLogFilePath         = LogDir + "trustagent.log"
+	SecureLogFilePath          = LogDir + "trustagent-security.log"
 	TLSCertFilePath            = ConfigDir + "tls-cert.pem"
 	TLSKeyFilePath             = ConfigDir + "tls-key.pem"
 	EndorsementAuthoritiesFile = ConfigDir + "endorsement.pem"
@@ -37,4 +38,5 @@ const (
 	ServiceStartCommand        = "systemctl start " + ServiceName
 	ServiceDisableCommand      = "systemctl disable " + ServiceName
 	UninstallTbootXmScript     = "/opt/tbootxm/bin/tboot-xm-uninstall.sh"
+	LogEntryMaxlengthEnv       = 300
 )

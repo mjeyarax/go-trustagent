@@ -5,14 +5,14 @@
 package tasks
 
 import (
-	"fmt"
-	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/util"
 	"intel/isecl/go-trust-agent/vsclient"
 	"intel/isecl/lib/common/setup"
 	"io/ioutil"
+
+	"github.com/pkg/errors"
 )
 
 type DownloadPrivacyCA struct {
@@ -22,27 +22,30 @@ type DownloadPrivacyCA struct {
 
 // Download's the privacy CA from HVS.
 func (task *DownloadPrivacyCA) Run(c setup.Context) error {
-
+	log.Trace("tasks/download_privacy_ca:Run() Entering")
+	defer log.Trace("tasks/download_privacy_ca:Run() Leaving")
 	ca, err := task.privacyCAClient.DownloadPrivacyCa()
 	if err != nil {
-		return err
+		return errors.Wrap(err,"tasks/download_privacy_ca:Run() Error while downloading privacyCA file")
 	}
 
 	err = ioutil.WriteFile(constants.PrivacyCA, ca, 0644)
 	if err != nil {
-		return fmt.Errorf("Error saving privacy ca file '%s': %s", constants.PrivacyCA, err)
+		return errors.Wrapf(err, "tasks/download_privacy_ca:Run() Error saving privacy ca file '%s'", constants.PrivacyCA)
 	}
 
 	return nil
 }
 
 func (task *DownloadPrivacyCA) Validate(c setup.Context) error {
+	log.Trace("tasks/download_privacy_ca:Validate() Entering")
+	defer log.Trace("tasks/download_privacy_ca:Validate() Leaving")
 	_, err := util.GetPrivacyCA()
 	if err != nil {
 		return err
 	}
 
-	log.Info("Setup: Download PrivacyCA was successful")
+	log.Info("tasks/download_privacy_ca:Validate() Download PrivacyCA was successful")
 
 	return nil
 }

@@ -5,11 +5,12 @@
 package tasks
 
 import (
-	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/util"
 	"intel/isecl/go-trust-agent/vsclient"
 	"intel/isecl/lib/common/setup"
+
+	"github.com/pkg/errors"
 )
 
 type CreateHostUniqueFlavor struct {
@@ -20,16 +21,18 @@ type CreateHostUniqueFlavor struct {
 
 // Communicates with HVS to create the host-unique-flavor from the current compute node.
 func (task *CreateHostUniqueFlavor) Run(c setup.Context) error {
+	log.Trace("tasks/create_host_unique_flavor:Run() Entering")
+	defer log.Trace("tasks/create_host_unique_flavor:Run() Leaving")
 	var err error
 
 	task.ip, err = util.GetLocalIpAsString()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "tasks/create_host_unique_flavor:Run() Error while retrieving local IP")
 	}
 
 	connectionString, err := util.GetConnectionString(task.cfg)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "tasks/create_host_unique_flavor:Run() Error while getting connection string")
 	}
 
 	flavorCreateCriteria := vsclient.FlavorCreateCriteria{
@@ -41,14 +44,16 @@ func (task *CreateHostUniqueFlavor) Run(c setup.Context) error {
 
 	_, err = task.flavorsClient.CreateFlavor(&flavorCreateCriteria)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "tasks/create_host_unique_flavor:Run() Error while creating host unique flavor")
 	}
 
 	return nil
 }
 
 func (task *CreateHostUniqueFlavor) Validate(c setup.Context) error {
+	log.Trace("tasks/create_host_unique_flavor:Validate() Entering")
+	defer log.Trace("tasks/create_host_unique_flavor:Validate() Leaving")
 	// no validation is currently implemented (i.e. as long as Run did not fail)
-	log.Info("Setup: Create host unique flavor was successful.")
+	log.Info("tasks/create_host_unique_flavor:Validate() Create host unique flavor was successful.")
 	return nil
 }

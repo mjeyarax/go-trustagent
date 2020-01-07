@@ -10,14 +10,14 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"fmt"
-	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/lib/common/setup"
 	"io/ioutil"
 	"math/big"
 	"os"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type CreateTLSKeyPair struct {
@@ -27,10 +27,12 @@ type CreateTLSKeyPair struct {
 // https://golang.org/src/crypto/tls/generate_cert.go?m=text.
 // This will be revamped when integrated into CMS/AAS.
 func createTLSKeyPair() (key []byte, cert []byte, err error) {
+	log.Trace("tasks/create_tls_keypair:createTLSKeyPair() Entering")
+	defer log.Trace("tasks/create_tls_keypair:createTLSKeyPair() Leaving")
 
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		return key, cert, fmt.Errorf("Failed to generate private key [%s]", err)
+		return key, cert, errors.Wrap(err,"tasks/create_tls_keypair:createTLSKeyPair() Failed to generate private key")
 	}
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
@@ -52,7 +54,7 @@ func createTLSKeyPair() (key []byte, cert []byte, err error) {
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
 	if err != nil {
-		return key, cert, fmt.Errorf("Failed to create certificate [%s]", err)
+		return key, cert, errors.Wrap(err,"tasks/create_tls_keypair:createTLSKeyPair() Failed to create certificate")
 	}
 
 	cert = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
@@ -64,37 +66,42 @@ func createTLSKeyPair() (key []byte, cert []byte, err error) {
 }
 
 func (task *CreateTLSKeyPair) Run(c setup.Context) error {
+	log.Trace("tasks/create_tls_keypair:Run() Entering")
+	defer log.Trace("tasks/create_tls_keypair:Run() Leaving")
 
 	key, cert, err := createTLSKeyPair()
 	if err != nil {
-		return fmt.Errorf("Setup error: Could not create cert/key [%s]", err.Error())
+		return errors.Wrap(err, "tasks/create_tls_keypair:Run() Could not create cert/key")
 	}
 
 	ioutil.WriteFile(constants.TLSCertFilePath, cert, 0644)
 	if err != nil {
-		return fmt.Errorf("Setup error: Could not save cert file [%s]", err.Error())
+		return errors.Wrap(err, "tasks/create_tls_keypair:Run() Could not save cert file")
 	}
 
 	ioutil.WriteFile(constants.TLSKeyFilePath, key, 0644)
 	if err != nil {
-		return fmt.Errorf("Setup error: Could not save key file [%s]", err.Error())
+		return errors.Wrap(err, "tasks/create_tls_keypair:Run() Could not save key file")
 	}
 
 	return nil
 }
 
 func (task *CreateTLSKeyPair) Validate(c setup.Context) error {
+	log.Trace("tasks/create_tls_keypair:Run() Entering")
+	defer log.Trace("tasks/create_tls_keypair:Run() Leaving")
+
 	_, err := os.Stat(constants.TLSCertFilePath)
 	if os.IsNotExist(err) {
-		return fmt.Errorf("Validation error: Cert file '%s' does not exist", constants.TLSCertFilePath)
+		return errors.Errorf("tasks/create_tls_keypair:Validate() Cert file '%s' does not exist", constants.TLSCertFilePath)
 	}
 
 	_, err = os.Stat(constants.TLSKeyFilePath)
 	if os.IsNotExist(err) {
-		return fmt.Errorf("Validation error: Key file '%s' does not exist", constants.TLSKeyFilePath)
+		return errors.Errorf("tasks/create_tls_keypair:Validate() Key file '%s' does not exist", constants.TLSKeyFilePath)
 	}
 
-	log.Info("Setup: Create TLS keypair was successful.")
+	log.Info("tasks/create_tls_keypair:Validate() Create TLS keypair was successful.")
 
 	return nil
 }

@@ -14,7 +14,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/util"
@@ -25,6 +24,8 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
+
+	"github.com/pkg/errors"
 )
 
 //-------------------------------------------------------------------------------------------------
@@ -70,69 +71,69 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	identityChallengeRequest := vsclient.IdentityChallengeRequest{}
 	err = task.populateIdentityRequest(&identityChallengeRequest.IdentityRequest)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error while populating identity request")
 	}
 
 	// get the EK cert from the tpm
 	ekCertBytes, err := task.getEndorsementKeyBytes()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error while getting endorsement certificate in bytes from tpm")
 	}
 
 	// encrypt the EK cert into binary that is acceptable to HVS/NAIRL
 	identityChallengeRequest.EndorsementCertificate, err = task.getEncryptedBytes(ekCertBytes)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error while encrypting the endorsement certificate bytes")
 	}
 
 	// send the 'challenge request' to HVS and get an 'proof request' back
 	identityProofRequest, err := task.privacyCAClient.GetIdentityProofRequest(&identityChallengeRequest)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error while getting identity proof request from VS for a given challenge request with ek")
 	}
 
 	// pass the HVS response to the TPM to 'activate' the 'credential' and decrypt
 	// the nonce created by HVS (IdentityProofRequest 'sym_blob')
 	decrypted1, err := task.activateCredential(identityProofRequest)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error while performing activate credential task")
 	}
 
 	// create an IdentityChallengeResponse to send back to HVS
 	identityChallengeResponse := vsclient.IdentityChallengeResponse{}
 	identityChallengeResponse.ResponseToChallenge, err = task.getEncryptedBytes(decrypted1)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error while encrypting nonce")
 	}
 
 	// KWT: refactor so that the call to get AIK info is done once
 	err = task.populateIdentityRequest(&identityChallengeResponse.IdentityRequest)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error while populating identity request with identity challenge response")
 	}
 
 	// send the decrypted nonce data back to HVS and get a 'proof request' back
 	identityProofRequest2, err := task.privacyCAClient.GetIdentityProofResponse(&identityChallengeResponse)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error while retrieving identity proof response")
 	}
 
 	// decrypt the 'proof request' from HVS into the 'aik' cert
 	decrypted2, err := task.activateCredential(identityProofRequest2)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error while extracting aik certificate bytes from identity proof request")
 	}
 
 	// make sure the decrypted bytes are a valid certificates...
 	_, err = x509.ParseCertificate(decrypted2)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error while parsing the aik certificate")
 	}
 
 	// save the aik cert to disk
 	err = ioutil.WriteFile(constants.AikCert, decrypted2, 0600)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Error while writing aik certificate file %s", constants.AikCert)
 	}
 
 	return nil

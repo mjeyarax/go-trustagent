@@ -8,7 +8,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	log "github.com/sirupsen/logrus"
+	"github.com/pkg/errors"
+	commLog "intel/isecl/lib/common/log"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/resource"
@@ -26,6 +27,9 @@ import (
 	"strconv"
 	"syscall"
 )
+
+var log = commLog.GetDefaultLogger()
+var secLog = commLog.GetSecurityLogger()
 
 func printUsage() {
 	fmt.Println("Usage:")
@@ -54,20 +58,6 @@ func printUsage() {
 	fmt.Println("    tagent setup replace-tls-keypair")
 	fmt.Println("        - Recreates the trustagent's tls key/pair.")
 	fmt.Println("")
-}
-
-func setupLogging(cfg *config.TrustAgentConfiguration) error {
-
-	logFile, err := os.OpenFile(constants.LogFilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		return err
-	}
-
-	multiWriter := io.MultiWriter(os.Stdout, logFile)
-	log.SetOutput(multiWriter)
-	log.SetLevel(cfg.LogLevel)
-
-	return nil
 }
 
 func updatePlatformInfo() error {
@@ -102,7 +92,7 @@ func updatePlatformInfo() error {
 		return err
 	}
 
-	log.Info("Successfully updated platform-info")
+	log.Info("main:updatePlatformInfo() Successfully updated platform-info")
 	return nil
 }
 
@@ -111,10 +101,10 @@ func updateMeasureLog() error {
 	cmd.Dir = constants.BinDir
 	results, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("module_analysis_sh error: %s", results)
+		return errors.Errof("main:updateMeasureLog() module_analysis_sh error: %s", results)
 	}
 
-	log.Info("Successfully updated measureLog.xml")
+	log.Info("main:updateMeasureLog() Successfully updated measureLog.xml")
 	return nil
 }
 
@@ -123,13 +113,13 @@ func printVersion() {
 	if len(os.Args) > 2 && os.Args[2] == "short" {
 		major, err := util.GetMajorVersion()
 		if err != nil {
-			fmt.Printf("ERROR: %+v\n", err)
+			fmt.Fprintln(os.Stderr,"Error while fetching Major version: %+v", err)
 			os.Exit(1)
 		}
 
 		minor, err := util.GetMinorVersion()
 		if err != nil {
-			fmt.Printf("ERROR: %+v\n", err)
+			fmt.Fprintln(os.Stderr,"Error while fetching Minor version: %+v", err)
 			os.Exit(1)
 		}
 
@@ -165,14 +155,14 @@ func uninstall() error {
 			} else if waitStatus.ExitStatus() == 4 {
 				// do nothing if not installed
 			} else {
-				return fmt.Errorf("Uninstall: Service status returned unhandled error code %d", waitStatus.ExitStatus())
+				return errors.Errorf("main:uninstall() Service status returned unhandled error code %d", waitStatus.ExitStatus())
 			}
 		} else {
-			return fmt.Errorf("Uninstall: An unhandled error occurred with the tagent service: %s", err)
+			return errors.Errorf("main:uninstall() An unhandled error occurred with the tagent service: %s", err)
 		}
 	}
 
-	log.Info("Uninstall: TrustAgent service removed successfully")
+	log.Info("main:uninstall() TrustAgent service removed successfully")
 
 	//
 	// uninstall tbootxml (if uninstall script is present)
@@ -180,11 +170,11 @@ func uninstall() error {
 	if _, err := os.Stat(constants.UninstallTbootXmScript); err == nil {
 		_, _, err = commonExec.RunCommandWithTimeout(constants.UninstallTbootXmScript, 15)
 		if err != nil {
-			return fmt.Errorf("Uninstall: An error occurred while uninstalling tboot: %s", err)
+			return errors.Errorf("main:uninstall() An error occurred while uninstalling tboot: %s", err)
 		}
 	}
 
-	log.Info("Uninstall: tbootxm removed successfully")
+	log.Info("main:uninstall() tbootxm removed successfully")
 
 	//
 	// remove all of tagent files (in /opt/trustagent/)
@@ -192,11 +182,11 @@ func uninstall() error {
 	if _, err := os.Stat(constants.InstallationDir); err == nil {
 		err = os.RemoveAll(constants.InstallationDir)
 		if err != nil {
-			log.Errorf("Uninstall: An error occurred removing the trustagent files: %s", err)
+			log.Errorf("main:uninstall() An error occurred removing the trustagent files: %s", err)
 		}
 	}
 
-	log.Info("Uninstall: trustagent files removed successfully")
+	log.Info("main:uninstall() trustagent files removed successfully")
 
 	return nil
 }
@@ -207,11 +197,11 @@ func newVSClientConfig(cfg *config.TrustAgentConfiguration) (*vsclient.VSClientC
 
 	certDigestBytes, err := hex.DecodeString(cfg.HVS.TLS384)
 	if err != nil {
-		return nil, fmt.Errorf("error converting certificate digest to hex: %s", err)
+		return nil, errors.Errorf("main:newVSClientConfig() error converting certificate digest to hex: %s", err)
 	}
 
 	if len(certDigestBytes) != 48 {
-		return nil, fmt.Errorf("Incorrect TLS384 string length %d", len(certDigestBytes))
+		return nil, errors.Errorf("main:newVSClientConfig() Incorrect TLS384 string length %d", len(certDigestBytes))
 	}
 
 	copy(certificateDigest[:], certDigestBytes)
@@ -229,14 +219,14 @@ func newVSClientConfig(cfg *config.TrustAgentConfiguration) (*vsclient.VSClientC
 func main() {
 
 	if len(os.Args) <= 1 {
-		fmt.Printf("Invalid arguments: %s\n\n", os.Args)
+		fmt.Fprintln(os.Stderr, "Invalid arguments: %s\n", os.Args)
 		printUsage()
 		os.Exit(1)
 	}
 
 	cfg, err := config.NewConfigFromYaml(constants.ConfigFilePath)
 	if err != nil {
-		fmt.Printf("ERROR: %+v\n", err)
+		fmt.Fprintln(os.Stderr, "main:main() Error while parsing configuration file: %+v", err)
 		os.Exit(1)
 	}
 
@@ -262,37 +252,37 @@ func main() {
 			os.Exit(1)
 		}
 
-		err = setupLogging(cfg)
+		err = LogConfiguration(true, cfg.LogEnableStdout)
 		if err != nil {
-			fmt.Printf("ERROR: %+v\n", err)
+			fmt.Fprintln(os.Stderr, "main:main Error while setting log configuration %+v", err)
 			os.Exit(1)
 		}
 
 		err = updatePlatformInfo()
 		if err != nil {
-			log.Printf("There was an error creating platform-info: %s\n", err.Error())
+			log.Errorf("main:main() Error while creating platform-info: %s\n", err.Error())
 		}
 
 		err = updateMeasureLog()
 		if err != nil {
-			log.Printf("There was an error creating measureLog.xml: %s\n", err.Error())
+			log.Errorf("main:main() Error While creating measureLog.xml: %s\n", err.Error())
 		}
 
 		tagentUser, err := user.Lookup(constants.TagentUserName)
 		if err != nil {
-			log.Errorf("Could not find user '%s'", constants.TagentUserName)
+			log.Errorf("main:main() Could not find user '%s'", constants.TagentUserName)
 			os.Exit(1)
 		}
 
 		uid, err := strconv.ParseUint(tagentUser.Uid, 10, 32)
 		if err != nil {
-			log.Errorf("Could not parse tagent user uid '%s'", tagentUser.Uid)
+			log.Errorf("main:main() Could not parse tagent user uid '%s'", tagentUser.Uid)
 			os.Exit(1)
 		}
 
 		gid, err := strconv.ParseUint(tagentUser.Gid, 10, 32)
 		if err != nil {
-			log.Errorf("Could not parse tagent user gid '%s'", tagentUser.Gid)
+			log.Errorf("main:main() Could not parse tagent user gid '%s'", tagentUser.Gid)
 			os.Exit(1)
 		}
 
@@ -302,7 +292,7 @@ func main() {
 			//log.Infof("Owning file %s", fileName)
 			err = os.Chown(fileName, int(uid), int(gid))
 			if err != nil {
-				log.Errorf("Could not own file '%s'", fileName)
+				log.Errorf("main:main() Could not own file '%s'", fileName)
 				return err
 			}
 
@@ -317,7 +307,7 @@ func main() {
 
 		err = cmd.Start()
 		if err != nil {
-			log.Errorf("%s error: %s", constants.TagentExe, err)
+			log.Errorf("main:main() error while starting the command %s : %s", constants.TagentExe, err)
 			os.Exit(1)
 		}
 
@@ -327,40 +317,41 @@ func main() {
 			os.Exit(1)
 		}
 
-		err = setupLogging(cfg)
+		err = LogConfiguration(true, cfg.LogEnableStdout)
 		if err != nil {
-			fmt.Printf("ERROR: %+v\n", err)
+			log.Errorf("main:main() Error while setting log configuration %+v", err)
 			os.Exit(1)
 		}
 
 		// make sure the config is valid before starting the trust agent service
 		err = cfg.Validate()
 		if err != nil {
-			log.Errorf("Configuration error: %s", err)
+			log.Errorf("main:main() Error while validating the configuration file: %s", err)
 			os.Exit(1)
 		}
 
 		tpmFactory, err := tpmprovider.NewTpmFactory()
 		if err != nil {
-			log.Errorf("Could not create the tpm factory: %s", err)
+			log.Errorf("main:main() Could not create the tpm factory %+v", err)
 			os.Exit(1)
 		}
 
 		// create and start webservice
 		service, err := resource.CreateTrustAgentService(cfg, tpmFactory)
 		if err != nil {
-			log.Errorf("ERROR: %+v\n", err)
+			log.Errorf("main:main() Error while creating trustagent service %+v", err)
 			os.Exit(1)
 		}
 
 		service.Start()
 	case "setup":
 
+		err = LogConfiguration(true, cfg.LogEnableStdout)
 		// only apply env vars to config before starting 'setup' tasks
 		cfg.LoadEnvironmentVariables()
 
 		if currentUser.Username != constants.RootUserName {
-			log.Errorf("'tagent setup' must be run as root, not  user '%s'\n", currentUser.Username)
+			log.Errorf("main:main() 'tagent setup' must be run as root, not  user '%s'\n", currentUser.Username)
 			os.Exit(1)
 		}
 
@@ -373,31 +364,31 @@ func main() {
 
 		vsClientConfig, err := newVSClientConfig(cfg)
 		if err != nil {
-			log.Errorf("Could not create the vsclient config: %s", err)
+			log.Errorf("main:main() Could not create the vsclient config: %s", err)
 			os.Exit(1)
 		}
 
 		vsClientFactory, err := vsclient.NewVSClientFactory(vsClientConfig)
 		if err != nil {
-			log.Errorf("Could not create the vsclient factory: %s", err)
+			log.Errorf("main:main() Could not create the vsclient factory: %s", err)
 			os.Exit(1)
 		}
 
 		tpmFactory, err := tpmprovider.NewTpmFactory()
 		if err != nil {
-			log.Errorf("Could not create the tpm factory: %s", err)
+			log.Errorf("main:main() Could not create the tpm factory: %s", err)
 			os.Exit(1)
 		}
 
 		registry, err := tasks.CreateTaskRegistry(vsClientFactory, tpmFactory, cfg, os.Args)
 		if err != nil {
-			fmt.Printf("ERROR: %+v\n", err)
+			fmt.Fprintln(os.Stderr, "Error while creating task registry %+v", err)
 			os.Exit(1)
 		}
 
 		err = registry.RunCommand(setupCommand)
 		if err != nil {
-			fmt.Printf("ERROR: %+v\n", err)
+			fmt.Fprintln(os.Stderr, "Error while running setup Command %s, %+v", setupCommand, err)
 			os.Exit(1)
 		}
 
@@ -411,7 +402,7 @@ func main() {
 	case "uninstall":
 		err = uninstall()
 		if err != nil {
-			fmt.Printf("ERROR: %+v\n", err)
+			fmt.Fprintf(os.Stderr, "main:main() Error while running uninstalling trustagent %+v\n", err)
 			os.Exit(1)
 		}
 
@@ -422,7 +413,7 @@ func main() {
 	case "-h":
 		printUsage()
 	default:
-		fmt.Printf("Invalid option: '%s'\n\n", cmd)
+		fmt.Fprintf(os.Stderr, "Invalid option: '%s'\n\n", cmd)
 		printUsage()
 	}
 }
