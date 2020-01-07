@@ -7,12 +7,15 @@ package vsclient
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"intel/isecl/go-trust-agent/constants"
 	"io/ioutil"
 	"net/http"
 	"intel/isecl/lib/common/validation"
 	log "github.com/sirupsen/logrus"
+	"os"
+
+	"github.com/pkg/errors"
 )
 
 //-------------------------------------------------------------------------------------------------
@@ -114,7 +117,12 @@ func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteri
 
 	url := fmt.Sprintf("%s/hosts", client.cfg.BaseURL)
 	request, _:= http.NewRequest("GET", url, nil)
-	request.SetBasicAuth(client.cfg.Username, client.cfg.Password)
+	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
+	if jwtToken == "" || err != nil {
+		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
+		return nil, errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
+	}
+	request.Header.Set("Authorization", "Bearer "+ jwtToken)
 
 	query := request.URL.Query()
 
@@ -216,7 +224,12 @@ func (client *hostsClientImpl) CreateHost(hostCreateCriteria *HostCreateCriteria
 	url := fmt.Sprintf("%s/hosts", client.cfg.BaseURL)
 	request, _:= http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	request.Header.Set("Content-Type", "application/json")
-	request.SetBasicAuth(client.cfg.Username, client.cfg.Password)
+	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
+	if jwtToken == "" || err != nil {
+		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
+		return nil, errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
+	}
+	request.Header.Set("Authorization", "Bearer "+ jwtToken)
 
 	log.Debugf("CreateHost: Posting to url %s, json: %s ", url, string(jsonData))
 
@@ -262,7 +275,12 @@ func (client *hostsClientImpl) UpdateHost(host *Host) (*Host, error) {
 
 	url := fmt.Sprintf("%s/hosts/%s", client.cfg.BaseURL, host.Id)
 	request, _:= http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
-	request.SetBasicAuth(client.cfg.Username, client.cfg.Password)
+	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
+	if jwtToken == "" || err != nil {
+		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
+		return nil, errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
+	}
+	request.Header.Set("Authorization", "Bearer "+ jwtToken)
 
 	log.Debugf("CreateHost: Posting to url %s, json: %s ", url, string(jsonData))
 

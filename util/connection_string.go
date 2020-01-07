@@ -16,14 +16,6 @@ func GetConnectionString(cfg *config.TrustAgentConfiguration) (string, error) {
 		return "", err
 	}
 
-	if len(cfg.TrustAgentService.Username) == 0 {
-		return "", fmt.Errorf("The user name has not been set in the trust agent configuration")
-	}
-
-	if len(cfg.TrustAgentService.Password) == 0 {
-		return "", fmt.Errorf("The password has not been set in the trust agent configuration")
-	}
-
-	connectionString := fmt.Sprintf("intel:https://%s:%d;u=%s;p=%s", ip, cfg.TrustAgentService.Port, cfg.TrustAgentService.Username, cfg.TrustAgentService.Password)
+	connectionString := fmt.Sprintf("intel:https://%s:%d;", ip, cfg.TrustAgentService.Port)
 	return connectionString, nil
 }

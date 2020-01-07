@@ -8,9 +8,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"intel/isecl/go-trust-agent/constants"
 	"io/ioutil"
 	"net/http"
 	log "github.com/sirupsen/logrus"
+	"os"
+
+	"github.com/pkg/errors"
 )
 //-------------------------------------------------------------------------------------------------
 // Public interface/structures
@@ -42,7 +46,12 @@ func (client *tpmEndorsementsClientImpl) IsEkRegistered(hardwareUUID string) (bo
 
 	url := fmt.Sprintf("%s/tpm-endorsements?hardwareUuidEqualTo=%s", client.cfg.BaseURL, hardwareUUID)
 	request, _ := http.NewRequest("GET", url, nil)
-	request.SetBasicAuth(client.cfg.Username, client.cfg.Password)
+	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
+	if jwtToken == "" || err != nil {
+		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
+		return false, errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
+	}
+	request.Header.Set("Authorization", "Bearer "+ jwtToken)
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
@@ -82,7 +91,12 @@ func (client *tpmEndorsementsClientImpl) RegisterEk(tpmEndorsement *TpmEndorseme
 
 	url := fmt.Sprintf("%s/tpm-endorsements", client.cfg.BaseURL)
 	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	request.SetBasicAuth(client.cfg.Username, client.cfg.Password)
+	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
+	if jwtToken == "" || err != nil {
+		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
+		return errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
+	}
+	request.Header.Set("Authorization", "Bearer "+ jwtToken)
 	request.Header.Set("Content-Type", "application/json")
 
 	response, err := client.httpClient.Do(request)

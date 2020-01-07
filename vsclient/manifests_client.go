@@ -6,11 +6,15 @@
 
  import (
 	 "fmt"
+	 "intel/isecl/go-trust-agent/constants"
 	 "io/ioutil"
 	 "net/http"
 	 "intel/isecl/lib/common/validation"
 	 log "github.com/sirupsen/logrus"
-)
+	 "os"
+
+	 "github.com/pkg/errors"
+ )
 
 //-------------------------------------------------------------------------------------------------
 // Public interface/structures
@@ -58,7 +62,12 @@ func (client * manifestsClientImpl) getManifestXml(params map[string]string) ([]
 
 	url := fmt.Sprintf("%s/manifests", client.cfg.BaseURL)
 	request, _:= http.NewRequest("GET", url, nil)
-	request.SetBasicAuth(client.cfg.Username, client.cfg.Password)
+	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
+	if jwtToken == "" || err != nil {
+		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
+		return nil, errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
+	}
+	request.Header.Set("Authorization", "Bearer "+ jwtToken)
 
 	query := request.URL.Query()
 

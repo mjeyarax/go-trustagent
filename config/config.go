@@ -28,8 +28,6 @@ const (
 	EnvTPMOwnerSecret   = "TPM_OWNER_SECRET"
 	EnvMtwilsonAPIURL   = "MTWILSON_API_URL"
 	EnvTAPort           = "TRUSTAGENT_PORT"
-	EnvTAUsername       = "TRUSTAGENT_ADMIN_USERNAME"
-	EnvTAPassword       = "TRUSTAGENT_ADMIN_PASSWORD"
 	EnvCMSBaseURL       = "CMS_BASE_URL"
 	EnvCMSTLSCertDigest = "CMS_TLS_CERT_SHA384"
 	EnvAASBaseURL       = "AAS_API_URL"
@@ -46,8 +44,6 @@ type TrustAgentConfiguration struct {
 	LogEntryMaxLength int
 	TrustAgentService struct {
 		Port     int
-		Username string
-		Password string
 	}
 	HVS struct {
 		Url string
@@ -162,23 +158,6 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 		dirty = true
 	}
 
-	//---------------------------------------------------------------------------------------------
-	// TRUSTAGENT_ADMIN_USERNAME
-	//---------------------------------------------------------------------------------------------
-	environmentVariable, err = context.GetenvString(EnvTAUsername, "Trust Agent Admin Username")
-	if environmentVariable != "" && cfg.TrustAgentService.Username != environmentVariable {
-		cfg.TrustAgentService.Username = environmentVariable
-		dirty = true
-	}
-
-	//---------------------------------------------------------------------------------------------
-	// TRUSTAGENT_ADMIN_PASSWORD
-	//---------------------------------------------------------------------------------------------
-	environmentVariable, err = context.GetenvString(EnvTAPassword, "Trust Agent Admin Password")
-	if environmentVariable != "" && cfg.TrustAgentService.Password != environmentVariable {
-		cfg.TrustAgentService.Password = environmentVariable
-		dirty = true
-	}
 
 	logEntryMaxLength, err := c.GetenvString(constants.LogEntryMaxlengthEnv, "Maximum length of each entry in a log")
 	if err == nil && logEntryMaxLength >= 300 {

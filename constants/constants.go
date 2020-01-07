@@ -45,4 +45,5 @@ const (
 	DefaultKeyAlgorithmLength  = 3072
 	DefaultTLSCertIP           = "127.0.0.1"
 	DefaultTLSCertDNS          = "CN=trustagent"
+	BearerTokenEnv             = "BEARER_TOKEN"
 )
