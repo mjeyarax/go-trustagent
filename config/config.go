@@ -43,6 +43,8 @@ type TrustAgentConfiguration struct {
 	LogEnableStdout   bool
 	LogEntryMaxLength int
 	TrustAgentService struct {
+		Username string
+		Password string
 		Port     int
 	}
 	HVS struct {
@@ -158,31 +160,6 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 		dirty = true
 	}
 
-
-	logEntryMaxLength, err := c.GetenvString(constants.LogEntryMaxlengthEnv, "Maximum length of each entry in a log")
-	if err == nil && logEntryMaxLength >= 300 {
-		cfg.LogEntryMaxLength = logEntryMaxLength
-	} else {
-		log.Info("config/config:SaveConfiguration() Invalid Log Entry Max Length defined (should be >= ", constants.DefaultLogEntryMaxlength, "), using default value:", constants.DefaultLogEntryMaxlength)
-		cfg.LogEntryMaxLength = constants.DefaultLogEntryMaxlength
-	}
-
-	ll, err := c.GetenvString("LOG_LEVEL", "Logging Level")
-	if err != nil {
-		if Configuration.LogLevel == "" {
-			log.Infof("config/config:SaveConfiguration() LOG_LEVEL not defined, using default log level: Info")
-			Configuration.LogLevel = logrus.InfoLevel.String()
-		}
-	} else {
-		llp, err := logrus.ParseLevel(ll)
-		if err != nil {
-			log.Info("config/config:SaveConfiguration() Invalid log level specified in env, using default log level: Info")
-			Configuration.LogLevel = logrus.InfoLevel.String()
-		} else {
-			Configuration.LogLevel = llp.String()
-			log.Infof("config/config:SaveConfiguration() Log level set %s\n", ll)
-		}
-	}
 	//---------------------------------------------------------------------------------------------
 	// AAS_API_URL
 	//---------------------------------------------------------------------------------------------

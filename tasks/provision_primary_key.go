@@ -7,10 +7,11 @@ package tasks
 import (
 	"encoding/hex"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/lib/common/setup"
 	"intel/isecl/lib/tpmprovider"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type ProvisionPrimaryKey struct {

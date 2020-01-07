@@ -5,9 +5,6 @@
 package vsclient
 
 import (
-	"intel/isecl/lib/clients"
-	"intel/isecl/go-trust-agent/config"
-	"intel/isecl/lib/clients/aas"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/lib/clients"
 	"net/http"
@@ -76,7 +73,7 @@ func (vsClientFactory *defaultVSClientFactory) createHttpClient() *http.Client {
 	client, err := clients.HTTPClientWithCADir(constants.TrustedCaCertsDir)
 
 	if err != nil {
-		return err
+		return nil
 	}
 	return &http.Client{Transport: client.Transport}
 }
