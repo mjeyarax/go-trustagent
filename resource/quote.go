@@ -13,7 +13,6 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/util"
@@ -24,6 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // HVS expects...
@@ -300,16 +301,15 @@ func (ctx *TpmQuoteContext) createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) err
 
 // Returns 'quote' json provided parameters such as a nonce, pcr banks and pcrs
 // Ex. curl --user tagentadmin:TAgentAdminPassword -d '{ "nonce":"ZGVhZGJlZWZkZWFkYmVlZmRlYWRiZWVmZGVhZGJlZWZkZWFkYmVlZiA=", "pcrs": [0,1,2,3,18,19,22] }' -H "Content-Type: application/json" -X POST https://localhost:1443/v2/tpm/quote -k --noproxy "*"
-func getTpmQuote(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.TpmFactory) http.HandlerFunc {
-	return func(httpWriter http.ResponseWriter, httpRequest *http.Request) {
+func getTpmQuote(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.TpmFactory) endpointHandler {
+	return func(httpWriter http.ResponseWriter, httpRequest *http.Request) error {
 
 		log.Debugf("Request: %s", httpRequest.URL.Path)
 
 		tpm, err := tpmFactory.NewTpmProvider()
 		if err != nil {
 			log.Errorf("%s: Could not create tpm provider: %s", httpRequest.URL.Path, err)
-			httpWriter.WriteHeader(http.StatusBadRequest)
-			return
+			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 		}
 
 		defer tpm.Close()
@@ -324,40 +324,38 @@ func getTpmQuote(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.Tpm
 		data, err := ioutil.ReadAll(httpRequest.Body)
 		if err != nil {
 			log.Errorf("%s: Error reading request body: %s", httpRequest.URL.Path, err)
-			httpWriter.WriteHeader(http.StatusBadRequest)
-			return
+			return &endpointError{Message: "Error reading request body", StatusCode: http.StatusBadRequest}
+
 		}
 
 		err = json.Unmarshal(data, &tpmQuoteRequest)
 		if err != nil {
 			log.Errorf("%s: Error marshaling json data: %s...\n%s", httpRequest.URL.Path, err, string(data))
-			httpWriter.WriteHeader(http.StatusBadRequest)
-			return
+			return &endpointError{Message: "Error marshaling json data", StatusCode: http.StatusBadRequest}
+
 		}
 
 		if len(tpmQuoteRequest.Nonce) == 0 {
 			log.Errorf("%s: The TpmQuoteRequest does not contain a nonce", httpRequest.URL.Path)
-			httpWriter.WriteHeader(http.StatusBadRequest)
-			return
+			return &endpointError{Message: "The TpmQuoteRequest does not contain a nonce", StatusCode: http.StatusBadRequest}
+
 		}
 
 		err = ctx.createTpmQuote(&tpmQuoteRequest)
 		if err != nil {
 			log.Errorf("There was an error creating the tpm quote: %s", err)
-			httpWriter.WriteHeader(http.StatusInternalServerError)
-			return
+			return &endpointError{Message: "Error reading request body", StatusCode: http.StatusInternalServerError}
 		}
 
 		xmlOutput, err := xml.MarshalIndent(&ctx.tpmQuoteResponse, "  ", "    ")
 		if err != nil {
 			log.Errorf("%s: There was an error serializing the tpm quote %s", httpRequest.URL.Path, err)
-			httpWriter.WriteHeader(http.StatusInternalServerError)
-			return
+			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 		}
 
 		httpWriter.Header().Set("Content-Type", "application/xml")
 		httpWriter.WriteHeader(http.StatusOK)
 		_, _ = bytes.NewBuffer(xmlOutput).WriteTo(httpWriter)
-		return
+		return nil
 	}
 }

@@ -6,11 +6,12 @@ package resource
 
 import (
 	"bytes"
-	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/constants"
 	"io/ioutil"
 	"net/http"
 	"os"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // Assuming that the /opt/trustagent/var/system-info/platform-info file has been create
@@ -57,25 +58,25 @@ import (
 // 	]
 //  }
 //
-func getPlatformInfo(httpWriter http.ResponseWriter, httpRequest *http.Request) {
+func getPlatformInfo() endpointHandler {
+	return func(httpWriter http.ResponseWriter, httpRequest *http.Request) error {
 
-	log.Debugf("Request: %s", httpRequest.URL.Path)
+		log.Debugf("Request: %s", httpRequest.URL.Path)
 
-	if _, err := os.Stat(constants.PlatformInfoFilePath); os.IsNotExist(err) {
-		log.Errorf("%s: %s does not exist", httpRequest.URL.Path, constants.PlatformInfoFilePath)
-		httpWriter.WriteHeader(http.StatusInternalServerError)
-		return
+		if _, err := os.Stat(constants.PlatformInfoFilePath); os.IsNotExist(err) {
+			log.Errorf("%s: %s does not exist", httpRequest.URL.Path, constants.PlatformInfoFilePath)
+			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
+		}
+
+		b, err := ioutil.ReadFile(constants.PlatformInfoFilePath)
+		if err != nil {
+			log.Errorf("%s: There was an error reading %s", httpRequest.URL.Path, constants.PlatformInfoFilePath)
+			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
+		}
+
+		httpWriter.Header().Set("Content-Type", "application/json")
+		httpWriter.WriteHeader(http.StatusOK)
+		_, _ = bytes.NewBuffer(b).WriteTo(httpWriter)
+		return nil
 	}
-
-	b, err := ioutil.ReadFile(constants.PlatformInfoFilePath)
-	if err != nil {
-		log.Errorf("%s: There was an error reading %s", httpRequest.URL.Path, constants.PlatformInfoFilePath)
-		httpWriter.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	httpWriter.Header().Set("Content-Type", "application/json")
-	httpWriter.WriteHeader(http.StatusOK)
-	_, _ = bytes.NewBuffer(b).WriteTo(httpWriter)
-	return
 }
