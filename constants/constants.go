@@ -41,4 +41,8 @@ const (
 	LogEntryMaxlengthEnv       = 300
 	TrustedJWTSigningCertsDir  = ConfigDir + "jwt/"
 	TrustedCaCertsDir          = ConfigDir + "cacerts/"
+	DefaultKeyAlgorithm        = "rsa"
+	DefaultKeyAlgorithmLength  = 3072
+	DefaultTLSCertIP           = "127.0.0.1"
+	DefaultTLSCertDNS          = "CN=trustagent"
 )

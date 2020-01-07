@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"intel/isecl/go-trust-agent/constants"
+	"intel/isecl/lib/common/setup"
 	"intel/isecl/lib/common/validation"
 	"io"
 	"os"
@@ -23,7 +24,15 @@ import (
 )
 
 const (
-	AIK_SECRET_KEY = "aik.secret"
+	AIK_SECRET_KEY      = "aik.secret"
+	EnvTPMOwnerSecret   = "TPM_OWNER_SECRET"
+	EnvMtwilsonAPIURL   = "MTWILSON_API_URL"
+	EnvTAPort           = "TRUSTAGENT_PORT"
+	EnvTAUsername       = "TRUSTAGENT_ADMIN_USERNAME"
+	EnvTAPassword       = "TRUSTAGENT_ADMIN_PASSWORD"
+	EnvCMSBaseURL       = "CMS_BASE_URL"
+	EnvCMSTLSCertDigest = "CMS_TLS_CERT_SHA384"
+	EnvAASBaseURL       = "AAS_API_URL"
 )
 
 //
@@ -52,13 +61,16 @@ type TrustAgentConfiguration struct {
 	}
 	CMS struct {
 		BaseURL       string
-		TlsCertDigest string
+		TLSCertDigest string
+	}
+	TLS struct {
+		CertIP  string
+		CertDNS string
 	}
 }
 
 var mu sync.Mutex
-var log = commLog.GetDefaultLogger()
-var secLog = commLog.GetSecurityLogger()
+var context setup.Context
 
 func NewConfigFromYaml(pathToYaml string) (*TrustAgentConfiguration, error) {
 
@@ -109,9 +121,9 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	//---------------------------------------------------------------------------------------------
 	// TPM_OWNER_SECRET
 	//---------------------------------------------------------------------------------------------
-	tpmOwnerSecret, err := c.GetenvString("TPM_OWNER_SECRET")
-	if err == nil && tpmOwnerSecret != "" && cfg.Tpm.OwnerSecretKey != tpmOwnerSecret {
-		cfg.Tpm.OwnerSecretKey = tpmOwnerSecret
+	environmentVariable, err := context.GetenvSecret(EnvTPMOwnerSecret, "TPM Owner Secret")
+	if environmentVariable != "" && cfg.Tpm.OwnerSecretKey != environmentVariable {
+		cfg.Tpm.OwnerSecretKey = environmentVariable
 		dirty = true
 	} else if strings.TrimSpace(tpmOwnerSecret) == ""{
 		return errors.Wrap(err, "TPM_OWNER_SECRET is not defined in environment or configuration file")
@@ -120,9 +132,9 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	//---------------------------------------------------------------------------------------------
 	// MTWILSON_API_URL
 	//---------------------------------------------------------------------------------------------
-	hvsApiUrl, err = c.GetenvString("MTWILSON_API_URL")
-	if err == nil && hvsApiUrl != "" && cfg.HVS.Url != hvsApiUrl {
-		cfg.HVS.Url = hvsApiUrl
+	environmentVariable, err = context.GetenvString(EnvMtwilsonAPIURL, "Verification Service API URL")
+	if environmentVariable != "" && cfg.HVS.Url != environmentVariable {
+		cfg.HVS.Url = environmentVariable
 		dirty = true
 	} else if strings.TrimSpace(hvsApiUrl) == ""{
 		return errors.Wrap(err, "MTWILSON_API_URL is not defined in environment or configuration file")
@@ -132,9 +144,12 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	// TRUSTAGENT_PORT
 	//---------------------------------------------------------------------------------------------
 	port := 0
-	port, err = c.GetenvInt("TRUSTAGENT_PORT")
-	if err != nil{
-		return errors.Wrap(err, "MTWILSON_API_USERNAME is not defined in environment or configuration file")
+	port, err = context.GetenvInt(EnvTAPort, "Trust Agent Listener Port")
+	if port > 0 {
+		port, err = strconv.Atoi(environmentVariable)
+		if err != nil {
+			return fmt.Errorf("Setup error: Invalid TRUSTAGENT_PORT value '%s' [%s]", environmentVariable, err.Error())
+		}
 	}
 
 	// always apply the default port of 1443
@@ -150,7 +165,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	//---------------------------------------------------------------------------------------------
 	// TRUSTAGENT_ADMIN_USERNAME
 	//---------------------------------------------------------------------------------------------
-	environmentVariable = c.GetenvString("TRUSTAGENT_ADMIN_USERNAME")
+	environmentVariable, err = context.GetenvString(EnvTAUsername, "Trust Agent Admin Username")
 	if environmentVariable != "" && cfg.TrustAgentService.Username != environmentVariable {
 		cfg.TrustAgentService.Username = environmentVariable
 		dirty = true
@@ -159,7 +174,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	//---------------------------------------------------------------------------------------------
 	// TRUSTAGENT_ADMIN_PASSWORD
 	//---------------------------------------------------------------------------------------------
-	environmentVariable = c.GetenvString("TRUSTAGENT_ADMIN_PASSWORD")
+	environmentVariable, err = context.GetenvString(EnvTAPassword, "Trust Agent Admin Password")
 	if environmentVariable != "" && cfg.TrustAgentService.Password != environmentVariable {
 		cfg.TrustAgentService.Password = environmentVariable
 		dirty = true
@@ -192,7 +207,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	//---------------------------------------------------------------------------------------------
 	// AAS_API_URL
 	//---------------------------------------------------------------------------------------------
-	environmentVariable = os.Getenv("AAS_API_URL")
+	environmentVariable, err = context.GetenvString(EnvAASBaseURL, "AAS API Base URL")
 	if environmentVariable != "" && cfg.AAS.BaseURL != environmentVariable {
 		cfg.AAS.BaseURL = environmentVariable
 		dirty = true
@@ -201,7 +216,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	//---------------------------------------------------------------------------------------------
 	// CMS_BASE_URL
 	//---------------------------------------------------------------------------------------------
-	environmentVariable = os.Getenv("CMS_BASE_URL")
+	environmentVariable, err = context.GetenvString(EnvCMSBaseURL, "CMS Base URL")
 	if environmentVariable != "" && cfg.CMS.BaseURL != environmentVariable {
 		cfg.CMS.BaseURL = environmentVariable
 		dirty = true
@@ -210,18 +225,18 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	//---------------------------------------------------------------------------------------------
 	// CMS_TLS_CERT_SHA384
 	//---------------------------------------------------------------------------------------------
-	environmentVariable = os.Getenv("CMS_TLS_CERT_SHA384")
+	environmentVariable, err = context.GetenvString(EnvCMSTLSCertDigest, "CMS TLS SHA384 Digest")
 	if environmentVariable != "" {
 		if len(environmentVariable) != 96 {
-			return fmt.Errorf("Setup error:  Invalid length CMS_TLS_CERT_SHA384: %d", len(environmentVariable))
+			return fmt.Errorf("Setup error:  Invalid length %s: %d", EnvCMSTLSCertDigest, len(environmentVariable))
 		}
 
 		if err = validation.ValidateHexString(environmentVariable); err != nil {
-			return fmt.Errorf("Setup error:  CMS_TLS_CERT_SHA384 is not a valid hex string: %s", environmentVariable)
+			return fmt.Errorf("Setup error:  %s is not a valid hex string: %s", EnvCMSTLSCertDigest, environmentVariable)
 		}
 
-		if cfg.CMS.TlsCertDigest != environmentVariable {
-			cfg.CMS.TlsCertDigest = environmentVariable
+		if cfg.CMS.TLSCertDigest != environmentVariable {
+			cfg.CMS.TLSCertDigest = environmentVariable
 			dirty = true
 		}
 	}
@@ -262,7 +277,7 @@ func (cfg *TrustAgentConfiguration) Validate() error {
 		return fmt.Errorf("Validation error: CMS Base URL is required")
 	}
 
-	if cfg.CMS.TlsCertDigest == "" {
+	if cfg.CMS.TLSCertDigest == "" {
 		return fmt.Errorf("Validation error: CMS TLS Cert Digest is required")
 	}
 
