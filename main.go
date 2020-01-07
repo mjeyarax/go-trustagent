@@ -1,3 +1,4 @@
+// +build linux
 /*
  * Copyright (C) 2019 Intel Corporation
  * SPDX-License-Identifier: BSD-3-Clause
@@ -49,6 +50,10 @@ func printUsage() {
 	fmt.Println("Available Tasks for setup:")
 	fmt.Println("    tagent setup all (or with empty 3rd argument)")
 	fmt.Println("        - Runs all setup tasks to provision the trustagent.")
+	fmt.Println("    tagent setup download-ca-cert [--force]")
+	fmt.Println("        - Fetches the latest CMS Root CA Certificates. --force option overwrites existing root CA certificates.")
+	fmt.Println("    tagent setup download-cert [--force]")
+	fmt.Println("        - Fetches a signed TLS Certificate from CMS. --force option overwrites existing TLS certificates.")
 	fmt.Println("    tagent setup create-host")
 	fmt.Println("        - Registers the trustagent with the verification service.")
 	fmt.Println("    tagent setup create-host-unique-flavor")
