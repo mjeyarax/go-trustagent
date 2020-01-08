@@ -31,6 +31,7 @@ const (
 	ProvisionEndorsementKeyCommand         = "provision-ek"
 	ProvisionAttestationIdentityKeyCommand = "provision-aik"
 	DownloadPrivacyCACommand               = "download-privacy-ca"
+	DownloadAASJWTCertCommand              = "download-aas-jwt-cert"
 	ProvisionPrimaryKeyCommand             = "provision-primary-key"
 	CreateHostCommand                      = "create-host"
 	CreateHostUniqueFlavorCommand          = "create-host-unique-flavor"
@@ -69,6 +70,10 @@ func CreateTaskRegistry(vsClientFactory vsclient.VSClientFactory, tpmFactory tpm
 		ConsoleWriter: os.Stdout,
 	}
 
+	downloadAASJWTCert := DownloadAASJWTCert{
+		Flags: flags,
+	}
+
 	provisionEndorsementKey := ProvisionEndorsementKey{
 		caCertificatesClient:  vsClientFactory.CACertificatesClient(),
 		tpmEndorsementsClient: vsClientFactory.TpmEndorsementsClient(),
@@ -91,6 +96,7 @@ func CreateTaskRegistry(vsClientFactory vsclient.VSClientFactory, tpmFactory tpm
 
 	registry.taskMap[TakeOwnershipCommand] = []setup.Task{&takeOwnership}
 	registry.taskMap[DownloadRootCACertCommand] = []setup.Task{&downloadRootCACert}
+	registry.taskMap[DownloadAASJWTCertCommand] = []setup.Task{&downloadAASJWTCert}
 	registry.taskMap[DownloadCertCommand] = []setup.Task{&downloadTLSCert}
 	registry.taskMap[ProvisionEndorsementKeyCommand] = []setup.Task{&provisionEndorsementKey}
 	registry.taskMap[ProvisionAttestationIdentityKeyCommand] = []setup.Task{&provisionAttestationIdentityKey}
@@ -100,6 +106,7 @@ func CreateTaskRegistry(vsClientFactory vsclient.VSClientFactory, tpmFactory tpm
 	registry.taskMap[DefaultSetupCommand] = []setup.Task{
 		&downloadRootCACert,
 		&downloadTLSCert,
+		&downloadAASJWTCert,
 		&downloadPrivacyCA,
 		&takeOwnership,
 		&provisionEndorsementKey,
@@ -107,7 +114,7 @@ func CreateTaskRegistry(vsClientFactory vsclient.VSClientFactory, tpmFactory tpm
 		&provisionPrimaryKey,
 	}
 
-	// these are individual commands that are not included of setup
+	// these are individual commands that are not included in default setup tasks
 	registry.taskMap[CreateHostCommand] = []setup.Task{
 		&CreateHost{
 			hostsClient: vsClientFactory.HostsClient(),
