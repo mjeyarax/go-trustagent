@@ -32,27 +32,29 @@ type TagWriteRequest struct {
 //
 func setAssetTag(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.TpmFactory) endpointHandler {
 	return func(httpWriter http.ResponseWriter, httpRequest *http.Request) error {
+		log.Trace("resource/asset_tag:setAssetTag() Entering")
+		defer log.Trace("resource/asset_tag:setAssetTag() Leaving")
 
-		log.Debugf("Request: %s", httpRequest.URL.Path)
+		log.Debugf("resource/asset_tag:setAssetTag() Request: %s", httpRequest.URL.Path)
 
 		var tagWriteRequest TagWriteRequest
 		tpmSecretKey := cfg.Tpm.OwnerSecretKey
 
 		data, err := ioutil.ReadAll(httpRequest.Body)
 		if err != nil {
-			log.Errorf("%s: Error reading request body: %s", httpRequest.URL.Path, err)
+			log.WithError(err).Errorf("resource/asset_tag:setAssetTag() Error reading request body for request: %s", httpRequest.URL.Path)
 			return &endpointError{Message: "Error parsing request", StatusCode: http.StatusBadRequest}
 		}
 
 		err = json.Unmarshal(data, &tagWriteRequest)
 		if err != nil {
-			log.Errorf("%s:  Error marshaling json data: %s...\n%s", httpRequest.URL.Path, err, string(data))
+			log.WithError(err).Errorf("resource/asset_tag:setAssetTag() Error marshaling json data: %s for request: %s", string(data), httpRequest.URL.Path)
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusBadRequest}
 		}
 
 		tpm, err := tpmFactory.NewTpmProvider()
 		if err != nil {
-			log.Errorf("%s: Error creating tpm provider: %s", httpRequest.URL.Path, err)
+			log.WithError(err).Error("resource/asset_tag:setAssetTag() Error creating tpm provider")
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 		}
 
@@ -61,14 +63,14 @@ func setAssetTag(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.Tpm
 		// check if an asset tag already exists and delete it if needed
 		nvExists, err := tpm.NvIndexExists(tpmprovider.NV_IDX_ASSET_TAG)
 		if err != nil {
-			log.Errorf("%s: Error checking if asset tag exists: %s", httpRequest.URL.Path, err)
+			log.WithError(err).Errorf("resource/asset_tag:setAssetTag() Error checking if asset tag exists")
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 		}
 
 		if nvExists {
 			err = tpm.NvRelease(tpmSecretKey, tpmprovider.NV_IDX_ASSET_TAG)
 			if err != nil {
-				log.Errorf("%s: Could not release asset tag nvram: %s", httpRequest.URL.Path, err)
+				log.WithError(err).Errorf("resource/asset_tag:setAssetTag() Could not release asset tag nvram")
 				return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 			}
 		}
@@ -76,14 +78,14 @@ func setAssetTag(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.Tpm
 		// create an index for the data
 		err = tpm.NvDefine(tpmSecretKey, tpmprovider.NV_IDX_ASSET_TAG, uint16(len(tagWriteRequest.Tag)))
 		if err != nil {
-			log.Errorf("%s: Could not define tag nvram: %s", httpRequest.URL.Path, err)
+			log.Errorf("resource/asset_tag:setAssetTag() Could not define tag nvram")
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 		}
 
 		// write the data
 		err = tpm.NvWrite(tpmSecretKey, tpmprovider.NV_IDX_ASSET_TAG, tagWriteRequest.Tag)
 		if err != nil {
-			log.Errorf("%s: Error writing asset tag: %s", httpRequest.URL.Path, err)
+			log.WithError(err).Error("resource/asset_tag:setAssetTag() %s: Error writing asset tag")
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 		}
 

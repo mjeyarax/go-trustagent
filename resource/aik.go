@@ -6,14 +6,15 @@ package resource
 
 import (
 	"bytes"
+	commLog "intel/isecl/lib/common/log"
 	"intel/isecl/go-trust-agent/constants"
 	"io/ioutil"
 	"net/http"
 	"os"
+	)
 
-	log "github.com/sirupsen/logrus"
-)
-
+var log = commLog.GetDefaultLogger()
+var secLog = commLog.GetSecurityLogger()
 //
 // Reads the provision aik certificate from /opt/trustagent/configuration/aik.cert
 //
@@ -21,16 +22,19 @@ import (
 func getAik() endpointHandler {
 
 	return func(httpWriter http.ResponseWriter, httpRequest *http.Request) error {
-		log.Debugf("Request: %s", httpRequest.URL.Path)
+		log.Trace("resource/aik:getAik() Entering")
+		defer log.Trace("resource/aik:getAik() Leaving")
+
+		log.Debugf("resource/aik:getAik() Request: %s", httpRequest.URL.Path)
 
 		if _, err := os.Stat(constants.AikCert); os.IsNotExist(err) {
-			log.Errorf("%s: %s does not exist", httpRequest.URL.Path, constants.AikCert)
+			log.Errorf("resource/aik:getAik() %s does not exist", constants.AikCert)
 			return &endpointError{Message: "AIK certificate does not exist", StatusCode: http.StatusNotFound}
 		}
 
 		aikBytes, err := ioutil.ReadFile(constants.AikCert)
 		if err != nil {
-			log.Errorf("%s: There was an error reading %s", httpRequest.URL.Path, constants.AikCert)
+			log.Errorf("resource/aik:getAik() There was an error reading %s", constants.AikCert)
 			return &endpointError{Message: "Unable to fetch AIK certificate", StatusCode: http.StatusInternalServerError}
 		}
 

@@ -19,6 +19,8 @@ import (
 // Writes the manifest xml received to /opt/trustagent/var/manifest_{UUID}.xml.
 func deployManifest() endpointHandler {
 	return func(httpWriter http.ResponseWriter, httpRequest *http.Request) error {
+		log.Trace("resource/deploy_manifest:deployManifest() Entering")
+		defer log.Trace("resource/deploy_manifest:deployManifest() Leaving")
 
 		log.Debugf("Request: %s", httpRequest.URL.Path)
 
