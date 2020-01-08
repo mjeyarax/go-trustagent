@@ -43,32 +43,34 @@ type tpmEndorsementsClientImpl struct {
 }
 
 func (client *tpmEndorsementsClientImpl) IsEkRegistered(hardwareUUID string) (bool, error) {
+	log.Trace("vsclient/tpm_endorsement_client:IsEkRegistered() Entering")
+	defer log.Trace("vsclient/tpm_endorsement_client:IsEkRegistered() Leaving")
 
 	url := fmt.Sprintf("%s/tpm-endorsements?hardwareUuidEqualTo=%s", client.cfg.BaseURL, hardwareUUID)
 	request, _ := http.NewRequest("GET", url, nil)
 	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
 	if jwtToken == "" || err != nil {
 		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return false, errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
+		return false, errors.Wrap(err, "vsclient/tpm_endorsement_client:IsEkRegistered() BEARER_TOKEN is not defined in environment")
 	}
 	request.Header.Set("Authorization", "Bearer "+ jwtToken)
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return false, fmt.Errorf("%s request failed with error %s\n", url, err)
+		return false, errors.Wrapf(err, "vsclient/tpm_endorsement_client:IsEkRegistered() Error while sending request to %s ", url)
 	} else {
 		if response.StatusCode != http.StatusOK {
-			return false, fmt.Errorf("IsEkRegistered: %s returned status %d", url, response.StatusCode)
+			return false, errors.Errorf("vsclient/tpm_endorsement_client:IsEkRegistered() Request sent to %s returned status %d", url, response.StatusCode)
 		}
 
 		data, err := ioutil.ReadAll(response.Body)
 		if err != nil {
-			return false, fmt.Errorf("Error reading response: %s", err)
+			return false, errors.Wrap(err, "vsclient/tpm_endorsement_client:IsEkRegistered() Error reading response")
 		}
 
 		var objmap map[string]interface{}
 		if err := json.Unmarshal(data, &objmap); err != nil {
-			return false, fmt.Errorf("Error parsing json: %s", err)
+			return false, errors.Wrap(err, "vsclient/tpm_endorsement_client:IsEkRegistered() Error while unmarshalling response body")
 		}
 
 		if objmap["tpm_endorsements"] != nil && len(objmap["tpm_endorsements"].([]interface{})) > 0 {
@@ -81,30 +83,32 @@ func (client *tpmEndorsementsClientImpl) IsEkRegistered(hardwareUUID string) (bo
 }
 
 func (client *tpmEndorsementsClientImpl) RegisterEk(tpmEndorsement *TpmEndorsement) error {
+	log.Trace("vsclient/tpm_endorsement_client:RegisterEk() Entering")
+	defer log.Trace("vsclient/tpm_endorsement_client:RegisterEk() Leaving")
 
 	jsonData, err := json.Marshal(tpmEndorsement)
 	if err != nil {
 		return err
 	}
 
-	log.Tracef("vsclient.RegisterEk: %s", string(jsonData))
+	log.Tracef("vsclient/tpm_endorsement_client:RegisterEk() Request body %s", string(jsonData))
 
 	url := fmt.Sprintf("%s/tpm-endorsements", client.cfg.BaseURL)
 	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
 	if jwtToken == "" || err != nil {
 		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
+		return errors.Wrap(err, "vsclient/tpm_endorsement_client:RegisterEk() BEARER_TOKEN is not defined in environment")
 	}
 	request.Header.Set("Authorization", "Bearer "+ jwtToken)
 	request.Header.Set("Content-Type", "application/json")
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return fmt.Errorf("RegisterEndorsementKey: %s request failed with error %s\n", url, err)
+		return errors.Wrapf(err, "vsclient/tpm_endorsement_client:RegisterEk() Error while sending request to %s ", url)
 	} else {
 		if response.StatusCode != http.StatusOK {
-			return fmt.Errorf("RegisterEndorsementKey: %s returned status %d", url, response.StatusCode)
+			return errors.Errorf("vsclient/tpm_endorsement_client:RegisterEk() Request sent to %s returned status %d", url, response.StatusCode)
 		}
 	}
 

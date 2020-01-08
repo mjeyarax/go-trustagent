@@ -99,29 +99,32 @@ type privacyCAClientImpl struct {
 }
 
 func (client *privacyCAClientImpl) DownloadPrivacyCa() ([]byte, error) {
+	log.Trace("vsclient/privacy_ca_client:DownloadPrivacyCa() Entering")
+	defer log.Trace("vsclient/privacy_ca_client:DownloadPrivacyCa() Leaving")
 
 	var ca []byte
 
 	url := fmt.Sprintf("%s/ca-certificates/privacy", client.cfg.BaseURL)
 	request, _ := http.NewRequest("GET", url, nil)
-	jwtToken := os.Getenv(constants.BearerTokenEnv)
-	if jwtToken == "" {
+	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
+	if jwtToken == "" || err != nil {
 		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.New("BEARER_TOKEN is not defined in environment")
+		return nil, errors.Wrap(err, "vsclient/privacy_ca_client:DownloadPrivacyCa() BEARER_TOKEN is not defined in environment")
 	}
+
 	request.Header.Set("Authorization", "Bearer "+ jwtToken)
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("%s request failed with error %s\n", url, err)
+		return nil, errors.Wrapf(err, "vsclient/privacy_ca_client:DownloadPrivacyCa() Error while sending request to %s ", url)
 	} else {
 		if response.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("%s returned status %d", url, response.StatusCode)
+			return nil, errors.Errorf("vsclient/privacy_ca_client:DownloadPrivacyCa() Request sent to %s returned status %d", url, response.StatusCode)
 		}
 
 		ca, err = ioutil.ReadAll(response.Body)
 		if err != nil {
-			return nil, fmt.Errorf("Error reading response: %s", err)
+			return nil, errors.Wrap(err,"vsclient/privacy_ca_client:DownloadPrivacyCa() Error reading response")
 		}
 	}
 
@@ -129,6 +132,8 @@ func (client *privacyCAClientImpl) DownloadPrivacyCa() ([]byte, error) {
 }
 
 func (client *privacyCAClientImpl) GetIdentityProofRequest(identityChallengeRequest *IdentityChallengeRequest) (*IdentityProofRequest, error) {
+	log.Trace("vsclient/privacy_ca_client:GetIdentityProofRequest() Entering")
+	defer log.Trace("vsclient/privacy_ca_client:GetIdentityProofRequest() Leaving")
 
 	var identityProofRequest IdentityProofRequest
 
@@ -144,28 +149,28 @@ func (client *privacyCAClientImpl) GetIdentityProofRequest(identityChallengeRequ
 	jwtToken := os.Getenv(constants.BearerTokenEnv)
 	if jwtToken == "" {
 		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.New("BEARER_TOKEN is not defined in environment")
+		return nil, errors.New("vsclient/privacy_ca_client:GetIdentityProofRequest() BEARER_TOKEN is not defined in environment")
 	}
 	request.Header.Set("Authorization", "Bearer "+ jwtToken)
 	request.Header.Set("Content-Type", "application/json")
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("%s request failed with error %s\n", url, err)
+		return nil, errors.Wrapf(err,"vsclient/privacy_ca_client:GetIdentityProofRequest() Error sending request to %s", url)
 	} else {
 		if response.StatusCode != http.StatusOK {
 			b, _ := ioutil.ReadAll(response.Body)
-			return nil, fmt.Errorf("%s returned status '%d': %s", url, response.StatusCode, string(b))
+			return nil, errors.Errorf("vsclient/privacy_ca_client:GetIdentityProofRequest() Request sent to %s returned status '%d', Response: %s", url, response.StatusCode, string(b))
 		}
 
 		data, err := ioutil.ReadAll(response.Body)
 		if err != nil {
-			return nil, fmt.Errorf("Error reading response: %s", err)
+			return nil, errors.Wrap(err, "vsclient/privacy_ca_client:GetIdentityProofRequest() Error reading response")
 		}
 
 		err = json.Unmarshal(data, &identityProofRequest)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "vsclient/privacy_ca_client:GetIdentityProofRequest() Error while unmarshalling response")
 		}
 	}
 
@@ -173,6 +178,8 @@ func (client *privacyCAClientImpl) GetIdentityProofRequest(identityChallengeRequ
 }
 
 func (client *privacyCAClientImpl) GetIdentityProofResponse(identityChallengeResponse *IdentityChallengeResponse) (*IdentityProofRequest, error) {
+	log.Trace("vsclient/privacy_ca_client:GetIdentityProofResponse() Entering")
+	defer log.Trace("vsclient/privacy_ca_client:GetIdentityProofResponse() Leaving")
 
 	var identityProofRequest IdentityProofRequest
 
@@ -181,37 +188,37 @@ func (client *privacyCAClientImpl) GetIdentityProofResponse(identityChallengeRes
 		return nil, err
 	}
 
-	log.Debugf("identityChallengeResponse: %s\n", string(jsonData))
+	log.Debugf("vsclient/privacy_ca_client:GetIdentityProofResponse() identityChallengeResponse: %s\n", string(jsonData))
 
 	url := fmt.Sprintf("%s/privacyca/identity-challenge-response", client.cfg.BaseURL)
 	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
 	if jwtToken == "" || err != nil {
 		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
+		return nil, errors.Wrap(err, "vsclient/privacy_ca_client:GetIdentityProofResponse() BEARER_TOKEN is not defined in environment")
 	}
 	request.Header.Set("Authorization", "Bearer "+ jwtToken)
 	request.Header.Set("Content-Type", "application/json")
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("%s request failed with error %s\n", url, err)
+		return nil, errors.Wrapf(err, "vsclient/privacy_ca_client:GetIdentityProofResponse() Error while sending request to %s ", url)
 	} else {
 		if response.StatusCode != http.StatusOK {
 			b, _ := ioutil.ReadAll(response.Body)
-			return nil, fmt.Errorf("%s returned status '%d': %s", url, response.StatusCode, string(b))
+			return nil, errors.Errorf("vsclient/privacy_ca_client:GetIdentityProofResponse() Request sent to %s returned status: '%d', Response: %s", url, response.StatusCode, string(b))
 		}
 
 		data, err := ioutil.ReadAll(response.Body)
 		if err != nil {
-			return nil, fmt.Errorf("Error reading response: %s", err)
+			return nil, errors.Wrapf(err, "vsclient/privacy_ca_client:GetIdentityProofResponse() Error reading response ")
 		}
 
-		log.Debugf("Proof Response: %s\n", string(data))
+		log.Debugf("vsclient/privacy_ca_client:GetIdentityProofResponse() Proof Response: %s\n", string(data))
 
 		err = json.Unmarshal(data, &identityProofRequest)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "vsclient/privacy_ca_client:GetIdentityProofResponse() Error while unmarshalling response body")
 		}
 	}
 

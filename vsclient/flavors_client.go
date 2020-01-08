@@ -48,6 +48,8 @@ type flavorsClientImpl struct {
 }
 
 func (client *flavorsClientImpl) CreateFlavor(flavorCreateCriteria *FlavorCreateCriteria) ([]byte, error) {
+	log.Trace("vsclient/flavors_client:CreateFlavor() Entering")
+	defer log.Trace("vsclient/flavors_client:CreateFlavor() Leaving")
 
 	jsonData, err := json.Marshal(flavorCreateCriteria)
 	if err != nil {
@@ -60,29 +62,29 @@ func (client *flavorsClientImpl) CreateFlavor(flavorCreateCriteria *FlavorCreate
 	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
 	if jwtToken == "" || err != nil {
 		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
+		return nil, errors.Wrap(err, "vsclient/flavors_client:CreateFlavor() BEARER_TOKEN is not defined in environment")
 	}
 	request.Header.Set("Authorization", "Bearer "+jwtToken)
 
-	log.Debugf("CreateFlavor: Posting to url %s, json: %s ", url, string(jsonData))
+	log.Debugf("vsclient/flavors_client:CreateFlavor() Posting to url %s, json: %s ", url, string(jsonData))
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("%s request failed with error %s\n", url, err)
+		return nil, errors.Wrapf(err, "vsclient/flavors_client:CreateFlavor() Error while making request to %s", url, err)
 	}
 
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s returned status %d", url, response.StatusCode)
+		return nil, errors.Errorf("vsclient/flavors_client:CreateFlavor() requset made to %s returned status %d", url, response.StatusCode)
 	}
 
 	jsonData, err = ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading response: %s", err)
+		return nil, errors.Errorf("vsclient/flavors_client:CreateFlavor() Error reading response")
 	}
 
-	log.Debugf("CreateFlavor returned json: %s", string(jsonData))
+	log.Debugf("vsclient/flavors_client:CreateFlavor() Json response body returned: %s", string(jsonData))
 
 	return jsonData, nil
 }

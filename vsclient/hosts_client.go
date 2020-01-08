@@ -112,6 +112,8 @@ type HostFilterCriteria struct {
 }
 
 func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteria) (*HostCollection, error) {
+	log.Trace("vsclient/hosts_client:SearchHosts() Entering")
+	defer log.Trace("vsclient/hosts_client:SearchHosts() Leaving")
 
 	hosts := HostCollection {}
 
@@ -120,7 +122,7 @@ func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteri
 	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
 	if jwtToken == "" || err != nil {
 		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
+		return nil, errors.Wrap(err, "vsclient/hosts_client:SearchHosts() BEARER_TOKEN is not defined in environment")
 	}
 	request.Header.Set("Authorization", "Bearer "+ jwtToken)
 
@@ -143,7 +145,7 @@ func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteri
 	}
 
 	if len(query) == 0 {
-		return nil, errors.New("At least filter parameter must be provided")
+		return nil, errors.New("vsclient/hosts_client:SearchHosts() At least filter parameter must be provided")
 	}
 
 	request.URL.RawQuery = query.Encode()
@@ -152,25 +154,25 @@ func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteri
 
 	response, err := client.httpClient.Do(request)
     if err != nil {
-        return nil, fmt.Errorf("%s request failed with error %s\n", url, err)
+        return nil, errors.Wrapf(err, "vsclient/hosts_client:SearchHosts() Error making request to %s", url)
 	}
 	
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s returned status %d", url, response.StatusCode)
+		return nil, errors.Errorf("vsclient/hosts_client:SearchHosts() Request made to %s returned status %d", url, response.StatusCode)
 	}
 
 	data, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading response: %s", err)
+		return nil, errors.Wrapf(err, "vsclient/hosts_client:SearchHosts() Error reading response")
 	}
 
-	log.Debugf("SearchHosts returned json: %s", string(data))
+	log.Debugf("vsclient/hosts_client:SearchHosts() SearchHosts returned json: %s", string(data))
 
 	err = json.Unmarshal(data, &hosts)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "vsclient/hosts_client:SearchHosts() Error while unmarshaling the response")
 	}
 
 	return &hosts, nil
@@ -212,12 +214,14 @@ func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteri
 
 
 func (client *hostsClientImpl) CreateHost(hostCreateCriteria *HostCreateCriteria) (*Host, error) {
+	log.Trace("vsclient/hosts_client:CreateHost() Entering")
+	defer log.Trace("vsclient/hosts_client:CreateHost() Leaving")
 
 	var host Host
 
 	jsonData, err := json.Marshal(hostCreateCriteria)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "vsclient/hosts_client:CreateHost() Error while marshalling hostcreate criteria")
 	}
 
 
@@ -231,46 +235,48 @@ func (client *hostsClientImpl) CreateHost(hostCreateCriteria *HostCreateCriteria
 	}
 	request.Header.Set("Authorization", "Bearer "+ jwtToken)
 
-	log.Debugf("CreateHost: Posting to url %s, json: %s ", url, string(jsonData))
+	log.Debugf("vsclient/hosts_client:CreateHost() Sending Post request to url %s with json body: %s ", url, string(jsonData))
 
 	response, err := client.httpClient.Do(request)
     if err != nil {
-        return nil, fmt.Errorf("%s request failed with error %s\n", url, err)
+        return nil, errors.Wrapf(err, "vsclient/hosts_client:CreateHost() Error while making request to %s ", url)
     }
 
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s returned status %d", url, response.StatusCode)
+		return nil, errors.Errorf("vsclient/hosts_client:CreateHost() Request made to %s returned status %d", url, response.StatusCode)
 	}
 
 	data, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading response: %s", err)
+		return nil, errors.Wrap(err, "vsclient/hosts_client:CreateHost() Error reading response ")
 	}
 
-	log.Debugf("CreateHost returned json: %s", string(data))
+	log.Debugf("vsclient/hosts_client:CreateHost() CreateHost returned json: %s", string(data))
 
 	err = json.Unmarshal(data, &host)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "vsclient/hosts_client:CreateHost() Error while unmarshalling the response body")
 	}
 
 	return &host, nil
 }
 
 func (client *hostsClientImpl) UpdateHost(host *Host) (*Host, error) {
+	log.Trace("vsclient/hosts_client:UpdateHost() Entering")
+	defer log.Trace("vsclient/hosts_client:UpdateHost() Leaving")
 
 	var updatedHost Host
 
 	err := validation.ValidateUUIDv4(host.Id)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "vsclient/hosts_client:UpdateHost() Host id is not a valid uuid")
 	}
 
 	jsonData, err := json.Marshal(host)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "vsclient/hosts_client:UpdateHost() Error while marshalling request body")
 	}
 
 	url := fmt.Sprintf("%s/hosts/%s", client.cfg.BaseURL, host.Id)
@@ -278,33 +284,33 @@ func (client *hostsClientImpl) UpdateHost(host *Host) (*Host, error) {
 	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
 	if jwtToken == "" || err != nil {
 		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
+		return nil, errors.Wrap(err, "vsclient/hosts_client:UpdateHost() BEARER_TOKEN is not defined in environment")
 	}
 	request.Header.Set("Authorization", "Bearer "+ jwtToken)
 
-	log.Debugf("CreateHost: Posting to url %s, json: %s ", url, string(jsonData))
+	log.Debugf("vsclient/hosts_client:UpdateHost() Sending PUT request to url %s, json: %s ", url, string(jsonData))
 
 	response, err := client.httpClient.Do(request)
     if err != nil {
-        return nil, fmt.Errorf("%s request failed with error %s\n", url, err)
+        return nil, errors.Wrapf(err,"vsclient/hosts_client:UpdateHost() Error while sending request to %s", url)
     }
 
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s returned status %d", url, response.StatusCode)
+		return nil, errors.Errorf("vsclient/hosts_client:UpdateHost() Request made to %s returned status %d", url, response.StatusCode)
 	}
 
 	data, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading response: %s", err)
+		return nil, errors.Wrap(err,"vsclient/hosts_client:UpdateHost() Error reading response ")
 	}
 
-	log.Debugf("UpdateHost returned json: %s", string(data))
+	log.Debugf("vsclient/hosts_client:UpdateHost() UpdateHost returned json: %s", string(data))
 
 	err = json.Unmarshal(data, &updatedHost)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "vsclient/hosts_client:UpdateHost() Error while unmarshalling response body")
 	}
 
 	return &updatedHost, nil

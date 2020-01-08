@@ -7,6 +7,7 @@ package util
 import (
 	"crypto/rsa"
 	"crypto/x509"
+	"github.com/pkg/errors"
 	"intel/isecl/go-trust-agent/constants"
 	"io/ioutil"
 	"os"
@@ -19,6 +20,8 @@ var privacyCAInstance *rsa.PublicKey
 // created by 'tagent setup' (in tasks.download_privacty_ca.go) and returns an error
 // if the file does not exist.
 func GetPrivacyCA() (*rsa.PublicKey, error) {
+	log.Trace("util/privacy_ca:GetPrivacyCA() Entering")
+	defer log.Trace("util/privacy_ca:GetPrivacyCA() Leaving")
 
 	if privacyCAInstance == nil {
 		if _, err := os.Stat(constants.PrivacyCA); os.IsNotExist(err) {
@@ -27,12 +30,12 @@ func GetPrivacyCA() (*rsa.PublicKey, error) {
 
 		privacyCaBytes, err := ioutil.ReadFile(constants.PrivacyCA)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "util/privacy_ca:GetPrivacyCA() Error while reading Privacy CA Certificate file")
 		}
 
 		cert, err := x509.ParseCertificate(privacyCaBytes)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "util/privacy_ca:GetPrivacyCA() Error while parsing Privacy CA Certificate")
 		}
 
 		privacyCAInstance = cert.PublicKey.(*rsa.PublicKey)

@@ -10,7 +10,6 @@
 	 "io/ioutil"
 	 "net/http"
 	 "intel/isecl/lib/common/validation"
-	 log "github.com/sirupsen/logrus"
 	 "os"
 
 	 "github.com/pkg/errors"
@@ -59,13 +58,15 @@ type manifestsClientImpl struct {
 }
 
 func (client * manifestsClientImpl) getManifestXml(params map[string]string) ([]byte, error) {
+	log.Trace("vsclient/manifests_client:getManifestXml() Entering")
+	defer log.Trace("vsclient/manifests_client:getManifestXml() Leaving")
 
 	url := fmt.Sprintf("%s/manifests", client.cfg.BaseURL)
 	request, _:= http.NewRequest("GET", url, nil)
 	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
 	if jwtToken == "" || err != nil {
 		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
+		return nil, errors.Wrap(err, "vsclient/manifests_client:getManifestXml() BEARER_TOKEN is not defined in environment")
 	}
 	request.Header.Set("Authorization", "Bearer "+ jwtToken)
 
@@ -77,34 +78,36 @@ func (client * manifestsClientImpl) getManifestXml(params map[string]string) ([]
 
 	request.URL.RawQuery = query.Encode()
 
-	log.Debugf("GetManifestXml: %s", request.URL.RawQuery)
+	log.Debugf("vsclient/manifests_client:getManifestXml() Request URL raw query %s", request.URL.RawQuery)
 
 	response, err := client.httpClient.Do(request)
     if err != nil {
-        return nil, fmt.Errorf("%s request failed with error %s\n", url, err)
+        return nil, errors.Wrapf(err,"vsclient/manifests_client:getManifestXml() Error while sending request to %s", url)
 	}
 	
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s returned status %d", url, response.StatusCode)
+		return nil, errors.Errorf("vsclient/manifests_client:getManifestXml() Request made to %s returned status %d", url, response.StatusCode)
 	}
 
 	xml, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading response: %s", err)
+		return nil, fmt.Errorf("vsclient/manifests_client:getManifestXml() Error reading response: %s", err)
 	}
 
-	log.Debugf("GetManifestXml returned xml: %s", string(xml))
+	log.Debugf("vsclient/manifests_client:getManifestXml() returned xml response: %s", string(xml))
 
 	return xml, nil
 }
 
 func (client *manifestsClientImpl) GetManifestXmlById(manifestUUID string) ([]byte, error) {
+	log.Trace("vsclient/manifests_client:GetManifestXmlById() Entering")
+	defer log.Trace("vsclient/manifests_client:GetManifestXmlById() Leaving")
 
 	err := validation.ValidateUUIDv4(manifestUUID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "vsclient/manifests_client:GetManifestXmlById() Manufest UUID is not a valid uuid")
 	}
 
 	params := map[string]string{ "id" : manifestUUID, };
@@ -112,6 +115,9 @@ func (client *manifestsClientImpl) GetManifestXmlById(manifestUUID string) ([]by
 }
 
 func (client *manifestsClientImpl) GetManifestXmlByLabel(manifestLabel string) ([]byte, error) {
+	log.Trace("vsclient/manifests_client:GetManifestXmlByLabel() Entering")
+	defer log.Trace("vsclient/manifests_client:GetManifestXmlByLabel() Leaving")
+
 	params := map[string]string{ "key" : "label", "value" : manifestLabel };
 	return client.getManifestXml(params)
 }

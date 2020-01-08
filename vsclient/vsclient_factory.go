@@ -9,6 +9,8 @@ import (
 	"intel/isecl/lib/clients"
 	"net/http"
 	"net/url"
+
+	"github.com/pkg/errors"
 )
 
 type VSClientFactory interface {
@@ -69,10 +71,13 @@ func (vsClientFactory *defaultVSClientFactory) CACertificatesClient() CACertific
 }
 
 func (vsClientFactory *defaultVSClientFactory) createHttpClient() *http.Client {
+	log.Trace("vsclient/vsclient_factory:createHttpClient() Entering")
+	defer log.Trace("vsclient/vsclient_factory:createHttpClient() Leaving")
 	// Here we need to return a client which has validated the HVS TLS cert-chain
 	client, err := clients.HTTPClientWithCADir(constants.TrustedCaCertsDir)
 
 	if err != nil {
+		log.WithError(err).Error("vsclient/vsclient_factory:createHttpClient() Error while creating http client")
 		return nil
 	}
 	return &http.Client{Transport: client.Transport}

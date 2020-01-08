@@ -7,12 +7,11 @@ package tasks
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/pkg/errors"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/lib/common/setup"
 	"intel/isecl/lib/tpmprovider"
-
-	log "github.com/sirupsen/logrus"
-)
+	)
 
 type ProvisionPrimaryKey struct {
 	tpmFactory tpmprovider.TpmFactory
@@ -22,17 +21,19 @@ type ProvisionPrimaryKey struct {
 // This task is used to persist a primary public key at handle TPM_HANDLE_PRIMARY
 // to be used by WLA for signing/binding keys.
 func (task *ProvisionPrimaryKey) Run(c setup.Context) error {
+	log.Trace("tasks/provision_primary_key:Run() Entering")
+	defer log.Trace("tasks/provision_primary_key:Run() Leaving")
 
 	tpm, err := task.tpmFactory.NewTpmProvider()
 	if err != nil {
-		return fmt.Errorf("Setup error: Could not create TpmProvider: %s", err)
+		return errors.Wrap(err,"tasks/provision_primary_key:Run() Error while creating NewTpmProvider")
 	}
 
 	defer tpm.Close()
 
 	exists, err := tpm.PublicKeyExists(tpmprovider.TPM_HANDLE_PRIMARY)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "tasks/provision_primary_key:Run() Error while checking existence of tpm public key")
 	}
 
 	if !exists {
@@ -43,7 +44,7 @@ func (task *ProvisionPrimaryKey) Run(c setup.Context) error {
 
 		err = tpm.CreatePrimaryHandle(ownerSecret, tpmprovider.TPM_HANDLE_PRIMARY)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "tasks/provision_primary_key:Run() Error while creating tpm primary handle")
 		}
 	}
 
@@ -51,24 +52,25 @@ func (task *ProvisionPrimaryKey) Run(c setup.Context) error {
 }
 
 func (task *ProvisionPrimaryKey) Validate(c setup.Context) error {
-
+	log.Trace("tasks/provision_primary_key:Validate() Entering")
+	defer log.Trace("tasks/provision_primary_key:Validate() Leaving")
 	tpm, err := task.tpmFactory.NewTpmProvider()
 	if err != nil {
-		return fmt.Errorf("Setup error: Could not create TpmProvider: %s", err)
+		return errors.Wrap(err, "tasks/provision_primary_key:Validate() Error while creating NewTpmProvider")
 	}
 
 	defer tpm.Close()
 
 	exists, err := tpm.PublicKeyExists(tpmprovider.TPM_HANDLE_PRIMARY)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "tasks/provision_primary_key:Validate() Error while checking existence of tpm public key")
 	}
 
 	if !exists {
-		return fmt.Errorf("The primary key at handle %x was not created", tpmprovider.TPM_HANDLE_PRIMARY)
+		return errors.Errorf("tasks/provision_primary_key:Validate() The primary key at handle %x was not created", tpmprovider.TPM_HANDLE_PRIMARY)
 	}
 
 	// assume valid if error did not occur during 'Run'
-	log.Info("Setup: Provisioning the primary key was successful.")
+	log.Info("tasks/provision_primary_key:Validate() Provisioning the primary key was successful.")
 	return nil
 }
