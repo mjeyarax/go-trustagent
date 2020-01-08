@@ -11,7 +11,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
-	"errors"
 	"fmt"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
@@ -24,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/pkg/errors"
 )
 
 // HVS expects...
@@ -93,13 +92,15 @@ type TpmQuoteContext struct {
 // Also, HVS takes into account the asset tag in the nonce -- it takes the ip hashed nonce
 // and 'extends' it with value of asset tag (i.e. when tags have been set on the trust agent).
 func (ctx *TpmQuoteContext) getNonce(hvsNonce []byte) ([]byte, error) {
+	log.Trace("resource/quote:getNonce() Entering")
+	defer log.Trace("resource/quote:getNonce() Leaving")
 
 	ipBytes, err := util.GetLocalIpAsBytes()
 	if err != nil {
 		return nil, err
 	}
 
-	log.Debugf("Received HVS nonce '%s', raw[%s]", base64.StdEncoding.EncodeToString(hvsNonce), hex.EncodeToString(hvsNonce))
+	log.Debugf("resource/quote:getNonce() Received HVS nonce '%s', raw[%s]", base64.StdEncoding.EncodeToString(hvsNonce), hex.EncodeToString(hvsNonce))
 
 	// similar to HVS' SHA1.digestOf(hvsNonce).extend(ipBytes)
 	hash := sha1.New()
@@ -111,12 +112,12 @@ func (ctx *TpmQuoteContext) getNonce(hvsNonce []byte) ([]byte, error) {
 	hash.Write(ipBytes)
 	taNonce = hash.Sum(nil)
 
-	log.Debugf("Used ip bytes '%s' to extend nonce to '%s', raw[%s]", hex.EncodeToString(ipBytes), base64.StdEncoding.EncodeToString(taNonce), hex.EncodeToString(taNonce))
+	log.Debugf("resource/quote:getNonce() Used ip bytes '%s' to extend nonce to '%s', raw[%s]", hex.EncodeToString(ipBytes), base64.StdEncoding.EncodeToString(taNonce), hex.EncodeToString(taNonce))
 
 	if ctx.tpmQuoteResponse.IsTagProvisioned {
 
 		if ctx.tpmQuoteResponse.AssetTag == "" {
-			return nil, errors.New("The quote is 'tag provisioned', but the tag was not provided")
+			return nil, errors.New("resource/quote:getNonce() The quote is 'tag provisioned', but the tag was not provided")
 		}
 
 		// TpmQuoteResponse is used to share data with HVS and stores the asset tag
@@ -136,20 +137,23 @@ func (ctx *TpmQuoteContext) getNonce(hvsNonce []byte) ([]byte, error) {
 		hash.Write(tagBytes)
 		taNonce = hash.Sum(nil)
 
-		log.Debugf("Used tag bytes '%s' to extend nonce to '%s', raw[%s]", hex.EncodeToString(tagBytes), base64.StdEncoding.EncodeToString(taNonce), hex.EncodeToString(taNonce))
+		log.Debugf("resource/quote:getNonce() Used tag bytes '%s' to extend nonce to '%s', raw[%s]", hex.EncodeToString(tagBytes), base64.StdEncoding.EncodeToString(taNonce), hex.EncodeToString(taNonce))
 	}
 
 	return taNonce, nil
 }
 
 func (ctx *TpmQuoteContext) readAikAsBase64() error {
+	log.Trace("resource/quote:readAikAsBase64() Entering")
+	defer log.Trace("resource/quote:readAikAsBase64() Leaving")
+
 	if _, err := os.Stat(constants.AikCert); os.IsNotExist(err) {
 		return err
 	}
 
 	aikBytes, err := ioutil.ReadFile(constants.AikCert)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "resource/quote:readAikAsBase64() Error reading file %s", constants.AikCert)
 	}
 
 	ctx.tpmQuoteResponse.Aik = base64.StdEncoding.EncodeToString(aikBytes)
@@ -157,19 +161,22 @@ func (ctx *TpmQuoteContext) readAikAsBase64() error {
 }
 
 func (ctx *TpmQuoteContext) readEventLog() error {
+	log.Trace("resource/quote:readEventLog() Entering")
+	defer log.Trace("resource/quote:readEventLog() Leaving")
+
 	if _, err := os.Stat(constants.MeasureLogFilePath); os.IsNotExist(err) {
 		return err
 	}
 
 	eventLogBytes, err := ioutil.ReadFile(constants.MeasureLogFilePath)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "resource/quote:readEventLog() Error reading file: %s", constants.MeasureLogFilePath)
 	}
 
 	// make sure the bytes are valid xml
 	err = xml.Unmarshal(eventLogBytes, new(interface{}))
 	if err != nil {
-		return err
+		return errors.Wrap(err, "resource/quote:readEventLog() Error while unmarshalling event log")
 	}
 
 	// this was needed to avoid an error in HVS parsing...
@@ -190,7 +197,7 @@ func (ctx *TpmQuoteContext) getQuote(tpmQuoteRequest *TpmQuoteRequest) error {
 		return err
 	}
 
-	log.Debugf("Providing tpm nonce value '%s', raw[%s]", base64.StdEncoding.EncodeToString(nonce), hex.EncodeToString(nonce))
+	log.Debugf("esource/quote:readEventLog() Providing tpm nonce value '%s', raw[%s]", base64.StdEncoding.EncodeToString(nonce), hex.EncodeToString(nonce))
 
 	quoteBytes, err := ctx.tpm.GetTpmQuote(ctx.cfg.Tpm.AikSecretKey, nonce, tpmQuoteRequest.PcrBanks, tpmQuoteRequest.Pcrs)
 	if err != nil {
@@ -205,6 +212,8 @@ func (ctx *TpmQuoteContext) getQuote(tpmQuoteRequest *TpmQuoteRequest) error {
 // create an array of "tcbMeasurments", each from the  xml escaped string
 // of the files located in /opt/trustagent/var/ramfs
 func (ctx *TpmQuoteContext) getTcbMeasurements() error {
+	log.Trace("resource/quote:getTcbMeasurements() Entering")
+	defer log.Trace("resource/quote:getTcbMeasurements() Leaving")
 
 	fileInfo, err := ioutil.ReadDir(constants.RamfsDir)
 	if err != nil {
@@ -213,10 +222,10 @@ func (ctx *TpmQuoteContext) getTcbMeasurements() error {
 
 	for _, file := range fileInfo {
 		if filepath.Ext(file.Name()) == ".xml" {
-			log.Debugf("Including measurement file '%s/%s'", constants.RamfsDir, file.Name())
+			log.Debugf("resource/quote:getTcbMeasurements() Including measurement file '%s/%s'", constants.RamfsDir, file.Name())
 			xml, err := ioutil.ReadFile(constants.RamfsDir + file.Name())
 			if err != nil {
-				return fmt.Errorf("There was an error reading manifest file %s", file.Name())
+				return errors.Wrapf(err, "resource/quote:getTcbMeasurements() Error reading manifest file %s", file.Name())
 			}
 
 			ctx.tpmQuoteResponse.TcbMeasurements.TcbMeasurements = append(ctx.tpmQuoteResponse.TcbMeasurements.TcbMeasurements, string(xml))
@@ -227,10 +236,12 @@ func (ctx *TpmQuoteContext) getTcbMeasurements() error {
 }
 
 func (ctx *TpmQuoteContext) getAssetTags() error {
+	log.Trace("resource/quote:getAssetTags() Entering")
+	defer log.Trace("resource/quote:getAssetTags() Leaving")
 
 	tagExists, err := ctx.tpm.NvIndexExists(tpmprovider.NV_IDX_ASSET_TAG)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "resource/quote:getAssetTags() Error while checking existence of Nv Index")
 	}
 
 	if tagExists {
@@ -239,7 +250,7 @@ func (ctx *TpmQuoteContext) getAssetTags() error {
 
 		tagBytes, err := ctx.tpm.NvRead(ctx.cfg.Tpm.OwnerSecretKey, tpmprovider.NV_IDX_ASSET_TAG)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "resource/quote:getAssetTags() Error while performing tpm nv read operation")
 		}
 
 		ctx.tpmQuoteResponse.AssetTag = base64.StdEncoding.EncodeToString(tagBytes) // this data will be evaluated in 'getNonce'
@@ -252,6 +263,9 @@ func (ctx *TpmQuoteContext) getAssetTags() error {
 }
 
 func (ctx *TpmQuoteContext) createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) error {
+	log.Trace("resource/quote:createTpmQuote() Entering")
+	defer log.Trace("resource/quote:createTpmQuote() Leaving")
+
 	var err error
 
 	ctx.tpmQuoteResponse.TimeStamp = time.Now().Unix()
@@ -259,36 +273,36 @@ func (ctx *TpmQuoteContext) createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) err
 	// getAssetTags must be called before getQuote so that the nonce is created correctly - see comments for getNonce()
 	err = ctx.getAssetTags()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "resource/quote:createTpmQuote() Error while retrieving asset tags")
 	}
 
 	// get the quote from tpmprovider
 	err = ctx.getQuote(tpmQuoteRequest)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "resource/quote:createTpmQuote() Error while retrieving tpm quote request")
 	}
 
 	// clientIp
 	ctx.tpmQuoteResponse.ClientIp, err = util.GetLocalIpAsString()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "resource/quote:createTpmQuote() Error while fetching Local IP")
 	}
 
 	// aik --> read from disk and convert to PEM string
 	err = ctx.readAikAsBase64()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "resource/quote:createTpmQuote() Error while reading Aik as Base64")
 	}
 
 	// eventlog: read /opt/trustagent/var/measureLog.xml (created during ) --> needs to integrate with module_analysis.sh
 	err = ctx.readEventLog()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "resource/quote:createTpmQuote() Error while reading event log")
 	}
 
 	err = ctx.getTcbMeasurements()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "resource/quote:createTpmQuote() Error while retrieving TCB measurements")
 	}
 
 	// selected pcr banks (just return what was requested similar to java implementation)
@@ -303,12 +317,14 @@ func (ctx *TpmQuoteContext) createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) err
 // Ex. curl --user tagentadmin:TAgentAdminPassword -d '{ "nonce":"ZGVhZGJlZWZkZWFkYmVlZmRlYWRiZWVmZGVhZGJlZWZkZWFkYmVlZiA=", "pcrs": [0,1,2,3,18,19,22] }' -H "Content-Type: application/json" -X POST https://localhost:1443/v2/tpm/quote -k --noproxy "*"
 func getTpmQuote(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.TpmFactory) endpointHandler {
 	return func(httpWriter http.ResponseWriter, httpRequest *http.Request) error {
+		log.Trace("resource/quote:getTpmQuote() Entering")
+		defer log.Trace("resource/quote:getTpmQuote() Leaving")
 
-		log.Debugf("Request: %s", httpRequest.URL.Path)
+		log.Debugf("resource/quote:getTpmQuote() Request: %s", httpRequest.URL.Path)
 
 		tpm, err := tpmFactory.NewTpmProvider()
 		if err != nil {
-			log.Errorf("%s: Could not create tpm provider: %s", httpRequest.URL.Path, err)
+			log.WithError(err).Error("resource/quote:getTpmQuote() Error creating tpm provider")
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 		}
 
@@ -323,33 +339,33 @@ func getTpmQuote(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.Tpm
 
 		data, err := ioutil.ReadAll(httpRequest.Body)
 		if err != nil {
-			log.Errorf("%s: Error reading request body: %s", httpRequest.URL.Path, err)
+			log.Errorf("resource/quote:getTpmQuote() Error reading request body: %s for request %s", string(data), httpRequest.URL.Path)
 			return &endpointError{Message: "Error reading request body", StatusCode: http.StatusBadRequest}
 
 		}
 
 		err = json.Unmarshal(data, &tpmQuoteRequest)
 		if err != nil {
-			log.Errorf("%s: Error marshaling json data: %s...\n%s", httpRequest.URL.Path, err, string(data))
+			log.WithError(err).Errorf("resource/quote:getTpmQuote() Error marshaling json data: %s", string(data))
 			return &endpointError{Message: "Error marshaling json data", StatusCode: http.StatusBadRequest}
 
 		}
 
 		if len(tpmQuoteRequest.Nonce) == 0 {
-			log.Errorf("%s: The TpmQuoteRequest does not contain a nonce", httpRequest.URL.Path)
+			log.Error("resource/quote:getTpmQuote() The TpmQuoteRequest does not contain a nonce")
 			return &endpointError{Message: "The TpmQuoteRequest does not contain a nonce", StatusCode: http.StatusBadRequest}
 
 		}
 
 		err = ctx.createTpmQuote(&tpmQuoteRequest)
 		if err != nil {
-			log.Errorf("There was an error creating the tpm quote: %s", err)
+			log.WithError(err).Error("resource/quote:getTpmQuote() Error while creating the tpm quote")
 			return &endpointError{Message: "Error reading request body", StatusCode: http.StatusInternalServerError}
 		}
 
 		xmlOutput, err := xml.MarshalIndent(&ctx.tpmQuoteResponse, "  ", "    ")
 		if err != nil {
-			log.Errorf("%s: There was an error serializing the tpm quote %s", httpRequest.URL.Path, err)
+			log.WithError(err).Error("resource/quote:getTpmQuote() There was an error serializing the tpm quote")
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 		}
 

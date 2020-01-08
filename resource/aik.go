@@ -13,8 +13,6 @@ import (
 	"os"
 	)
 
-var log = commLog.GetDefaultLogger()
-var secLog = commLog.GetSecurityLogger()
 //
 // Reads the provision aik certificate from /opt/trustagent/configuration/aik.cert
 //

@@ -22,7 +22,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var cLog = commLog.GetDefaultLogger()
+var log = commLog.GetDefaultLogger()
 var seclog = commLog.GetSecurityLogger()
 
 // DownloadAASJWTCert is a setup task for setting roles in AAS
@@ -45,19 +45,19 @@ func (aasjwt DownloadAASJWTCert) Run(c csetup.Context) error {
 
 	err = fs.Parse(aasjwt.Flags)
 	if err != nil {
-		fmt.Println("setup download-aas-jwt-cert: Unable to parse flags")
-		return fmt.Errorf("setup download-aas-jwt-cert: Unable to parse flags")
+		fmt.Fprintln(os.Stderr, "setup download-aas-jwt-cert: Unable to parse flags")
+		return errors.New("tasks/download_aas_jwtcert:Run() Unable to parse flags")
 	}
 
 	if aasjwt.Validate(c) == nil && !*force {
 		fmt.Println("setup download-aas-jwt-cert: setup task already complete. Skipping...")
-		cLog.Info("tasks/download_aas_jwtcert:Run() AAS configuration config already setup, skipping ...")
+		log.Info("tasks/download_aas_jwtcert:Run() AAS configuration config already setup, skipping ...")
 		return nil
 	}
 
 	var aasURL string
 	if aasURL, err = c.GetenvString(aasjwt.cfg.AAS.BaseURL, "AAS Server URL"); err != nil {
-		return errors.Wrap(err, "tasks/download_aas_jwtcert:Run AAS endpoint not set in environment")
+		return errors.Wrap(err, "tasks/download_aas_jwtcert:Run() AAS endpoint not set in environment")
 	}
 
 	if strings.HasSuffix(aasURL, "/") {
@@ -67,16 +67,16 @@ func (aasjwt DownloadAASJWTCert) Run(c csetup.Context) error {
 	}
 
 	aasjwt.cfg.Save()
-	cLog.Info("tasks/aas:Run() AAS endpoint updated")
+	log.Info("tasks/aas:Run() AAS endpoint updated")
 
 	//Fetch JWT Certificate from AAS
 	err = fnGetJwtCerts(aasjwt.cfg.AAS.BaseURL)
 	if err != nil {
-		cLog.Tracef("%+v", err)
-		return errors.Wrap(err, "Failed to fetch JWT Auth Certs")
+		log.Tracef("%+v", err)
+		return errors.Wrap(err, "tasks/download_aas_jwtcert:Run() Failed to fetch JWT Auth Certs")
 	}
 
-	cLog.Info("tasks/download_aas_jwtcert:Run() aasconnection setup task successful")
+	log.Info("tasks/download_aas_jwtcert:Run() aasconnection setup task successful")
 	return nil
 }
 

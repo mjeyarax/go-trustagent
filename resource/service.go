@@ -22,9 +22,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	log "github.com/sirupsen/logrus"
-
+	
 	commLog "intel/isecl/lib/common/log"
 
 	"github.com/gorilla/handlers"
@@ -73,13 +71,13 @@ func (e endpointError) Error() string {
 }
 
 var cacheTime, _ = time.ParseDuration(constants.JWTCertsCacheTime)
-var clog = commLog.GetDefaultLogger()
-var seclog = commLog.GetSecurityLogger()
+var log = commLog.GetDefaultLogger()
+var secLog = commLog.GetSecurityLogger()
 
 //To be implemented if JWT certificate is needed from any other services
 func fnGetJwtCerts() error {
-	clog.Trace("server:fnGetJwtCerts() Entering")
-	defer clog.Trace("server:fnGetJwtCerts() Leaving")
+	log.Trace("server:fnGetJwtCerts() Entering")
+	defer log.Trace("server:fnGetJwtCerts() Leaving")
 	return nil
 }
 
@@ -144,18 +142,18 @@ func (service *TrustAgentService) Start() error {
 	// dispatch web server go routine
 	go func() {
 		if err := h.ListenAndServeTLS(constants.TLSCertFilePath, constants.TLSKeyFilePath); err != nil {
-			clog.WithError(err).Info("Failed to start trustagent server")
+			log.WithError(err).Info("Failed to start trustagent server")
 			stop <- syscall.SIGTERM
 		}
 	}()
 
-	clog.Infof("TrustAgent service is running: %d", service.port)
+	log.Infof("TrustAgent service is running: %d", service.port)
 
 	<-stop
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := h.Shutdown(ctx); err != nil {
-		clog.WithError(err).Info("Failed to gracefully shutdown webserver")
+		log.WithError(err).Info("Failed to gracefully shutdown webserver")
 		return err
 	}
 	return nil
@@ -173,7 +171,7 @@ func requiresPermission(eh endpointHandler, permissionNames []string) endpointHa
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Could not get user roles from http context"))
-			seclog.Errorf("resource/resource:requiresPermission() %s Roles: %v | Context: %v", message.AuthenticationFailed, permissionNames, r.Context())
+			secLog.Errorf("resource/resource:requiresPermission() %s Roles: %v | Context: %v", message.AuthenticationFailed, permissionNames, r.Context())
 			return errors.Wrap(err, "resource/resource:requiresPermission() Could not get user roles from http context")
 		}
 		reqPermissions := ct.PermissionInfo{Service: constants.AASServiceName, Rules: permissionNames}
@@ -182,11 +180,11 @@ func requiresPermission(eh endpointHandler, permissionNames []string) endpointHa
 			true)
 		if !foundMatchingPermission {
 			w.WriteHeader(http.StatusUnauthorized)
-			seclog.Error(message.UnauthorizedAccess)
-			seclog.Errorf("resource/resource:requiresPermission() %s Insufficient privileges to access %s", message.UnauthorizedAccess, r.RequestURI)
+			secLog.Error(message.UnauthorizedAccess)
+			secLog.Errorf("resource/resource:requiresPermission() %s Insufficient privileges to access %s", message.UnauthorizedAccess, r.RequestURI)
 			return &privilegeError{Message: "Insufficient privileges to access " + r.RequestURI, StatusCode: http.StatusUnauthorized}
 		}
-		seclog.Infof("resource/resource:requiresPermission() %s - %s", message.AuthorizedAccess, r.RequestURI)
+		secLog.Infof("resource/resource:requiresPermission() %s - %s", message.AuthorizedAccess, r.RequestURI)
 		return eh(w, r)
 	}
 }
@@ -203,7 +201,7 @@ func requiresRole(eh endpointHandler, roleNames []string) endpointHandler {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Could not get user roles from http context"))
-			seclog.Errorf("resource/resource:requiresPermission() %s Roles: %v | Context: %v", message.AuthenticationFailed, roleNames, r.Context())
+			secLog.Errorf("resource/resource:requiresPermission() %s Roles: %v | Context: %v", message.AuthenticationFailed, roleNames, r.Context())
 			return errors.Wrap(err, "resource/resource:requiresPermission() Could not get user roles from http context")
 		}
 		reqRoles := make([]ct.RoleInfo, len(roleNames))
@@ -211,16 +209,16 @@ func requiresRole(eh endpointHandler, roleNames []string) endpointHandler {
 			reqRoles[i] = ct.RoleInfo{Service: constants.AASServiceName, Name: role}
 		}
 
-		seclog.Debugf("resource/resource:requiresPermission() Req Roles: %v", reqRoles)
+		secLog.Debugf("resource/resource:requiresPermission() Req Roles: %v", reqRoles)
 		_, foundRole := auth.ValidatePermissionAndGetRoleContext(privileges, reqRoles,
 			true)
 		if !foundRole {
 			w.WriteHeader(http.StatusUnauthorized)
-			seclog.Error(message.UnauthorizedAccess)
-			seclog.Errorf("resource/resource:requiresPermission() %s Insufficient privileges to access %s", message.UnauthorizedAccess, r.RequestURI)
+			secLog.Error(message.UnauthorizedAccess)
+			secLog.Errorf("resource/resource:requiresPermission() %s Insufficient privileges to access %s", message.UnauthorizedAccess, r.RequestURI)
 			return &privilegeError{Message: "Insufficient privileges to access " + r.RequestURI, StatusCode: http.StatusUnauthorized}
 		}
-		seclog.Infof("resource/resource:requiresPermission() %s - %s", message.AuthorizedAccess, r.RequestURI)
+		secLog.Infof("resource/resource:requiresPermission() %s - %s", message.AuthorizedAccess, r.RequestURI)
 		return eh(w, r)
 	}
 }
