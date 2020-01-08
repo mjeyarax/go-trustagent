@@ -33,7 +33,7 @@ const (
 	FlavorUUIDs                = "FLAVOR_UUIDS"
 	FlavorLabels               = "FLAVOR_LABELS"
 	ServiceName                = "tagent.service"
-	AASServiceName				= "TA"
+	AASServiceName             = "TA"
 	ServiceStatusCommand       = "systemctl status " + ServiceName
 	ServiceStopCommand         = "systemctl stop " + ServiceName
 	ServiceStartCommand        = "systemctl start " + ServiceName
@@ -48,5 +48,11 @@ const (
 	DefaultTLSCertDNS          = "CN=trustagent"
 	BearerTokenEnv             = "BEARER_TOKEN"
 	JWTCertsCacheTime          = "1m"
-	AdministratorGroup			= "Administrator"
+	AdministratorGroup         = "Administrator"
+	EnvTPMOwnerSecret          = "TPM_OWNER_SECRET"
+	EnvMtwilsonAPIURL          = "MTWILSON_API_URL"
+	EnvTAPort                  = "TRUSTAGENT_PORT"
+	EnvCMSBaseURL              = "CMS_BASE_URL"
+	EnvCMSTLSCertDigest        = "CMS_TLS_CERT_SHA384"
+	EnvAASBaseURL              = "AAS_API_URL"
 )

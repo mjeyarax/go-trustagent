@@ -24,13 +24,7 @@ import (
 )
 
 const (
-	AIK_SECRET_KEY      = "aik.secret"
-	EnvTPMOwnerSecret   = "TPM_OWNER_SECRET"
-	EnvMtwilsonAPIURL   = "MTWILSON_API_URL"
-	EnvTAPort           = "TRUSTAGENT_PORT"
-	EnvCMSBaseURL       = "CMS_BASE_URL"
-	EnvCMSTLSCertDigest = "CMS_TLS_CERT_SHA384"
-	EnvAASBaseURL       = "AAS_API_URL"
+	AIK_SECRET_KEY = "aik.secret"
 )
 
 //
@@ -119,7 +113,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	//---------------------------------------------------------------------------------------------
 	// TPM_OWNER_SECRET
 	//---------------------------------------------------------------------------------------------
-	environmentVariable, err := context.GetenvSecret(EnvTPMOwnerSecret, "TPM Owner Secret")
+	environmentVariable, err := context.GetenvSecret(constants.EnvTPMOwnerSecret, "TPM Owner Secret")
 	if environmentVariable != "" && cfg.Tpm.OwnerSecretKey != environmentVariable {
 		cfg.Tpm.OwnerSecretKey = environmentVariable
 		dirty = true
@@ -130,7 +124,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	//---------------------------------------------------------------------------------------------
 	// MTWILSON_API_URL
 	//---------------------------------------------------------------------------------------------
-	environmentVariable, err = context.GetenvString(EnvMtwilsonAPIURL, "Verification Service API URL")
+	environmentVariable, err = context.GetenvString(constants.EnvMtwilsonAPIURL, "Verification Service API URL")
 	if environmentVariable != "" && cfg.HVS.Url != environmentVariable {
 		cfg.HVS.Url = environmentVariable
 		dirty = true
@@ -142,7 +136,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	// TRUSTAGENT_PORT
 	//---------------------------------------------------------------------------------------------
 	port := 0
-	port, err = context.GetenvInt(EnvTAPort, "Trust Agent Listener Port")
+	port, err = context.GetenvInt(constants.EnvTAPort, "Trust Agent Listener Port")
 	if port > 0 {
 		port, err = strconv.Atoi(environmentVariable)
 		if err != nil {
@@ -163,7 +157,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	//---------------------------------------------------------------------------------------------
 	// AAS_API_URL
 	//---------------------------------------------------------------------------------------------
-	environmentVariable, err = context.GetenvString(EnvAASBaseURL, "AAS API Base URL")
+	environmentVariable, err = context.GetenvString(constants.EnvAASBaseURL, "AAS API Base URL")
 	if environmentVariable != "" && cfg.AAS.BaseURL != environmentVariable {
 		cfg.AAS.BaseURL = environmentVariable
 		dirty = true
@@ -172,7 +166,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	//---------------------------------------------------------------------------------------------
 	// CMS_BASE_URL
 	//---------------------------------------------------------------------------------------------
-	environmentVariable, err = context.GetenvString(EnvCMSBaseURL, "CMS Base URL")
+	environmentVariable, err = context.GetenvString(constants.EnvCMSBaseURL, "CMS Base URL")
 	if environmentVariable != "" && cfg.CMS.BaseURL != environmentVariable {
 		cfg.CMS.BaseURL = environmentVariable
 		dirty = true
@@ -181,14 +175,14 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	//---------------------------------------------------------------------------------------------
 	// CMS_TLS_CERT_SHA384
 	//---------------------------------------------------------------------------------------------
-	environmentVariable, err = context.GetenvString(EnvCMSTLSCertDigest, "CMS TLS SHA384 Digest")
+	environmentVariable, err = context.GetenvString(constants.EnvCMSTLSCertDigest, "CMS TLS SHA384 Digest")
 	if environmentVariable != "" {
 		if len(environmentVariable) != 96 {
-			return fmt.Errorf("Setup error:  Invalid length %s: %d", EnvCMSTLSCertDigest, len(environmentVariable))
+			return fmt.Errorf("Setup error:  Invalid length %s: %d", constants.EnvCMSTLSCertDigest, len(environmentVariable))
 		}
 
 		if err = validation.ValidateHexString(environmentVariable); err != nil {
-			return fmt.Errorf("Setup error:  %s is not a valid hex string: %s", EnvCMSTLSCertDigest, environmentVariable)
+			return fmt.Errorf("Setup error:  %s is not a valid hex string: %s", constants.EnvCMSTLSCertDigest, environmentVariable)
 		}
 
 		if cfg.CMS.TLSCertDigest != environmentVariable {
