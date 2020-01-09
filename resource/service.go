@@ -120,6 +120,9 @@ func CreateTrustAgentService(config *config.TrustAgentConfiguration, tpmFactory 
 }
 
 func (service *TrustAgentService) Start() error {
+	log.Trace("server:Start() Entering")
+	defer log.Trace("server:Start() Leaving")
+
 	tlsconfig := &tls.Config{
 		MinVersion: tls.VersionTLS12,
 		CipherSuites: []uint16{tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
@@ -142,20 +145,24 @@ func (service *TrustAgentService) Start() error {
 	// dispatch web server go routine
 	go func() {
 		if err := h.ListenAndServeTLS(constants.TLSCertFilePath, constants.TLSKeyFilePath); err != nil {
-			log.WithError(err).Info("Failed to start trustagent server")
+			secLog.Errorf("tasks/service:Start() %s", message.TLSConnectFailed)
+			secLog.WithError(err).Fatalf("server:startServer() Failed to start HTTPS server: %s\n", err.Error())
+			log.Tracef("%+v", err)
 			stop <- syscall.SIGTERM
 		}
 	}()
-
-	log.Infof("TrustAgent service is running: %d", service.port)
+	secLog.Info(message.ServiceStart)
+	secLog.Infof("TrustAgent service is running: %d", service.port)
 
 	<-stop
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := h.Shutdown(ctx); err != nil {
+		fmt.Printf("Failed to gracefully shutdown webserver: %v\n", err)
 		log.WithError(err).Info("Failed to gracefully shutdown webserver")
 		return err
 	}
+	secLog.Info(message.ServiceStop)
 	return nil
 }
 

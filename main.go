@@ -67,35 +67,36 @@ func printUsage() {
 }
 
 func updatePlatformInfo() error {
-
+	log.Trace("main:updatePlatformInfo() Entering")
+	defer log.Trace("main:updatePlatformInfo() Leaving")
 	// make sure the system-info directory exists
 	_, err := os.Stat(constants.SystemInfoDir)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "main:updatePlatformInfo() Error while checking the existence of %s", constants.SystemInfoDir)
 	}
 
 	// create the 'platform-info' file
 	f, err := os.Create(constants.PlatformInfoFilePath)
 	defer f.Close()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "main:updatePlatformInfo() Error while creating %s", constants.PlatformInfoFilePath)
 	}
 
 	// collect the platform info
 	platformInfo, err := platforminfo.GetPlatformInfo()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "main:updatePlatformInfo() Error while fetching platform info")
 	}
 
 	// serialize to json
 	b, err := json.Marshal(platformInfo)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "main:updatePlatformInfo() Error while serializing platform info")
 	}
 
 	_, err = f.Write(b)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "main:updatePlatformInfo() Error while writing into File: %s", constants.PlatformInfoFilePath)
 	}
 
 	log.Info("main:updatePlatformInfo() Successfully updated platform-info")
@@ -103,6 +104,9 @@ func updatePlatformInfo() error {
 }
 
 func updateMeasureLog() error {
+	log.Trace("main:updateMeasureLog() Entering")
+	defer log.Trace("main:updateMeasureLog() Leaving")
+
 	cmd := exec.Command(constants.ModuleAnalysis)
 	cmd.Dir = constants.BinDir
 	results, err := cmd.Output()

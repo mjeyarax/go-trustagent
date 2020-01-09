@@ -22,9 +22,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-var log = commLog.GetDefaultLogger()
-var seclog = commLog.GetSecurityLogger()
-
 // DownloadAASJWTCert is a setup task for setting roles in AAS
 type DownloadAASJWTCert struct {
 	Flags []string
@@ -33,8 +30,8 @@ type DownloadAASJWTCert struct {
 
 // Run will run the AAS Connection setup task, but will skip if Validate() returns no errors
 func (aasjwt DownloadAASJWTCert) Run(c csetup.Context) error {
-	cLog.Trace("tasks/download_aas_jwtcert:Run() Entering")
-	defer cLog.Trace("tasks/download_aas_jwtcert:Run() Leaving")
+	log.Trace("tasks/download_aas_jwtcert:Run() Entering")
+	defer log.Trace("tasks/download_aas_jwtcert:Run() Leaving")
 
 	var err error
 
@@ -82,8 +79,8 @@ func (aasjwt DownloadAASJWTCert) Run(c csetup.Context) error {
 
 // Validate checks whether or not the AAS Connection setup task was completed successfully
 func (aas DownloadAASJWTCert) Validate(c csetup.Context) error {
-	cLog.Trace("tasks/download_aas_jwtcert:Validate() Entering")
-	defer cLog.Trace("tasks/download_aas_jwtcert:Validate() Leaving")
+	log.Trace("tasks/download_aas_jwtcert:Validate() Entering")
+	defer log.Trace("tasks/download_aas_jwtcert:Validate() Leaving")
 
 	_, err := os.Stat(consts.TrustedJWTSigningCertsDir)
 	if os.IsNotExist(err) {
@@ -111,10 +108,10 @@ func isPathContainPemFile(name string) bool {
 
 	// if EOF detected path is empty
 	if err != io.EOF && len(fname) > 0 && strings.HasSuffix(fname[0].Name(), ".pem") {
-		cLog.Trace("tasks/download_aas_jwtcert:isPathContainPemFile() fname is ", fname[0].Name())
+		log.Trace("tasks/download_aas_jwtcert:isPathContainPemFile() fname is ", fname[0].Name())
 		_, errs := crypt.GetCertFromPemFile(name + "/" + fname[0].Name())
 		if errs == nil {
-			cLog.Trace("tasks/download_aas_jwtcert:isPathContainPemFile() full path valid PEM ", name+"/"+fname[0].Name())
+			log.Trace("tasks/download_aas_jwtcert:isPathContainPemFile() full path valid PEM ", name+"/"+fname[0].Name())
 			return true
 		}
 	}
@@ -122,12 +119,12 @@ func isPathContainPemFile(name string) bool {
 }
 
 func fnGetJwtCerts(aasURL string) error {
-	cLog.Trace("tasks/download_aas_jwtcert:fnGetJwtCerts() Entering")
-	defer cLog.Trace("tasks/download_aas_jwtcert:fnGetJwtCerts() Leaving")
+	log.Trace("tasks/download_aas_jwtcert:fnGetJwtCerts() Entering")
+	defer log.Trace("tasks/download_aas_jwtcert:fnGetJwtCerts() Leaving")
 	url := aasURL + "noauth/jwt-certificates"
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Add("accept", "application/x-pem-file")
-	seclog.Debugf("tasks/download_aas_jwtcert:fnGetJwtCerts() Connecting to AAS Endpoint %s", url)
+	secLog.Debugf("tasks/download_aas_jwtcert:fnGetJwtCerts() Connecting to AAS Endpoint %s", url)
 
 	hc, err := clients.HTTPClientWithCADir(consts.TrustedCaCertsDir)
 	if err != nil {

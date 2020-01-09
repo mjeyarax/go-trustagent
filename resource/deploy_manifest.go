@@ -5,16 +5,16 @@
 package resource
 
 import (
+
 	"encoding/xml"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/vsclient"
 	"intel/isecl/lib/common/validation"
+	"intel/isecl/lib/common/log/message"
 	"io/ioutil"
 	"net/http"
 	"strings"
-
-	log "github.com/sirupsen/logrus"
-)
+	)
 
 // Writes the manifest xml received to /opt/trustagent/var/manifest_{UUID}.xml.
 func deployManifest() endpointHandler {
@@ -22,12 +22,12 @@ func deployManifest() endpointHandler {
 		log.Trace("resource/deploy_manifest:deployManifest() Entering")
 		defer log.Trace("resource/deploy_manifest:deployManifest() Leaving")
 
-		log.Debugf("Request: %s", httpRequest.URL.Path)
+		log.Debugf("resource/deploy_manifest:deployManifest() Request: %s", httpRequest.URL.Path)
 
 		// receive a manifest from hvs in the request body
 		manifestXml, err := ioutil.ReadAll(httpRequest.Body)
 		if err != nil {
-			log.Errorf("%s: Error reading manifest xml: %s", httpRequest.URL.Path, err)
+			log.Errorf("resource/deploy_manifest:deployManifest() Error reading manifest xml: %s", err)
 			return &endpointError{Message: "Error reading manifest xml", StatusCode: http.StatusBadRequest}
 		}
 
@@ -35,13 +35,13 @@ func deployManifest() endpointHandler {
 		manifest := vsclient.Manifest{}
 		err = xml.Unmarshal(manifestXml, &manifest)
 		if err != nil {
-			log.Errorf("%s: Invalid xml format: %s", httpRequest.URL.Path, err)
+			log.Errorf("resource/deploy_manifest:deployManifest() Invalid xml format: %s", err)
 			return &endpointError{Message: "Error: Invalid xml format", StatusCode: http.StatusBadRequest}
 		}
 
 		err = validation.ValidateUUIDv4(manifest.UUID)
 		if err != nil {
-			log.Errorf("%s: Invalid uuid %s", httpRequest.URL.Path, err)
+			secLog.Errorf("%s resource/deploy_manifest:deployManifest() Invalid uuid %s", message.InvalidInputBadParam, err.Error())
 			return &endpointError{Message: "Error: Invalid uuid", StatusCode: http.StatusBadRequest}
 		}
 

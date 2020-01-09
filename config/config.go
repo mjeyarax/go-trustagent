@@ -216,19 +216,19 @@ func (cfg *TrustAgentConfiguration) Validate() error {
 	}
 
 	if cfg.HVS.Url == "" {
-		return fmt.Errorf("Validation error: HVS API URL is required")
+		return errors.New("Validation error: HVS API URL is required")
 	}
 
 	if cfg.AAS.BaseURL == "" {
-		return fmt.Errorf("Validation error: AAS API URL is required")
+		return errors.New("Validation error: AAS API URL is required")
 	}
 
 	if cfg.CMS.BaseURL == "" {
-		return fmt.Errorf("Validation error: CMS Base URL is required")
+		return errors.New("Validation error: CMS Base URL is required")
 	}
 
 	if cfg.CMS.TLSCertDigest == "" {
-		return fmt.Errorf("Validation error: CMS TLS Cert Digest is required")
+		return errors.New("Validation error: CMS TLS Cert Digest is required")
 	}
 
 	return nil

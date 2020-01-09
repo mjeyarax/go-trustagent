@@ -5,6 +5,7 @@
 package tasks
 
 import (
+	"common/log/message"
 	"encoding/xml"
 	"fmt"
 	"intel/isecl/go-trust-agent/constants"
@@ -65,6 +66,7 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 		for _, uuid := range tmp {
 			err = validation.ValidateUUIDv4(uuid)
 			if err != nil {
+				secLog.Errorf("%s tasks/get-configured-manifest:Run() Flavor UUID:'%s' is not a valid uuid", message.InvalidInputBadParam, uuid)
 				return errors.Errorf("tasks/get-configured-manifest:Run() Flavor UUID:'%s' is not a valid uuid", uuid)
 			}
 

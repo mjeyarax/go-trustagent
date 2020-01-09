@@ -105,10 +105,6 @@ func (client *manifestsClientImpl) GetManifestXmlById(manifestUUID string) ([]by
 	log.Trace("vsclient/manifests_client:GetManifestXmlById() Entering")
 	defer log.Trace("vsclient/manifests_client:GetManifestXmlById() Leaving")
 
-	err := validation.ValidateUUIDv4(manifestUUID)
-	if err != nil {
-		return nil, errors.Wrap(err, "vsclient/manifests_client:GetManifestXmlById() Manufest UUID is not a valid uuid")
-	}
 
 	params := map[string]string{ "id" : manifestUUID, };
 	return client.getManifestXml(params)

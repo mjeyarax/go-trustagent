@@ -69,6 +69,45 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+
+logrotate=""
+
+local logrotaterc=$(ls -1 /etc/logrotate.conf 2>/dev/null | tail -n 1)
+logrotate=$(which logrotate 2>/dev/null)
+if [ -z "$logrotate" ] && [ -f "/usr/sbin/logrotate" ]; then
+  logrotate="/usr/sbin/logrotate"
+fi
+
+if [ -z "$logrotate" ]; then
+  echo "logrotate is not installed"
+  exit 1
+else
+  echo "logrotate installed in $logrotate"
+fi
+
+export LOG_ROTATION_PERIOD=${LOG_ROTATION_PERIOD:-weekly}
+export LOG_COMPRESS=${LOG_COMPRESS:-compress}
+export LOG_DELAYCOMPRESS=${LOG_DELAYCOMPRESS:-delaycompress}
+export LOG_COPYTRUNCATE=${LOG_COPYTRUNCATE:-copytruncate}
+export LOG_SIZE=${LOG_SIZE:-100M}
+export LOG_OLD=${LOG_OLD:-12}
+
+mkdir -p /etc/logrotate.d
+
+if [ ! -a /etc/logrotate.d/trustagent ]; then
+  echo "/var/log/trustagent/* {
+    missingok
+        notifempty
+        rotate $LOG_OLD
+        maxsize $LOG_SIZE
+    nodateext
+        $LOG_ROTATION_PERIOD
+        $LOG_COMPRESS
+        $LOG_DELAYCOMPRESS
+        $LOG_COPYTRUNCATE
+}" >/etc/logrotate.d/trustagent
+fi
+
 #--------------------------------------------------------------------------------------------------
 # 2. Load environment variable file
 #--------------------------------------------------------------------------------------------------

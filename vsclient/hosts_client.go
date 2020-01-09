@@ -263,6 +263,7 @@ func (client *hostsClientImpl) CreateHost(hostCreateCriteria *HostCreateCriteria
 	return &host, nil
 }
 
+//TODO Seems this function is not being used it can be cleaned  if not being used
 func (client *hostsClientImpl) UpdateHost(host *Host) (*Host, error) {
 	log.Trace("vsclient/hosts_client:UpdateHost() Entering")
 	defer log.Trace("vsclient/hosts_client:UpdateHost() Leaving")
