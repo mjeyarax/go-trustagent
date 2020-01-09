@@ -11,6 +11,7 @@
     3. redhat-lsb-core (v4.1.x)
     4. tboot (v1.9.7.x)
     5. compat-openssl10 (v1.0.x)
+    6. logrotate
 
     `yum -y install tpm2-abrmd dmidecode redhat-lsb-core tboot compat-openssl10`
 
@@ -33,9 +34,8 @@ When there is a valid `trustagent.env` file in the current directory, the GTA ma
 
 ```
 MTWILSON_API_URL=https://{hvs_url}:{hvs_port}/mtwilson/v2
-MTWILSON_TLS_CERT_SHA384=7ff464fdd47192d7218e9bc7a80043641196762b840c5c79
-MTWILSON_API_USERNAME=admin
-MTWILSON_API_PASSWORD=password
+CMS_TLS_CERT_SHA384=7ff464fdd47192d7218e9bc7a80043641196762b840c5c79
+BEARER_TOKEN=
 TPM_OWNER_SECRET=625d6d8a18f98bf794760fd392b8c01be0b4e959
 TRUSTAGENT_ADMIN_USERNAME=tagentadmin
 TRUSTAGENT_ADMIN_PASSWORD=TAgentAdminPassword

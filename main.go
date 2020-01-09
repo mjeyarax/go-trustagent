@@ -6,6 +6,8 @@
 package main
 
 import (
+	"common/log/message"
+	"common/validation"
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
@@ -19,7 +21,6 @@ import (
 	commonExec "intel/isecl/lib/common/exec"
 	"intel/isecl/lib/platform-info/platforminfo"
 	"intel/isecl/lib/tpmprovider"
-	"io"
 	"os"
 	"os/exec"
 	"os/user"
@@ -83,6 +84,7 @@ func updatePlatformInfo() error {
 	}
 
 	// collect the platform info
+	secLog.Info("%s main:updatePlatformInfo() Trying to fetch platform info", message.SU)
 	platformInfo, err := platforminfo.GetPlatformInfo()
 	if err != nil {
 		return errors.Wrap(err, "main:updatePlatformInfo() Error while fetching platform info")
@@ -107,6 +109,7 @@ func updateMeasureLog() error {
 	log.Trace("main:updateMeasureLog() Entering")
 	defer log.Trace("main:updateMeasureLog() Leaving")
 
+	secLog.Info("%s main:updateMeasureLog() Running %s using system administrative privilages", message.SU, constants.ModuleAnalysis)
 	cmd := exec.Command(constants.ModuleAnalysis)
 	cmd.Dir = constants.BinDir
 	results, err := cmd.Output()
@@ -231,6 +234,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := validation.ValidateStrings(os.Args); err != nil {
+		secLog.WithError(err).Error("%s main:main() Invalid arguments", message.InvalidInputBadParam)
+		fmt.Fprintln(os.Stderr, "Invalid arguments")
+		printUsage()
+		os.Exit(1)
+	}
+
 	cfg, err := config.NewConfigFromYaml(constants.ConfigFilePath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "main:main() Error while parsing configuration file: %+v", err)
@@ -261,7 +271,7 @@ func main() {
 
 		err = LogConfiguration(true, cfg.LogEnableStdout)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "main:main Error while setting log configuration %+v", err)
+			fmt.Fprintln(os.Stderr, "main:main() Error while setting log configuration %+v", err)
 			os.Exit(1)
 		}
 

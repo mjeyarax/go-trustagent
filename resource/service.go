@@ -59,14 +59,14 @@ type privilegeError struct {
 }
 
 func (e privilegeError) Error() string {
-	log.Trace("resource/resource:Error() Entering")
-	defer log.Trace("resource/resource:Error() Leaving")
+	log.Trace("resource/service:Error() Entering")
+	defer log.Trace("resource/service:Error() Leaving")
 	return fmt.Sprintf("%d: %s", e.StatusCode, e.Message)
 }
 
 func (e endpointError) Error() string {
-	log.Trace("resource/resource:Error() Entering")
-	defer log.Trace("resource/resource:Error() Leaving")
+	log.Trace("resource/service:Error() Entering")
+	defer log.Trace("resource/service:Error() Leaving")
 	return fmt.Sprintf("%d: %s", e.StatusCode, e.Message)
 }
 
@@ -171,15 +171,15 @@ func (service *TrustAgentService) Start() error {
 // this requires lib/common to be sourced from
 // replace intel/isecl/lib/common => gitlab.devtools.intel.com/sst/isecl/lib/common.git v1.0/task/roles-and-permissions
 func requiresPermission(eh endpointHandler, permissionNames []string) endpointHandler {
-	log.Trace("resource/resource:requiresPermission() Entering")
-	defer log.Trace("resource/resource:requiresPermission() Leaving")
+	log.Trace("resource/service:requiresPermission() Entering")
+	defer log.Trace("resource/service:requiresPermission() Leaving")
 	return func(w http.ResponseWriter, r *http.Request) error {
 		privileges, err := commContext.GetUserPermissions(r)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Could not get user roles from http context"))
-			secLog.Errorf("resource/resource:requiresPermission() %s Roles: %v | Context: %v", message.AuthenticationFailed, permissionNames, r.Context())
-			return errors.Wrap(err, "resource/resource:requiresPermission() Could not get user roles from http context")
+			secLog.Errorf("resource/service:requiresPermission() %s Roles: %v | Context: %v", message.AuthenticationFailed, permissionNames, r.Context())
+			return errors.Wrap(err, "resource/service:requiresPermission() Could not get user roles from http context")
 		}
 		reqPermissions := ct.PermissionInfo{Service: constants.AASServiceName, Rules: permissionNames}
 
@@ -188,10 +188,10 @@ func requiresPermission(eh endpointHandler, permissionNames []string) endpointHa
 		if !foundMatchingPermission {
 			w.WriteHeader(http.StatusUnauthorized)
 			secLog.Error(message.UnauthorizedAccess)
-			secLog.Errorf("resource/resource:requiresPermission() %s Insufficient privileges to access %s", message.UnauthorizedAccess, r.RequestURI)
+			secLog.Errorf("resource/service:requiresPermission() %s Insufficient privileges to access %s", message.UnauthorizedAccess, r.RequestURI)
 			return &privilegeError{Message: "Insufficient privileges to access " + r.RequestURI, StatusCode: http.StatusUnauthorized}
 		}
-		secLog.Infof("resource/resource:requiresPermission() %s - %s", message.AuthorizedAccess, r.RequestURI)
+		secLog.Infof("resource/service:requiresPermission() %s - %s", message.AuthorizedAccess, r.RequestURI)
 		return eh(w, r)
 	}
 }
@@ -201,31 +201,31 @@ func requiresPermission(eh endpointHandler, permissionNames []string) endpointHa
 // replace intel/isecl/lib/common => gitlab.devtools.intel.com/sst/isecl/lib/common.git v2.0/develop
 // requiresPermission - ensures that correct rolename is present in JWT
 func requiresRole(eh endpointHandler, roleNames []string) endpointHandler {
-	log.Trace("resource/resource:requiresPermission() Entering")
-	defer log.Trace("resource/resource:requiresPermission() Leaving")
+	log.Trace("resource/service:requiresPermission() Entering")
+	defer log.Trace("resource/service:requiresPermission() Leaving")
 	return func(w http.ResponseWriter, r *http.Request) error {
 		privileges, err := commContext.GetUserRoles(r)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Could not get user roles from http context"))
-			secLog.Errorf("resource/resource:requiresPermission() %s Roles: %v | Context: %v", message.AuthenticationFailed, roleNames, r.Context())
-			return errors.Wrap(err, "resource/resource:requiresPermission() Could not get user roles from http context")
+			secLog.Errorf("resource/service:requiresPermission() %s Roles: %v | Context: %v", message.AuthenticationFailed, roleNames, r.Context())
+			return errors.Wrap(err, "resource/service:requiresPermission() Could not get user roles from http context")
 		}
 		reqRoles := make([]ct.RoleInfo, len(roleNames))
 		for i, role := range roleNames {
 			reqRoles[i] = ct.RoleInfo{Service: constants.AASServiceName, Name: role}
 		}
 
-		secLog.Debugf("resource/resource:requiresPermission() Req Roles: %v", reqRoles)
+		secLog.Debugf("resource/service:requiresPermission() Req Roles: %v", reqRoles)
 		_, foundRole := auth.ValidatePermissionAndGetRoleContext(privileges, reqRoles,
 			true)
 		if !foundRole {
 			w.WriteHeader(http.StatusUnauthorized)
 			secLog.Error(message.UnauthorizedAccess)
-			secLog.Errorf("resource/resource:requiresPermission() %s Insufficient privileges to access %s", message.UnauthorizedAccess, r.RequestURI)
+			secLog.Errorf("resource/service:requiresPermission() %s Insufficient privileges to access %s", message.UnauthorizedAccess, r.RequestURI)
 			return &privilegeError{Message: "Insufficient privileges to access " + r.RequestURI, StatusCode: http.StatusUnauthorized}
 		}
-		secLog.Infof("resource/resource:requiresPermission() %s - %s", message.AuthorizedAccess, r.RequestURI)
+		secLog.Infof("resource/service:requiresPermission() %s - %s", message.AuthorizedAccess, r.RequestURI)
 		return eh(w, r)
 	}
 }
@@ -235,8 +235,8 @@ func requiresRole(eh endpointHandler, roleNames []string) endpointHandler {
 type endpointHandler func(w http.ResponseWriter, r *http.Request) error
 
 func errorHandler(eh endpointHandler) http.HandlerFunc {
-	log.Trace("resource/resource:errorHandler() Entering")
-	defer log.Trace("resource/resource:errorHandler() Leaving")
+	log.Trace("resource/service:errorHandler() Entering")
+	defer log.Trace("resource/service:errorHandler() Leaving")
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := eh(w, r); err != nil {
 			if gorm.IsRecordNotFoundError(err) {

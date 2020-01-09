@@ -97,8 +97,12 @@ func (aas DownloadAASJWTCert) Validate(c csetup.Context) error {
 }
 
 func isPathContainPemFile(name string) bool {
+	log.Trace("tasks/download_aas_jwtcert:isPathContainPemFile() Entering")
+	defer log.Trace("tasks/download_aas_jwtcert:isPathContainPemFile() Leaving")
+
 	f, err := os.Open(name)
 	if err != nil {
+		log.WithError(err).Error("tasks/download_aas_jwtcert:isPathContainPemFile() Erron while opening file: %s", name)
 		return false
 	}
 	defer f.Close()
@@ -108,10 +112,10 @@ func isPathContainPemFile(name string) bool {
 
 	// if EOF detected path is empty
 	if err != io.EOF && len(fname) > 0 && strings.HasSuffix(fname[0].Name(), ".pem") {
-		log.Trace("tasks/download_aas_jwtcert:isPathContainPemFile() fname is ", fname[0].Name())
+		log.Debug("tasks/download_aas_jwtcert:isPathContainPemFile() fname is ", fname[0].Name())
 		_, errs := crypt.GetCertFromPemFile(name + "/" + fname[0].Name())
 		if errs == nil {
-			log.Trace("tasks/download_aas_jwtcert:isPathContainPemFile() full path valid PEM ", name+"/"+fname[0].Name())
+			log.Error("tasks/download_aas_jwtcert:isPathContainPemFile() full path valid PEM ", name+"/"+fname[0].Name())
 			return true
 		}
 	}
@@ -128,7 +132,7 @@ func fnGetJwtCerts(aasURL string) error {
 
 	hc, err := clients.HTTPClientWithCADir(consts.TrustedCaCertsDir)
 	if err != nil {
-		return errors.Wrapf(err, "tasks/download_aas_jwtcert:fnGetJwtCerts() Error setting up HTTP client: %s", err.Error())
+		return errors.Wrap(err, "tasks/download_aas_jwtcert:fnGetJwtCerts() Error setting up HTTP client")
 	}
 
 	res, err := hc.Do(req)
@@ -144,7 +148,7 @@ func fnGetJwtCerts(aasURL string) error {
 
 	err = crypt.SavePemCertWithShortSha1FileName(body, consts.TrustedJWTSigningCertsDir)
 	if err != nil {
-		return errors.Wrap(err, "tasks/download_aas_jwtcert:fnGetJwtCerts() Error in certificate setup")
+		return errors.Wrap(err, "tasks/download_aas_jwtcert:fnGetJwtCerts() Error while saving certificate")
 	}
 
 	return nil

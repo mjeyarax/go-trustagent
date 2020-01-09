@@ -77,8 +77,14 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 	envVar = os.Getenv(constants.FlavorLabels)
 	if envVar != "" {
 		flavorLabels = strings.Split(envVar, ",")
+		for _, lbl := range flavorLabels {
+			err = validation.ValidateStrings(lbl)
+			if err != nil {
+				secLog.Errorf("%s tasks/get-configured-manifest:Run() Flavor Label:'%s' is not a valid label", message.InvalidInputBadParam, lbl)
+				return errors.Errorf("tasks/get-configured-manifest:Run() Flavor Label:'%s' is not a valid label", lbl)
+			}
+		}
 	}
-
 	if len(flavorUUIDs) == 0 && len(flavorLabels) == 0 {
 		return errors.Errorf("tasks/get-configured-manifest:Run() No manifests were specified via the '%s' or '%s' environment variables", constants.FlavorUUIDs, constants.FlavorLabels)
 	}

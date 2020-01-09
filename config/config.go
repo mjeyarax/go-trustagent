@@ -210,11 +210,6 @@ func (cfg *TrustAgentConfiguration) Validate() error {
 		return errors.Errorf("config/config:Validate() Invalid TrustAgent port value: '%d'", cfg.TrustAgentService.Port)
 	}
 
-	err := validation.ValidateAccount(cfg.TrustAgentService.Username, cfg.TrustAgentService.Password)
-	if err != nil {
-		return errors.Wrap(err, "config/config:Validate() Invalid TrustAgent username or password")
-	}
-
 	if cfg.HVS.Url == "" {
 		return errors.New("Validation error: HVS API URL is required")
 	}

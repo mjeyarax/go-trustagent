@@ -5,6 +5,7 @@
  package vsclient
 
  import (
+	 "common/log/message"
 	 "fmt"
 	 "intel/isecl/go-trust-agent/constants"
 	 "io/ioutil"
@@ -104,7 +105,6 @@ func (client * manifestsClientImpl) getManifestXml(params map[string]string) ([]
 func (client *manifestsClientImpl) GetManifestXmlById(manifestUUID string) ([]byte, error) {
 	log.Trace("vsclient/manifests_client:GetManifestXmlById() Entering")
 	defer log.Trace("vsclient/manifests_client:GetManifestXmlById() Leaving")
-
 
 	params := map[string]string{ "id" : manifestUUID, };
 	return client.getManifestXml(params)

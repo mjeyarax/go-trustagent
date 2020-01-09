@@ -281,14 +281,11 @@ If the GTA installer is run with a valid 'trustagent.env' file, it will parse th
 | Env Var | Description | Example | Required?|
 |---------|-------------|---------|----------|
 |MTWILSON_API_URL|The url used by GTA during setup to request information from HVS. |MTWILSON_API_URL=https://{host}:{port}/mtwilson/v2|Yes|
-|MTWILSON_API_USERNAME|Basic authentication user name needed to access HVS endpoints.|MTWILSON_API_USERNAME=foo|Yes|
-|MTWILSON_API_PASSWORD|Basic authentication password needed to access HVS endpoints.|MTWILSON_API_PASSWORD=bar|Yes|
-|MTWILSON_TLS_CERT_SHA384|TLS cert hash from HVS.|MTWILSON_TLS_CERT_SHA384=6d8a18f...|Yes|
+|BEARER_TOKEN| JWT auth token needed to access HVS endpoints.
+|CMS_TLS_CERT_SHA384|TLS cert hash from HVS.|CMS_TLS_CERT_SHA384=6d8a18f...|Yes|
 |PROVISION_ATTESTATION|When present, enables/disables whether `tagent setup` is called during installation.  If trustagent.env is not present, the value defaults to no ('N').|PROVISION_ATTESTATION=Y||
 |TBOOTXM_INSTALL|Used by the makeself installer to determine if 'Application Integrity' should be installed.  Defaults to 'Y' (yes).  If set to 'N', 'Application Integrity' is not installed.|TBOOTXM_INSTALL=N||
 |TPM_OWNER_SECRET|20 byte hex value to be used as the secret key when taking ownership of the tpm.  *Note: If this field is not specified, GTA will generate a random secret key.*|TPM_OWNER_SECRET=625d6...||
-|TRUSTAGENT_ADMIN_PASSWORD|Basic authentication password needed to access GTA endpoints.|TRUSTAGENT_ADMIN_PASSWORD=gta_passwd|Yes|
-|TRUSTAGENT_ADMIN_USERNAME|Basic authentication user name needed to access GTA endpoints.|TRUSTAGENT_ADMIN_USERNAME=gta_admin|Yes|
 |TRUSTAGENT_PORT|Port to run `tagent` service.  Defaults to 1443.|TRUSTAGENT_PORT=8443||
 
 *TODO:  Update when AAS/CMS is integrated.*
@@ -332,13 +329,8 @@ The GTA stores configuration information in /opt/trustagent/configuration/config
 loglevel: info
 trustagentservice:
   port: 1443
-  username: gta_user
-  password: gta_password
 hvs:
   url: https://127.0.0.1:8443/mtwilson/v2
-  username: admin
-  password: password
-  tls384: a04d5fb42ab41dbcd5b68899d01ecf1884d79eeb8d36d080cebf3a5fc93f38d1382d7afbedb4fe1f48b95d0cff475a4b
 tpm:
   ownersecretkey: 7fa014c4c8116678d0492eaae50625c514be416d
   aiksecretkey: 0492eaae50625c514be416d7fa014c4c8116678d
