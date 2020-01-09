@@ -13,20 +13,25 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	//	"strings"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/lib/tpmprovider"
+
+	"intel/isecl/lib/common/middleware"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	"github.com/gorilla/mux"
 
 	log "github.com/sirupsen/logrus"
 )
 
 const (
-	TestUser     = "test"
-	TestPassword = "test"
-	TpmSecretKey = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
-	TestPort     = 8450
+	TpmSecretKey          = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+	TestPort              = 8450
+	TestJWTVerifyCertPath = "jwtsigncert.pem"
+	TestJWTAuthToken      = "eyJhbGciOiJSUzM4NCIsImtpZCI6IjRhZTYyNmQyMWU4NTg2YmYzNTJlZDQ3NTQwMDY5YjU0ZjA3MGFjNjIiLCJ0eXAiOiJKV1QifQ.eyJyb2xlcyI6W3sic2VydmljZSI6IlRBIiwibmFtZSI6IkhWU1VzZXJQZXJtIn1dLCJwZXJtaXNzaW9ucyI6W3sic2VydmljZSI6IlRBIiwicnVsZXMiOlsiYWlrX2NhOnJldHJpZXZlOioiLCJhaWs6cmV0cmlldmU6KiIsImFwcGxpY2F0aW9uX21lYXN1cmVtZW50OmNyZWF0ZToqIiwiYmluZGluZ19rZXk6cmV0cmlldmU6KiIsImRhYTpyZXRyaWV2ZToqIiwiZGVwbG95X21hbmlmZXN0OmNyZWF0ZToqIiwiZGVwbG95X3RhZzpjcmVhdGU6KiIsImhvc3RfaW5mbzpyZXRyaWV2ZToqIiwicXVvdGU6Y3JlYXRlOioiXX1dLCJleHAiOjE4OTM5MTE4NzEsImlhdCI6MTU3ODU1MTg3MSwiaXNzIjoiQUFTIEpXVCBJc3N1ZXIiLCJzdWIiOiJ0YUhWU1VzZXJQZXJtIn0.Bq94ZzHTa3SUW5W76DQk1SNBrgS9uxINqhfYe--c0jS5F8Gd6PJeTM-HcV4w7sqGqIEhC73khqXQ4O9G7uiB8eMS-HI4pczdyV8zwZtgda8EoDUj9EYjByXktpQTZsEcZwh5NEATAylhqev2ZyeESQNwCAO2o9hWDJmLeYZovHygggOaly5zgWElfAkIvLZnvVyfy2M3aoNWtugpY4V7QZME8kAadwuOgTPAHv87x-nElfb4qIBcOzmuVm9Ktm5cnFD_j9QTMDgLnPtipFVQGsGyUz1OglCojEUGbXUNo2wADHyt3D7T3hgmGQustsiWZamjHdjysS2v4N4ZuKAKIZCuNpDWKdU5DwkY5dFTkdB9D_WA0P5Ot9MdkAiJu_eC9Vg6oI3uoH3uPn1uUGKNo1RGtbmpV4QJASA04UHBY_BTIg0Tu86Aol7ctpbjJZkwxhTkVi4mgOi69dq1N1xmekr_Z3M88P4tZezfm6eeUAfUBQ2r52Up3_RvrhFbOIwm"
 )
 
 func CreateTestConfig() *config.TrustAgentConfiguration {
@@ -34,8 +39,6 @@ func CreateTestConfig() *config.TrustAgentConfiguration {
 	cfg := config.TrustAgentConfiguration{}
 	cfg.LogLevel = log.TraceLevel
 	cfg.TrustAgentService.Port = TestPort
-	cfg.TrustAgentService.Username = TestUser
-	cfg.TrustAgentService.Password = TestPassword
 	cfg.Tpm.OwnerSecretKey = TpmSecretKey
 
 	return &cfg
@@ -103,13 +106,17 @@ func TestAssetTagServiceNoExistingTags(t *testing.T) {
 	trustAgentService, err := CreateTrustAgentService(CreateTestConfig(), mockedTpmFactory)
 	assert.NoError(err)
 
+	// setup TA service to use JWT-based authentication
+	trustAgentService.router = mux.NewRouter()
+	trustAgentService.router.Use(middleware.NewTokenAuth("../test/mockJWTDir", "../test/mockCACertsDir", fnGetJwtCerts, cacheTime))
+
 	jsonString := `{"tag" : "tHgfRQED1+pYgEZpq3dZC9ONmBCZKdx10LErTZs1k/k=", "hardware_uuid" : "7a569dad-2d82-49e4-9156-069b0065b262"}`
 
 	request, err := http.NewRequest("POST", "/v2/tag", bytes.NewBuffer([]byte(jsonString)))
 	assert.NoError(err)
 
 	request.Header.Set("Content-Type", "application/json")
-	request.SetBasicAuth(TestUser, TestPassword)
+	request.Header.Add("Authorization", "Bearer "+TestJWTAuthToken)
 
 	recorder := httptest.NewRecorder()
 	trustAgentService.router.ServeHTTP(recorder, request)
@@ -133,13 +140,17 @@ func TestAssetTagServiceExistingTags(t *testing.T) {
 	trustAgentService, err := CreateTrustAgentService(CreateTestConfig(), mockedTpmFactory)
 	assert.NoError(err)
 
+	// setup TA service to use JWT-based authentication
+	trustAgentService.router = mux.NewRouter()
+	trustAgentService.router.Use(middleware.NewTokenAuth("../test/mockJWTDir", "../test/mockCACertsDir", fnGetJwtCerts, cacheTime))
+
 	jsonString := `{"tag" : "tHgfRQED1+pYgEZpq3dZC9ONmBCZKdx10LErTZs1k/k=", "hardware_uuid" : "7a569dad-2d82-49e4-9156-069b0065b262"}`
 
 	request, err := http.NewRequest("POST", "/v2/tag", bytes.NewBuffer([]byte(jsonString)))
 	assert.NoError(err)
 
 	request.Header.Set("Content-Type", "application/json")
-	request.SetBasicAuth(TestUser, TestPassword)
+	request.Header.Add("Authorization", "Bearer "+TestJWTAuthToken)
 
 	recorder := httptest.NewRecorder()
 	trustAgentService.router.ServeHTTP(recorder, request)

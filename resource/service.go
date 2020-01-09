@@ -96,25 +96,24 @@ func CreateTrustAgentService(config *config.TrustAgentConfiguration, tpmFactory 
 	trustAgentService.router.Use(middleware.NewTokenAuth(constants.TrustedJWTSigningCertsDir, constants.TrustedCaCertsDir, fnGetJwtCerts, cacheTime))
 
 	// these can be enabled on the basis of the decision regarding whether role name or permission name should be checked in JWT
-	/*
-		// use permission-based access control for webservices
-		trustAgentService.router.HandleFunc("/v2/aik", errorHandler(requiresPermission(getAik(), []string{getAIKPerm}))).Methods("GET")
-		trustAgentService.router.HandleFunc("/v2/host", errorHandler(requiresPermission(getPlatformInfo(), []string{getHostInfoPerm}))).Methods("GET")
-		trustAgentService.router.HandleFunc("/v2/tpm/quote", errorHandler(requiresPermission(getTpmQuote(config, tpmFactory), []string{postQuotePerm}))).Methods("POST")
-		trustAgentService.router.HandleFunc("/v2/binding-key-certificate", errorHandler(requiresPermission(getBindingKeyCertificate(), []string{getBindingKeyPerm}))).Methods("GET")
-		trustAgentService.router.HandleFunc("/v2/tag", errorHandler(requiresPermission(setAssetTag(config, tpmFactory), []string{postDeployTagPerm}))).Methods("POST")
-		trustAgentService.router.HandleFunc("/v2/host/application-measurement", errorHandler(requiresPermission(getApplicationMeasurement(), []string{postAppMeasurementPerm}))).Methods("POST")
-		trustAgentService.router.HandleFunc("/v2/deploy/manifest", errorHandler(requiresPermission(deployManifest(), []string{postDeployManifestPerm}))).Methods("POST")
-	*/
+
+	// use permission-based access control for webservices
+	trustAgentService.router.HandleFunc("/v2/aik", errorHandler(requiresPermission(getAik(), []string{getAIKPerm}))).Methods("GET")
+	trustAgentService.router.HandleFunc("/v2/host", errorHandler(requiresPermission(getPlatformInfo(), []string{getHostInfoPerm}))).Methods("GET")
+	trustAgentService.router.HandleFunc("/v2/tpm/quote", errorHandler(requiresPermission(getTpmQuote(config, tpmFactory), []string{postQuotePerm}))).Methods("POST")
+	trustAgentService.router.HandleFunc("/v2/binding-key-certificate", errorHandler(requiresPermission(getBindingKeyCertificate(), []string{getBindingKeyPerm}))).Methods("GET")
+	trustAgentService.router.HandleFunc("/v2/tag", errorHandler(requiresPermission(setAssetTag(config, tpmFactory), []string{postDeployTagPerm}))).Methods("POST")
+	trustAgentService.router.HandleFunc("/v2/host/application-measurement", errorHandler(requiresPermission(getApplicationMeasurement(), []string{postAppMeasurementPerm}))).Methods("POST")
+	trustAgentService.router.HandleFunc("/v2/deploy/manifest", errorHandler(requiresPermission(deployManifest(), []string{postDeployManifestPerm}))).Methods("POST")
 
 	// use rolename-based access control for webservices
-	trustAgentService.router.HandleFunc("/v2/aik", errorHandler(requiresRole(getAik(), []string{constants.AdministratorGroup}))).Methods("GET")
+	/* trustAgentService.router.HandleFunc("/v2/aik", errorHandler(requiresRole(getAik(), []string{constants.AdministratorGroup}))).Methods("GET")
 	trustAgentService.router.HandleFunc("/v2/host", errorHandler(requiresRole(getPlatformInfo(), []string{constants.AdministratorGroup}))).Methods("GET")
 	trustAgentService.router.HandleFunc("/v2/tpm/quote", errorHandler(requiresRole(getTpmQuote(config, tpmFactory), []string{constants.AdministratorGroup}))).Methods("POST")
 	trustAgentService.router.HandleFunc("/v2/binding-key-certificate", errorHandler(requiresRole(getBindingKeyCertificate(), []string{constants.AdministratorGroup}))).Methods("GET")
 	trustAgentService.router.HandleFunc("/v2/tag", errorHandler(requiresRole(setAssetTag(config, tpmFactory), []string{constants.AdministratorGroup}))).Methods("POST")
 	trustAgentService.router.HandleFunc("/v2/host/application-measurement", errorHandler(requiresRole(getApplicationMeasurement(), []string{constants.AdministratorGroup}))).Methods("POST")
-	trustAgentService.router.HandleFunc("/v2/deploy/manifest", errorHandler(requiresRole(deployManifest(), []string{constants.AdministratorGroup}))).Methods("POST")
+	trustAgentService.router.HandleFunc("/v2/deploy/manifest", errorHandler(requiresRole(deployManifest(), []string{constants.AdministratorGroup}))).Methods("POST") */
 
 	return &trustAgentService, nil
 }
@@ -166,10 +165,9 @@ func (service *TrustAgentService) Start() error {
 	return nil
 }
 
-/*
-// requiresPermission - ensures that correct permission is present in JWT
 // this requires lib/common to be sourced from
 // replace intel/isecl/lib/common => gitlab.devtools.intel.com/sst/isecl/lib/common.git v1.0/task/roles-and-permissions
+// requiresPermission - ensures that correct permission is present in JWT
 func requiresPermission(eh endpointHandler, permissionNames []string) endpointHandler {
 	log.Trace("resource/service:requiresPermission() Entering")
 	defer log.Trace("resource/service:requiresPermission() Leaving")
@@ -195,40 +193,41 @@ func requiresPermission(eh endpointHandler, permissionNames []string) endpointHa
 		return eh(w, r)
 	}
 }
-*/
 
+/*
 // this requires lib/common to be sourced from
 // replace intel/isecl/lib/common => gitlab.devtools.intel.com/sst/isecl/lib/common.git v2.0/develop
-// requiresPermission - ensures that correct rolename is present in JWT
+// requiresRole - ensures that correct rolename is present in JWT
 func requiresRole(eh endpointHandler, roleNames []string) endpointHandler {
-	log.Trace("resource/service:requiresPermission() Entering")
-	defer log.Trace("resource/service:requiresPermission() Leaving")
+	log.Trace("resource/resource:requiresRole() Entering")
+	defer log.Trace("resource/resource:requiresRole() Leaving")
 	return func(w http.ResponseWriter, r *http.Request) error {
 		privileges, err := commContext.GetUserRoles(r)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Could not get user roles from http context"))
-			secLog.Errorf("resource/service:requiresPermission() %s Roles: %v | Context: %v", message.AuthenticationFailed, roleNames, r.Context())
-			return errors.Wrap(err, "resource/service:requiresPermission() Could not get user roles from http context")
+			seclog.Errorf("resource/resource:requiresRole() %s Roles: %v | Context: %v", message.AuthenticationFailed, roleNames, r.Context())
+			return errors.Wrap(err, "resource/resource:requiresRole() Could not get user roles from http context")
 		}
 		reqRoles := make([]ct.RoleInfo, len(roleNames))
 		for i, role := range roleNames {
 			reqRoles[i] = ct.RoleInfo{Service: constants.AASServiceName, Name: role}
 		}
 
-		secLog.Debugf("resource/service:requiresPermission() Req Roles: %v", reqRoles)
+		seclog.Debugf("resource/resource:requiresRole() Req Roles: %v", reqRoles)
 		_, foundRole := auth.ValidatePermissionAndGetRoleContext(privileges, reqRoles,
 			true)
 		if !foundRole {
 			w.WriteHeader(http.StatusUnauthorized)
-			secLog.Error(message.UnauthorizedAccess)
-			secLog.Errorf("resource/service:requiresPermission() %s Insufficient privileges to access %s", message.UnauthorizedAccess, r.RequestURI)
+			seclog.Error(message.UnauthorizedAccess)
+			seclog.Errorf("resource/resource:requiresRole() %s Insufficient privileges to access %s", message.UnauthorizedAccess, r.RequestURI)
 			return &privilegeError{Message: "Insufficient privileges to access " + r.RequestURI, StatusCode: http.StatusUnauthorized}
 		}
-		secLog.Infof("resource/service:requiresPermission() %s - %s", message.AuthorizedAccess, r.RequestURI)
+		seclog.Infof("resource/resource:requiresRole() %s - %s", message.AuthorizedAccess, r.RequestURI)
 		return eh(w, r)
 	}
 }
+*/
 
 // endpointHandler is the same as http.ResponseHandler, but returns an error that can be handled by a generic
 // middleware handler
