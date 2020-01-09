@@ -91,6 +91,12 @@ func CreateTestConfig() *config.TrustAgentConfiguration {
 // 	assert.Equal(response.StatusCode, http.StatusOK)
 // }
 
+func mockRetrieveJWTSigningCerts() error {
+	log.Trace("resource/service_test:mockRetrieveJWTSigningCerts() Entering")
+	defer log.Trace("resource/service_test:mockRetrieveJWTSigningCerts() Leaving")
+	return nil
+}
+
 func TestAssetTagServiceNoExistingTags(t *testing.T) {
 	assert := assert.New(t)
 
@@ -108,7 +114,8 @@ func TestAssetTagServiceNoExistingTags(t *testing.T) {
 
 	// setup TA service to use JWT-based authentication
 	trustAgentService.router = mux.NewRouter()
-	trustAgentService.router.Use(middleware.NewTokenAuth("../test/mockJWTDir", "../test/mockCACertsDir", fnGetJwtCerts, cacheTime))
+	trustAgentService.router.Use(middleware.NewTokenAuth("../test/mockJWTDir", "../test/mockCACertsDir", mockRetrieveJWTSigningCerts, cacheTime))
+	trustAgentService.router.HandleFunc("/v2/tag", errorHandler(requiresPermission(setAssetTag(CreateTestConfig(), mockedTpmFactory), []string{postDeployTagPerm}))).Methods("POST")
 
 	jsonString := `{"tag" : "tHgfRQED1+pYgEZpq3dZC9ONmBCZKdx10LErTZs1k/k=", "hardware_uuid" : "7a569dad-2d82-49e4-9156-069b0065b262"}`
 
@@ -122,7 +129,7 @@ func TestAssetTagServiceNoExistingTags(t *testing.T) {
 	trustAgentService.router.ServeHTTP(recorder, request)
 	response := recorder.Result()
 	fmt.Printf("StatusCode: %d\n", response.StatusCode)
-	assert.Equal(response.StatusCode, http.StatusOK)
+	assert.Equal(http.StatusOK, response.StatusCode)
 }
 
 func TestAssetTagServiceExistingTags(t *testing.T) {
@@ -142,7 +149,8 @@ func TestAssetTagServiceExistingTags(t *testing.T) {
 
 	// setup TA service to use JWT-based authentication
 	trustAgentService.router = mux.NewRouter()
-	trustAgentService.router.Use(middleware.NewTokenAuth("../test/mockJWTDir", "../test/mockCACertsDir", fnGetJwtCerts, cacheTime))
+	trustAgentService.router.Use(middleware.NewTokenAuth("../test/mockJWTDir", "../test/mockCACertsDir", mockRetrieveJWTSigningCerts, cacheTime))
+	trustAgentService.router.HandleFunc("/v2/tag", errorHandler(requiresPermission(setAssetTag(CreateTestConfig(), mockedTpmFactory), []string{postDeployTagPerm}))).Methods("POST")
 
 	jsonString := `{"tag" : "tHgfRQED1+pYgEZpq3dZC9ONmBCZKdx10LErTZs1k/k=", "hardware_uuid" : "7a569dad-2d82-49e4-9156-069b0065b262"}`
 
@@ -156,7 +164,7 @@ func TestAssetTagServiceExistingTags(t *testing.T) {
 	trustAgentService.router.ServeHTTP(recorder, request)
 	response := recorder.Result()
 	fmt.Printf("StatusCode: %d\n", response.StatusCode)
-	assert.Equal(response.StatusCode, http.StatusOK)
+	assert.Equal(http.StatusOK, response.StatusCode)
 }
 
 // func TestLocalIpAddress(t *testing.T) {
