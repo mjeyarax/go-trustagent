@@ -207,21 +207,15 @@ func uninstall() error {
 
 func newVSClientConfig(cfg *config.TrustAgentConfiguration) (*vsclient.VSClientConfig, error) {
 
-	var certificateDigest [48]byte
-
-	certDigestBytes, err := hex.DecodeString(cfg.HVS.TLS384)
-	if err != nil {
-		return nil, errors.Errorf("main:newVSClientConfig() error converting certificate digest to hex: %s", err)
+	jwtToken := os.Getenv(constants.BearerTokenEnv)
+	if jwtToken == "" {
+		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
+		return nil, errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
 	}
-
-	if len(certDigestBytes) != 48 {
-		return nil, errors.Errorf("main:newVSClientConfig() Incorrect TLS384 string length %d", len(certDigestBytes))
-	}
-
-	copy(certificateDigest[:], certDigestBytes)
 
 	vsClientConfig := vsclient.VSClientConfig{
 		BaseURL: cfg.HVS.Url,
+		BearerToken: jwtToken,
 	}
 
 	return &vsClientConfig, nil

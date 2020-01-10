@@ -46,12 +46,7 @@ func (client *caCertificatesClientImpl) DownloadEndorsementAuthorities() ([]byte
 
 	url := fmt.Sprintf("%s/ca-certificates?domain=ek", client.cfg.BaseURL)
 	request, _ := http.NewRequest("GET", url, nil)
-	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
-	if jwtToken == "" || err != nil {
-		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.Wrap(err, "vsclient/ca_certificates_client:DownloadEndorsementAuthorities() BEARER_TOKEN is not defined in environment")
-	}
-	request.Header.Set("Authorization", "Bearer "+jwtToken)
+	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return nil, errors.Wrapf(err,"vsclient/ca_certificates_client:DownloadEndorsementAuthorities() Error sending request", err)

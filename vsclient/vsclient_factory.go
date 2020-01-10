@@ -25,6 +25,7 @@ type VSClientFactory interface {
 type VSClientConfig struct {
 	// BaseURL specifies the URL base for the HVS, for example https://hvs.server:8443/v2
 	BaseURL string
+	BearerToken string
 }
 
 func NewVSClientFactory(vsClientConfig *VSClientConfig) (VSClientFactory, error) {

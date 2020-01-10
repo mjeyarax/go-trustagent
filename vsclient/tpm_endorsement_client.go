@@ -48,12 +48,7 @@ func (client *tpmEndorsementsClientImpl) IsEkRegistered(hardwareUUID string) (bo
 
 	url := fmt.Sprintf("%s/tpm-endorsements?hardwareUuidEqualTo=%s", client.cfg.BaseURL, hardwareUUID)
 	request, _ := http.NewRequest("GET", url, nil)
-	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
-	if jwtToken == "" || err != nil {
-		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return false, errors.Wrap(err, "vsclient/tpm_endorsement_client:IsEkRegistered() BEARER_TOKEN is not defined in environment")
-	}
-	request.Header.Set("Authorization", "Bearer "+ jwtToken)
+	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
@@ -95,12 +90,7 @@ func (client *tpmEndorsementsClientImpl) RegisterEk(tpmEndorsement *TpmEndorseme
 
 	url := fmt.Sprintf("%s/tpm-endorsements", client.cfg.BaseURL)
 	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
-	if jwtToken == "" || err != nil {
-		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return errors.Wrap(err, "vsclient/tpm_endorsement_client:RegisterEk() BEARER_TOKEN is not defined in environment")
-	}
-	request.Header.Set("Authorization", "Bearer "+ jwtToken)
+	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 	request.Header.Set("Content-Type", "application/json")
 
 	response, err := client.httpClient.Do(request)

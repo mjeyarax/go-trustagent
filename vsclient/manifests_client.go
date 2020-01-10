@@ -64,12 +64,7 @@ func (client * manifestsClientImpl) getManifestXml(params map[string]string) ([]
 
 	url := fmt.Sprintf("%s/manifests", client.cfg.BaseURL)
 	request, _:= http.NewRequest("GET", url, nil)
-	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
-	if jwtToken == "" || err != nil {
-		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.Wrap(err, "vsclient/manifests_client:getManifestXml() BEARER_TOKEN is not defined in environment")
-	}
-	request.Header.Set("Authorization", "Bearer "+ jwtToken)
+	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 
 	query := request.URL.Query()
 

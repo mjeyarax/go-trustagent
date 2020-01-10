@@ -106,13 +106,7 @@ func (client *privacyCAClientImpl) DownloadPrivacyCa() ([]byte, error) {
 
 	url := fmt.Sprintf("%s/ca-certificates/privacy", client.cfg.BaseURL)
 	request, _ := http.NewRequest("GET", url, nil)
-	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
-	if jwtToken == "" || err != nil {
-		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.Wrap(err, "vsclient/privacy_ca_client:DownloadPrivacyCa() BEARER_TOKEN is not defined in environment")
-	}
-
-	request.Header.Set("Authorization", "Bearer "+ jwtToken)
+	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
@@ -146,12 +140,7 @@ func (client *privacyCAClientImpl) GetIdentityProofRequest(identityChallengeRequ
 
 	url := fmt.Sprintf("%s/privacyca/identity-challenge-request", client.cfg.BaseURL)
 	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	jwtToken := os.Getenv(constants.BearerTokenEnv)
-	if jwtToken == "" {
-		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.New("vsclient/privacy_ca_client:GetIdentityProofRequest() BEARER_TOKEN is not defined in environment")
-	}
-	request.Header.Set("Authorization", "Bearer "+ jwtToken)
+	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 	request.Header.Set("Content-Type", "application/json")
 
 	response, err := client.httpClient.Do(request)
@@ -192,12 +181,7 @@ func (client *privacyCAClientImpl) GetIdentityProofResponse(identityChallengeRes
 
 	url := fmt.Sprintf("%s/privacyca/identity-challenge-response", client.cfg.BaseURL)
 	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
-	if jwtToken == "" || err != nil {
-		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.Wrap(err, "vsclient/privacy_ca_client:GetIdentityProofResponse() BEARER_TOKEN is not defined in environment")
-	}
-	request.Header.Set("Authorization", "Bearer "+ jwtToken)
+	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 	request.Header.Set("Content-Type", "application/json")
 
 	response, err := client.httpClient.Do(request)

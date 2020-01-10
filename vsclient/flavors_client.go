@@ -59,12 +59,7 @@ func (client *flavorsClientImpl) CreateFlavor(flavorCreateCriteria *FlavorCreate
 	url := fmt.Sprintf("%s/flavors", client.cfg.BaseURL)
 	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	request.Header.Set("Content-Type", "application/json")
-	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
-	if jwtToken == "" || err != nil {
-		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.Wrap(err, "vsclient/flavors_client:CreateFlavor() BEARER_TOKEN is not defined in environment")
-	}
-	request.Header.Set("Authorization", "Bearer "+jwtToken)
+	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 
 	log.Debugf("vsclient/flavors_client:CreateFlavor() Posting to url %s, json: %s ", url, string(jsonData))
 

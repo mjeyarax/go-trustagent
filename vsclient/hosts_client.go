@@ -282,12 +282,7 @@ func (client *hostsClientImpl) UpdateHost(host *Host) (*Host, error) {
 
 	url := fmt.Sprintf("%s/hosts/%s", client.cfg.BaseURL, host.Id)
 	request, _:= http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
-	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
-	if jwtToken == "" || err != nil {
-		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.Wrap(err, "vsclient/hosts_client:UpdateHost() BEARER_TOKEN is not defined in environment")
-	}
-	request.Header.Set("Authorization", "Bearer "+ jwtToken)
+	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 
 	log.Debugf("vsclient/hosts_client:UpdateHost() Sending PUT request to url %s, json: %s ", url, string(jsonData))
 
