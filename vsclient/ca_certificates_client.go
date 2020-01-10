@@ -6,14 +6,10 @@ package vsclient
 
 import (
 	"fmt"
-	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/lib/common/setup"
 	commLog "intel/isecl/lib/common/log"
 	"io/ioutil"
 	"net/http"
-	"os"
-
-	"github.com/pkg/errors"
 )
 
 var log = commLog.GetDefaultLogger()

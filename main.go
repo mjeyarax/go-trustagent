@@ -210,7 +210,7 @@ func newVSClientConfig(cfg *config.TrustAgentConfiguration) (*vsclient.VSClientC
 	jwtToken := os.Getenv(constants.BearerTokenEnv)
 	if jwtToken == "" {
 		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
+		return nil, errors.New("BEARER_TOKEN is not defined in environment")
 	}
 
 	vsClientConfig := vsclient.VSClientConfig{

@@ -8,14 +8,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"intel/isecl/go-trust-agent/constants"
 	"io/ioutil"
 	"net/http"
-	"os"
 
 	log "github.com/sirupsen/logrus"
-
-	"github.com/pkg/errors"
 )
 
 //-------------------------------------------------------------------------------------------------

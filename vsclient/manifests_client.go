@@ -7,13 +7,12 @@
  import (
 	 "common/log/message"
 	 "fmt"
-	 "intel/isecl/go-trust-agent/constants"
 	 "io/ioutil"
 	 "net/http"
 	 "intel/isecl/lib/common/validation"
-	 "os"
 
 	 "github.com/pkg/errors"
+	 log "github.com/sirupsen/logrus"
  )
 
 //-------------------------------------------------------------------------------------------------

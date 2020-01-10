@@ -8,13 +8,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"intel/isecl/go-trust-agent/constants"
 	"io/ioutil"
 	"net/http"
 	log "github.com/sirupsen/logrus"
-	"os"
-
-	"github.com/pkg/errors"
 )
 //-------------------------------------------------------------------------------------------------
 // Public interface/structures
