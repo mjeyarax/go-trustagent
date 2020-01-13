@@ -20,8 +20,9 @@ import (
 )
 
 type GetConfiguredManifest struct {
-	manifestsClient 	vsclient.ManifestsClient
-	savedManifestFiles  []string
+	clientFactory      vsclient.VSClientFactory
+	manifestsClient    vsclient.ManifestsClient
+	savedManifestFiles []string
 }
 
 func (task GetConfiguredManifest) saveManifest(manifestXml []byte) error {
@@ -58,6 +59,11 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 	var err error
 	var flavorUUIDs []string
 	var flavorLabels []string
+
+	// initialize if nil
+	if task.manifestsClient == nil {
+		task.manifestsClient = task.clientFactory.ManifestsClient()
+	}
 
 	envVar := os.Getenv(constants.FlavorUUIDs)
 	if envVar != "" {

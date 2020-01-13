@@ -16,14 +16,21 @@ import (
 )
 
 type DownloadPrivacyCA struct {
-	cfg 			*config.TrustAgentConfiguration
+	clientFactory   vsclient.VSClientFactory
 	privacyCAClient vsclient.PrivacyCAClient
+	cfg             *config.TrustAgentConfiguration
 }
 
 // Download's the privacy CA from HVS.
 func (task *DownloadPrivacyCA) Run(c setup.Context) error {
 	log.Trace("tasks/download_privacy_ca:Run() Entering")
 	defer log.Trace("tasks/download_privacy_ca:Run() Leaving")
+
+	// initialize if nil
+	if task.privacyCAClient == nil {
+		task.privacyCAClient = task.clientFactory.PrivacyCAClient()
+	}
+
 	ca, err := task.privacyCAClient.DownloadPrivacyCa()
 	if err != nil {
 		return errors.Wrap(err,"tasks/download_privacy_ca:Run() Error while downloading privacyCA file")

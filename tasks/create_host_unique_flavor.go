@@ -14,9 +14,10 @@ import (
 )
 
 type CreateHostUniqueFlavor struct {
-	flavorsClient	vsclient.FlavorsClient
-	cfg 			*config.TrustAgentConfiguration
-	ip 				string
+	clientFactory vsclient.VSClientFactory
+	flavorsClient vsclient.FlavorsClient
+	cfg           *config.TrustAgentConfiguration
+	ip            string
 }
 
 // Communicates with HVS to create the host-unique-flavor from the current compute node.
@@ -24,6 +25,11 @@ func (task *CreateHostUniqueFlavor) Run(c setup.Context) error {
 	log.Trace("tasks/create_host_unique_flavor:Run() Entering")
 	defer log.Trace("tasks/create_host_unique_flavor:Run() Leaving")
 	var err error
+
+	// initialize if nil
+	if task.flavorsClient == nil {
+		task.flavorsClient = task.clientFactory.FlavorsClient()
+	}
 
 	task.ip, err = util.GetLocalIpAsString()
 	if err != nil {

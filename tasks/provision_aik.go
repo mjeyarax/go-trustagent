@@ -47,10 +47,11 @@ import (
 // The 'aik.cer' is served via the /v2/aik endpoint and included in /tpm/quote.
 //
 // Throughout this process, the TPM is being provisioned with the aik so that calls to /tpm/quote
-// will be successful.  QUOTES WILL NOT WORK IF THE TPM IS NO PROVISIONED CORRECTLY.
+// will be successful.  QUOTES WILL NOT WORK IF THE TPM IS NOT PROVISIONED CORRECTLY.
 //-------------------------------------------------------------------------------------------------
 
 type ProvisionAttestationIdentityKey struct {
+	clientFactory   vsclient.VSClientFactory
 	tpmFactory      tpmprovider.TpmFactory
 	cfg             *config.TrustAgentConfiguration
 	privacyCAClient vsclient.PrivacyCAClient
@@ -61,6 +62,11 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	defer log.Trace("tasks/provision_aik:Run() Leaving")
 
 	var err error
+
+	// initialize if nil
+	if task.privacyCAClient == nil {
+		task.privacyCAClient = task.clientFactory.PrivacyCAClient()
+	}
 
 	// generate the aik in the tpm
 	err = task.createAik()
@@ -157,6 +163,11 @@ func (task *ProvisionAttestationIdentityKey) createAik() error {
 	defer log.Trace("tasks/provision_aik:createAik() Leaving")
 
 	var err error
+
+	// initialize if nil
+	if task.privacyCAClient == nil {
+		task.privacyCAClient = task.clientFactory.PrivacyCAClient()
+	}
 
 	// if the configuration's aik secret has not been set, do it now...
 	if task.cfg.Tpm.AikSecretKey == "" {

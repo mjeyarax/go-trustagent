@@ -17,13 +17,14 @@ var log = commLog.GetDefaultLogger()
 var secLog = commLog.GetSecurityLogger()
 
 type CreateHost struct {
-	ip          string
-	hostsClient vsclient.HostsClient
-	cfg         *config.TrustAgentConfiguration
+	clientFactory vsclient.VSClientFactory
+	hostsClient   vsclient.HostsClient
+	ip            string
+	cfg           *config.TrustAgentConfiguration
 }
 
 //
-// Registers (or updates) HVS with information about the currenct compute
+// Registers (or updates) HVS with information about the current compute
 // node (providing the connection string, hostname (ip addr) and tls policy).
 //
 // If the host already exists, create-host will return an error.
@@ -33,6 +34,11 @@ func (task *CreateHost) Run(c setup.Context) error {
 	defer log.Trace("tasks/create_host:Run() Leaving")
 
 	var err error
+
+	// initialize if nil
+	if task.hostsClient == nil {
+		task.hostsClient = task.clientFactory.HostsClient()
+	}
 
 	task.ip, err = util.GetLocalIpAsString()
 	if err != nil {
@@ -74,6 +80,9 @@ func (task *CreateHost) Run(c setup.Context) error {
 func (task *CreateHost) Validate(c setup.Context) error {
 	log.Trace("tasks/create_host:Validate() Entering")
 	defer log.Trace("tasks/create_host:Validate() Leaving")
+
+	// Initialize the PrivacyCA client using the factory - this will be reused in Run
+	task.hostsClient = task.clientFactory.HostsClient()
 
 	hostFilterCriteria := vsclient.HostFilterCriteria{NameEqualTo: task.ip}
 	hostCollection, err := task.hostsClient.SearchHosts(&hostFilterCriteria)

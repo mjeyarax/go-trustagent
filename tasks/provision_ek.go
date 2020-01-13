@@ -28,6 +28,7 @@ import (
 // certs from HVS, the EK is registered (added) to HVS.
 //-------------------------------------------------------------------------------------------------
 type ProvisionEndorsementKey struct {
+	clientFactory          vsclient.VSClientFactory
 	tpmFactory             tpmprovider.TpmFactory
 	ekCert                 *x509.Certificate
 	endorsementAuthorities *x509.CertPool
@@ -135,6 +136,11 @@ func (task *ProvisionEndorsementKey) downloadEndorsementAuthorities() error {
 	log.Trace("tasks/provision_ek:downloadEndorsementAuthorities() Entering")
 	defer log.Trace("tasks/provision_ek:downloadEndorsementAuthorities() Leaving")
 
+	// initialize if nil
+	if task.caCertificatesClient == nil {
+		task.caCertificatesClient = task.clientFactory.CACertificatesClient()
+	}
+
 	ea, err := task.caCertificatesClient.DownloadEndorsementAuthorities()
 	if err != nil {
 		return errors.Wrap(err, "tasks/provision_ek:downloadEndorsementAuthorities() Error while downloading endorsement authorities")
@@ -184,6 +190,11 @@ func (task *ProvisionEndorsementKey) isEkRegisteredWithMtWilson() (bool, error) 
 	log.Trace("tasks/provision_ek:isEkRegisteredWithMtWilson() Entering")
 	defer log.Trace("tasks/provision_ek:isEkRegisteredWithMtWilson() Leaving")
 
+	// initialize if nil
+	if task.tpmEndorsementsClient == nil {
+		task.tpmEndorsementsClient = task.clientFactory.TpmEndorsementsClient()
+	}
+
 	hardwareUUID, err := platforminfo.HardwareUUID()
 	if err != nil {
 		return false, errors.Wrap(err, "tasks/provision_ek:isEkRegisteredWithMtWilson() Error while fetching hardware uuid")
@@ -197,6 +208,11 @@ func (task *ProvisionEndorsementKey) isEkRegisteredWithMtWilson() (bool, error) 
 func (task *ProvisionEndorsementKey) registerEkWithMtWilson() error {
 	log.Trace("tasks/provision_ek:registerEkWithMtWilson() Entering")
 	defer log.Trace("tasks/provision_ek:registerEkWithMtWilson() Leaving")
+
+	// initialize if nil
+	if task.tpmEndorsementsClient == nil {
+		task.tpmEndorsementsClient = task.clientFactory.TpmEndorsementsClient()
+	}
 
 	hardwareUUID, err := platforminfo.HardwareUUID()
 	if err != nil {

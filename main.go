@@ -18,7 +18,6 @@ import (
 	"intel/isecl/go-trust-agent/resource"
 	"intel/isecl/go-trust-agent/tasks"
 	"intel/isecl/go-trust-agent/util"
-	"intel/isecl/go-trust-agent/vsclient"
 	commonExec "intel/isecl/lib/common/exec"
 	"intel/isecl/lib/platform-info/platforminfo"
 	"intel/isecl/lib/tpmprovider"
@@ -29,7 +28,6 @@ import (
 	"strconv"
 	"syscall"
 
-	log "github.com/sirupsen/logrus"
 )
 
 var log = commLog.GetDefaultLogger()
@@ -205,22 +203,6 @@ func uninstall() error {
 	return nil
 }
 
-func newVSClientConfig(cfg *config.TrustAgentConfiguration) (*vsclient.VSClientConfig, error) {
-
-	jwtToken := os.Getenv(constants.EnvBearerToken)
-	if jwtToken == "" {
-		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.New("BEARER_TOKEN is not defined in environment")
-	}
-
-	vsClientConfig := vsclient.VSClientConfig{
-		BaseURL: cfg.HVS.Url,
-		BearerToken: jwtToken,
-	}
-
-	return &vsClientConfig, nil
-}
-
 func main() {
 
 	if len(os.Args) <= 1 {
@@ -356,6 +338,7 @@ func main() {
 		}
 
 		service.Start()
+
 	case "setup":
 
 		err = LogConfiguration(true, cfg.LogEnableStdout)
@@ -374,25 +357,7 @@ func main() {
 			setupCommand = tasks.DefaultSetupCommand
 		}
 
-		vsClientConfig, err := newVSClientConfig(cfg)
-		if err != nil {
-			log.Errorf("main:main() Could not create the vsclient config: %s", err)
-			os.Exit(1)
-		}
-
-		vsClientFactory, err := vsclient.NewVSClientFactory(vsClientConfig)
-		if err != nil {
-			log.Errorf("main:main() Could not create the vsclient factory: %s", err)
-			os.Exit(1)
-		}
-
-		tpmFactory, err := tpmprovider.NewTpmFactory()
-		if err != nil {
-			log.Errorf("main:main() Could not create the tpm factory: %s", err)
-			os.Exit(1)
-		}
-
-		registry, err := tasks.CreateTaskRegistry(vsClientFactory, tpmFactory, cfg, os.Args)
+		registry, err := tasks.CreateTaskRegistry(cfg, os.Args)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error while creating task registry %+v", err)
 			os.Exit(1)

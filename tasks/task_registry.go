@@ -7,6 +7,8 @@ package tasks
 import (
 	"crypto/x509/pkix"
 	"errors"
+	"fmt"
+	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/vsclient"
@@ -38,10 +40,44 @@ const (
 	GetConfiguredManifestCommand           = "get-configured-manifest"
 )
 
-func CreateTaskRegistry(vsClientFactory vsclient.VSClientFactory, tpmFactory tpmprovider.TpmFactory, cfg *config.TrustAgentConfiguration, flags []string) (*TaskRegistry, error) {
+// NewSetupTaskConfig sets up common configuration holder for all the setup tasks
+func NewSetupTaskConfig(cfg *config.TrustAgentConfiguration) (*vsclient.VSClientConfig, error) {
+	jwtToken := os.Getenv(constants.EnvBearerToken)
+	if jwtToken == "" {
+		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
+		return nil, errors.New("BEARER_TOKEN is not defined in environment")
+	}
+
+	vsClientConfig := vsclient.VSClientConfig{
+		BaseURL:     cfg.HVS.Url,
+		BearerToken: jwtToken,
+	}
+
+	return &vsClientConfig, nil
+}
+
+func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*TaskRegistry, error) {
 
 	var registry TaskRegistry
 	registry.taskMap = make(map[string][]setup.Task)
+
+	vsClientConfig, err := NewSetupTaskConfig(cfg)
+	if err != nil {
+		log.Errorf("Could not create the vsclient config: %s", err)
+		os.Exit(1)
+	}
+
+	vsClientFactory, err := vsclient.NewVSClientFactory(vsClientConfig)
+	if err != nil {
+		log.Errorf("Could not create the vsclient factory: %s", err)
+		os.Exit(1)
+	}
+
+	tpmFactory, err := tpmprovider.NewTpmFactory()
+	if err != nil {
+		log.Errorf("Could not create the tpm factory: %s", err)
+		os.Exit(1)
+	}
 
 	takeOwnership := TakeOwnership{tpmFactory: tpmFactory, cfg: cfg}
 
@@ -75,21 +111,20 @@ func CreateTaskRegistry(vsClientFactory vsclient.VSClientFactory, tpmFactory tpm
 	}
 
 	provisionEndorsementKey := ProvisionEndorsementKey{
-		caCertificatesClient:  vsClientFactory.CACertificatesClient(),
-		tpmEndorsementsClient: vsClientFactory.TpmEndorsementsClient(),
-		tpmFactory:            tpmFactory,
-		cfg:                   cfg,
+		clientFactory: vsClientFactory,
+		tpmFactory:    tpmFactory,
+		cfg:           cfg,
 	}
 
 	provisionAttestationIdentityKey := ProvisionAttestationIdentityKey{
-		privacyCAClient: vsClientFactory.PrivacyCAClient(),
-		tpmFactory:      tpmFactory,
-		cfg:             cfg,
+		clientFactory: vsClientFactory,
+		tpmFactory:    tpmFactory,
+		cfg:           cfg,
 	}
 
 	downloadPrivacyCA := DownloadPrivacyCA{
-		privacyCAClient: vsClientFactory.PrivacyCAClient(),
-		cfg:             cfg,
+		clientFactory: vsClientFactory,
+		cfg:           cfg,
 	}
 
 	provisionPrimaryKey := ProvisionPrimaryKey{tpmFactory: tpmFactory, cfg: cfg}
@@ -117,14 +152,14 @@ func CreateTaskRegistry(vsClientFactory vsclient.VSClientFactory, tpmFactory tpm
 	// these are individual commands that are not included in default setup tasks
 	registry.taskMap[CreateHostCommand] = []setup.Task{
 		&CreateHost{
-			hostsClient: vsClientFactory.HostsClient(),
-			cfg:         cfg,
+			clientFactory: vsClientFactory,
+			cfg:           cfg,
 		},
 	}
 
 	registry.taskMap[CreateHostUniqueFlavorCommand] = []setup.Task{
 		&CreateHostUniqueFlavor{
-			flavorsClient: vsClientFactory.FlavorsClient(),
+			clientFactory: vsClientFactory,
 			cfg:           cfg,
 		},
 	}
@@ -136,7 +171,7 @@ func CreateTaskRegistry(vsClientFactory vsclient.VSClientFactory, tpmFactory tpm
 
 	registry.taskMap[GetConfiguredManifestCommand] = []setup.Task{
 		&GetConfiguredManifest{
-			manifestsClient: vsClientFactory.ManifestsClient(),
+			clientFactory: vsClientFactory,
 		},
 	}
 
