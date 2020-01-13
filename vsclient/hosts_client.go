@@ -8,11 +8,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/constants"
+	"intel/isecl/lib/common/validation"
 	"io/ioutil"
 	"net/http"
-	"intel/isecl/lib/common/validation"
-	log "github.com/sirupsen/logrus"
 	"os"
 
 	"github.com/pkg/errors"
@@ -21,7 +21,6 @@ import (
 //-------------------------------------------------------------------------------------------------
 // Public interface/structures
 //-------------------------------------------------------------------------------------------------
-
 
 type HostsClient interface {
 
@@ -33,18 +32,18 @@ type HostsClient interface {
 	//  "bios_mle_uuid":"823a4ae6-b8cd-4c14-b89b-2a3be2d13985","vmm_mle_uuid":"45c03402-e33d-4b54-9893-de3bbd1f1681"}]}
 	SearchHosts(hostFilterCriteria *HostFilterCriteria) (*HostCollection, error)
 
-	// Registers the specified host with the Verfication Service. 
+	// Registers the specified host with the Verfication Service.
 	//
 	// https://server.com:8181/mtwilson/v2/hosts/
-	//  
-	// Input (HostCreateCriteria): 
+	//
+	// Input (HostCreateCriteria):
 	// {
 	// 	 "connection_string":"intel:https://0.0.0.0:1443;u=user;p=password",
 	// 	 "host_name":"MyHost",
 	// 	 "tls_policy_id":"TRUST_FIRST_CERTIFICATE"
 	// }
-	// 
-	// Output (Host): 
+	//
+	// Output (Host):
 	// {
 	// 	  "id":"6208006d-1101-4ca6-8855-8542cfa3f66a",
 	// 	  "host_name":"MyHost",
@@ -53,7 +52,7 @@ type HostsClient interface {
 	// 	  "tls_policy_id":"TRUST_FIRST_CERTIFICATE",
 	// 	  "flavorgroup_names":["automatic","platform_software"]
 	// }
-	CreateHost(hostCreateCriteria *HostCreateCriteria) (*Host, error) 
+	CreateHost(hostCreateCriteria *HostCreateCriteria) (*Host, error)
 
 	//  Updates the host with the specified attributes. Except for the host name, all other attributes can be updated.
 	//
@@ -61,11 +60,11 @@ type HostsClient interface {
 	//
 	//  Input: {"name":"192.168.0.2","connection_url":"https://192.168.0.1:443/sdk;admin;pwd","bios_mle_uuid":"823a4ae6-b8cd-4c14-b89b-2a3be2d13985",
 	//           "vmm_mle_uuid":"98101211-b617-4f59-8132-a5d05360acd6","tls_policy_id":"e1a527b5-2020-49c1-83be-6bd8bf641258"}
-	// 
+	//
 	//  Output: {"id":"e43424ca-9e00-4cb9-b038-9259d0307888","name":"192.168.0.2",
 	//           "connection_url":"https://192.168.0.1:443/sdk;admin;pwd","bios_mle_uuid":"823a4ae6-b8cd-4c14-b89b-2a3be2d13985",
 	//           "vmm_mle_uuid":"98101211-b617-4f59-8132-a5d05360acd6","tls_policy_id":"e1a527b5-2020-49c1-83be-6bd8bf641258"}
-	//UpdateHost(host *Host) (*Host, error)	
+	//UpdateHost(host *Host) (*Host, error)
 }
 
 // {
@@ -77,12 +76,12 @@ type HostsClient interface {
 // 	"tls_policy_id": "e1a1c631-e006-4ff2-aed1-6b42a2f5be6c"
 // }
 type Host struct {
-	Id string `json:"id"`
-	HostName string `json:"host_name"`
-	Description string `json:"description"`
+	Id               string `json:"id"`
+	HostName         string `json:"host_name"`
+	Description      string `json:"description"`
 	ConnectionString string `json:"connection_string"`
-	HardwareUUID string `json:"hardware_uuid"`
-	TlsPolicyId string `json:"tls_policy_id"`
+	HardwareUUID     string `json:"hardware_uuid"`
+	TlsPolicyId      string `json:"tls_policy_id"`
 }
 
 type HostCollection struct {
@@ -91,14 +90,14 @@ type HostCollection struct {
 
 type HostCreateCriteria struct {
 	ConnectionString string `json:"connection_string"`
-	HostName string `json:"host_name"`
-	TlsPolicyId string `json:"tls_policy_id"`
+	HostName         string `json:"host_name"`
+	TlsPolicyId      string `json:"tls_policy_id"`
 }
 
 type HostFilterCriteria struct {
-	Id string `json:"id"`
-	NameEqualTo string `json:"nameEqualTo"`
-	NameContains string `json:"nameContains"`
+	Id                  string `json:"id"`
+	NameEqualTo         string `json:"nameEqualTo"`
+	NameContains        string `json:"nameContains"`
 	DescriptionContains string `json:"descriptionContains"`
 }
 
@@ -106,25 +105,25 @@ type HostFilterCriteria struct {
 // Implementation
 //-------------------------------------------------------------------------------------------------
 
- type hostsClientImpl struct {
-	 httpClient *http.Client
-	 cfg *VSClientConfig
+type hostsClientImpl struct {
+	httpClient *http.Client
+	cfg        *VSClientConfig
 }
 
 func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteria) (*HostCollection, error) {
 	log.Trace("vsclient/hosts_client:SearchHosts() Entering")
 	defer log.Trace("vsclient/hosts_client:SearchHosts() Leaving")
 
-	hosts := HostCollection {}
+	hosts := HostCollection{}
 
 	url := fmt.Sprintf("%s/hosts", client.cfg.BaseURL)
-	request, _:= http.NewRequest("GET", url, nil)
-	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
+	request, _ := http.NewRequest("GET", url, nil)
+	jwtToken, err := context.GetenvString(constants.EnvBearerToken, "BEARER_TOKEN")
 	if jwtToken == "" || err != nil {
 		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
 		return nil, errors.Wrap(err, "vsclient/hosts_client:SearchHosts() BEARER_TOKEN is not defined in environment")
 	}
-	request.Header.Set("Authorization", "Bearer "+ jwtToken)
+	request.Header.Set("Authorization", "Bearer "+jwtToken)
 
 	query := request.URL.Query()
 
@@ -156,7 +155,7 @@ func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteri
     if err != nil {
         return nil, errors.Wrapf(err, "vsclient/hosts_client:SearchHosts() Error making request to %s", url)
 	}
-	
+
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
@@ -178,12 +177,11 @@ func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteri
 	return &hosts, nil
 }
 
-
 //
-// 
+//
 //  https://server.com:8443/mtwilson/v2/tls-policies
 //
-//  Input: 
+//  Input:
 //  {
 //       "name":"vcenter1_shared_policy",
 //       "descriptor":{
@@ -193,8 +191,8 @@ func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteri
 //       },
 //       "private":false
 //  }
-// 
-//  Output: 
+//
+//  Output:
 //  {
 //       "id":"3e75091f-4657-496c-a721-8a77931ee9da",
 //       "name":"vcenter1_shared_policy",
@@ -212,7 +210,6 @@ func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteri
 // 	return tlsPolicy, errors.New("GetHVsTlsPolicy not implemented")
 // }
 
-
 func (client *hostsClientImpl) CreateHost(hostCreateCriteria *HostCreateCriteria) (*Host, error) {
 	log.Trace("vsclient/hosts_client:CreateHost() Entering")
 	defer log.Trace("vsclient/hosts_client:CreateHost() Leaving")
@@ -224,16 +221,15 @@ func (client *hostsClientImpl) CreateHost(hostCreateCriteria *HostCreateCriteria
 		return nil, errors.Wrap(err, "vsclient/hosts_client:CreateHost() Error while marshalling hostcreate criteria")
 	}
 
-
 	url := fmt.Sprintf("%s/hosts", client.cfg.BaseURL)
-	request, _:= http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	request.Header.Set("Content-Type", "application/json")
-	jwtToken, err := context.GetenvString(constants.BearerTokenEnv, "BEARER_TOKEN")
+	jwtToken, err := context.GetenvString(constants.EnvBearerToken, "BEARER_TOKEN")
 	if jwtToken == "" || err != nil {
 		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
 		return nil, errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
 	}
-	request.Header.Set("Authorization", "Bearer "+ jwtToken)
+	request.Header.Set("Authorization", "Bearer "+jwtToken)
 
 	log.Debugf("vsclient/hosts_client:CreateHost() Sending Post request to url %s with json body: %s ", url, string(jsonData))
 
@@ -281,7 +277,7 @@ func (client *hostsClientImpl) UpdateHost(host *Host) (*Host, error) {
 	}
 
 	url := fmt.Sprintf("%s/hosts/%s", client.cfg.BaseURL, host.Id)
-	request, _:= http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
+	request, _ := http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
 	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 
 	log.Debugf("vsclient/hosts_client:UpdateHost() Sending PUT request to url %s, json: %s ", url, string(jsonData))
