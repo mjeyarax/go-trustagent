@@ -19,8 +19,6 @@ import (
 const (
 	TpmSecretKey   = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
 	AikSecretKey   = "beefbeefbeefbeefbeefbeefbeefbeefbeefbeef"
-	TAgentUser     = "tagent"
-	TAgentPassword = "TAgentAdminPassword"
 )
 
 func TestTakeOwnership(t *testing.T) {
@@ -98,8 +96,6 @@ func TestCreateHostDefault(t *testing.T) {
 
 	cfg := &config.TrustAgentConfiguration{}
 	cfg.TrustAgentService.Port = 8045
-	cfg.TrustAgentService.Username = TAgentUser
-	cfg.TrustAgentService.Password = TAgentPassword
 
 	// create mocks that return no hosts on 'SearchHosts' (i.e. host does not exist in hvs) and
 	// host with an new id for 'CreateHost'
@@ -118,8 +114,6 @@ func TestCreateHostExisting(t *testing.T) {
 
 	cfg := &config.TrustAgentConfiguration{}
 	cfg.TrustAgentService.Port = 8045
-	cfg.TrustAgentService.Username = TAgentUser
-	cfg.TrustAgentService.Password = TAgentPassword
 
 	existingHost := vsclient.Host{
 		Id:               "068b5e88-1886-4ac2-a908-175cf723723d",
