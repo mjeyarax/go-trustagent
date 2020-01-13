@@ -207,7 +207,7 @@ func uninstall() error {
 
 func newVSClientConfig(cfg *config.TrustAgentConfiguration) (*vsclient.VSClientConfig, error) {
 
-	jwtToken := os.Getenv(constants.BearerTokenEnv)
+	jwtToken := os.Getenv(constants.EnvBearerToken)
 	if jwtToken == "" {
 		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
 		return nil, errors.New("BEARER_TOKEN is not defined in environment")

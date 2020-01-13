@@ -46,7 +46,7 @@ const (
 	DefaultKeyAlgorithmLength  = 3072
 	DefaultTLSCertIP           = "127.0.0.1"
 	DefaultTLSCertDNS          = "CN=trustagent"
-	BearerTokenEnv             = "BEARER_TOKEN"
+	EnvBearerToken             = "BEARER_TOKEN"
 	JWTCertsCacheTime          = "1m"
 	AdministratorGroup         = "Administrator"
 	EnvTPMOwnerSecret          = "TPM_OWNER_SECRET"

@@ -62,7 +62,6 @@ type TrustAgentConfiguration struct {
 }
 
 var mu sync.Mutex
-var context setup.Context
 
 func NewConfigFromYaml(pathToYaml string) (*TrustAgentConfiguration, error) {
 
@@ -109,6 +108,7 @@ func (cfg *TrustAgentConfiguration) Save() error {
 func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) error {
 	var err error
 	dirty := false
+	var context setup.Context
 
 	//---------------------------------------------------------------------------------------------
 	// TPM_OWNER_SECRET
