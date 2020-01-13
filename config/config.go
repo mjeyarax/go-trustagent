@@ -38,8 +38,6 @@ type TrustAgentConfiguration struct {
 	LogEnableStdout   bool
 	LogEntryMaxLength int
 	TrustAgentService struct {
-		Username string
-		Password string
 		Port     int
 	}
 	HVS struct {
