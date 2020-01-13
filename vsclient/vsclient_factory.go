@@ -25,6 +25,7 @@ type VSClientFactory interface {
 type VSClientConfig struct {
 	// BaseURL specifies the URL base for the HVS, for example https://hvs.server:8443/v2
 	BaseURL string
+	// BearerToken is the JWT token required for authentication with external services
 	BearerToken string
 }
 
