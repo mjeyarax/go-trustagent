@@ -55,4 +55,8 @@ const (
 	EnvCMSBaseURL              = "CMS_BASE_URL"
 	EnvCMSTLSCertDigest        = "CMS_TLS_CERT_SHA384"
 	EnvAASBaseURL              = "AAS_API_URL"
+	EnvTLSCertCommonName       = "TA_TLS_CERT_CN"
+        EnvCertSanList             = "TA_TLS_CERT_IP"
+	DefaultTaTlsCn             = "Trust Agent TLS Certificate"
+	DefaultTaTlsSan            = "127.0.0.1,localhost"	
 )

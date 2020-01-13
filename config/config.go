@@ -16,6 +16,7 @@ import (
 	"intel/isecl/lib/common/validation"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -190,6 +191,29 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 			dirty = true
 		}
 	}
+
+	//---------------------------------------------------------------------------------------------
+        // TA_TLS_CERT_CN
+        //---------------------------------------------------------------------------------------------
+        environmentVariable, err = context.GetenvString(constants.EnvTLSCertCommonName, "Trustagent TLS Certificate Common Name")
+	if err == nil && environmentVariable != "" {
+		cfg.TLS.CertDNS = environmentVariable
+	} else if strings.TrimSpace(cfg.TLS.CertDNS) == "" {
+		log.Info("config/config:SaveConfiguration() TA_TLS_CERT_CN not defined, using default value")
+		cfg.TLS.CertDNS = constants.DefaultTaTlsCn
+	}
+
+	//---------------------------------------------------------------------------------------------
+        // TA_TLS_CERT_IP
+        //---------------------------------------------------------------------------------------------
+        environmentVariable, err = context.GetenvString(constants.EnvCertSanList, "Trustagent TLS Certificate SAN LIST")
+        if err == nil && environmentVariable != "" {
+                cfg.TLS.CertIP = environmentVariable
+        } else if strings.TrimSpace(cfg.TLS.CertIP) == "" {
+                log.Info("config/config:SaveConfiguration() TA_TLS_CERT_IP not defined, using default value")
+                cfg.TLS.CertIP = constants.DefaultTaTlsSan
+        }
+
 
 	//---------------------------------------------------------------------------------------------
 	// Save config if 'dirty'

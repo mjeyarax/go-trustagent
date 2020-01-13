@@ -149,6 +149,8 @@ mkdir -p $TRUSTAGENT_LOG_DIR
 mkdir -p $TRUSTAGENT_VAR_DIR
 mkdir -p $TRUSTAGENT_VAR_DIR/system-info
 mkdir -p $TRUSTAGENT_VAR_DIR/ramfs
+mkdir -p $TRUSTAGENT_CFG_DIR/cacerts
+mkdir -p $TRUSTAGENT_CFG_DIR/jwt
 
 # copy 'tagent' to bin dir
 cp $TRUSTAGENT_EXE $TRUSTAGENT_BIN_DIR/ 

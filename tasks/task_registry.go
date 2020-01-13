@@ -92,7 +92,7 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 	downloadTLSCert := setup.Download_Cert{
 		Flags:              flags,
 		KeyFile:            constants.TLSKeyFilePath,
-		CertFile:           constants.TLSKeyFilePath,
+		CertFile:           constants.TLSCertFilePath,
 		KeyAlgorithm:       constants.DefaultKeyAlgorithm,
 		KeyAlgorithmLength: constants.DefaultKeyAlgorithmLength,
 		CmsBaseURL:         cfg.CMS.BaseURL,

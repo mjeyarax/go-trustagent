@@ -8,12 +8,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	log "github.com/sirupsen/logrus"
-	"intel/isecl/go-trust-agent/constants"
-	"intel/isecl/lib/common/validation"
 	"io/ioutil"
 	"net/http"
-	"os"
+	"intel/isecl/lib/common/validation"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
 )
@@ -117,13 +115,8 @@ func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteri
 	hosts := HostCollection{}
 
 	url := fmt.Sprintf("%s/hosts", client.cfg.BaseURL)
-	request, _ := http.NewRequest("GET", url, nil)
-	jwtToken, err := context.GetenvString(constants.EnvBearerToken, "BEARER_TOKEN")
-	if jwtToken == "" || err != nil {
-		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.Wrap(err, "vsclient/hosts_client:SearchHosts() BEARER_TOKEN is not defined in environment")
-	}
-	request.Header.Set("Authorization", "Bearer "+jwtToken)
+	request, _:= http.NewRequest("GET", url, nil)
+	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 
 	query := request.URL.Query()
 
@@ -224,12 +217,7 @@ func (client *hostsClientImpl) CreateHost(hostCreateCriteria *HostCreateCriteria
 	url := fmt.Sprintf("%s/hosts", client.cfg.BaseURL)
 	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	request.Header.Set("Content-Type", "application/json")
-	jwtToken, err := context.GetenvString(constants.EnvBearerToken, "BEARER_TOKEN")
-	if jwtToken == "" || err != nil {
-		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.Wrap(err, "BEARER_TOKEN is not defined in environment")
-	}
-	request.Header.Set("Authorization", "Bearer "+jwtToken)
+	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 
 	log.Debugf("vsclient/hosts_client:CreateHost() Sending Post request to url %s with json body: %s ", url, string(jsonData))
 

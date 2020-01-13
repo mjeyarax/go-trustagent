@@ -53,9 +53,15 @@ func (aasjwt DownloadAASJWTCert) Run(c csetup.Context) error {
 	}
 
 	var aasURL string
-	if aasURL, err = c.GetenvString(aasjwt.cfg.AAS.BaseURL, "AAS Server URL"); err != nil {
-		return errors.Wrap(err, "tasks/download_aas_jwtcert:Run() AAS endpoint not set in environment")
+	if aasURL, err = c.GetenvString(consts.EnvAASBaseURL, "AAS Server URL"); err != nil {
+		return errors.Wrap(err, "tasks/download_aas_jwtcert:Run AAS endpoint not set in environment")
 	}
+
+	aasjwt.cfg, err = config.NewConfigFromYaml(consts.ConfigFilePath)
+        if err != nil {
+                fmt.Printf("ERROR: %+v\n", err)
+                return nil
+        }
 
 	if strings.HasSuffix(aasURL, "/") {
 		aasjwt.cfg.AAS.BaseURL = aasURL
