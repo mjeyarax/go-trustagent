@@ -46,7 +46,7 @@ func (client *caCertificatesClientImpl) DownloadEndorsementAuthorities() ([]byte
 	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return nil, errors.Wrapf(err,"vsclient/ca_certificates_client:DownloadEndorsementAuthorities() Error sending request", err)
+		return nil, errors.Wrapf(err,"vsclient/ca_certificates_client:DownloadEndorsementAuthorities() Error sending request")
 	} else {
 		if response.StatusCode != http.StatusOK {
 			return nil, errors.Errorf("vsclient/ca_certificates_client:DownloadEndorsementAuthorities() Request made to %s returned status %d", url, response.StatusCode)

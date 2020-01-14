@@ -60,7 +60,7 @@ func (client *flavorsClientImpl) CreateFlavor(flavorCreateCriteria *FlavorCreate
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return nil, errors.Wrapf(err, "vsclient/flavors_client:CreateFlavor() Error while making request to %s", url, err)
+		return nil, errors.Wrapf(err, "vsclient/flavors_client:CreateFlavor() Error while making request to %s", url)
 	}
 
 	defer response.Body.Close()

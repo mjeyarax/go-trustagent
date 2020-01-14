@@ -107,7 +107,7 @@ func isPathContainPemFile(name string) bool {
 
 	f, err := os.Open(name)
 	if err != nil {
-		log.WithError(err).Error("tasks/download_aas_jwtcert:isPathContainPemFile() Erron while opening file: %s", name)
+		log.WithError(err).Errorf("tasks/download_aas_jwtcert:isPathContainPemFile() Erron while opening file: %s", name)
 		return false
 	}
 	defer f.Close()

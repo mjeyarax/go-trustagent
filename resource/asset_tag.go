@@ -83,7 +83,7 @@ func setAssetTag(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.Tpm
 		// write the data
 		err = tpm.NvWrite(tpmSecretKey, tpmprovider.NV_IDX_ASSET_TAG, tagWriteRequest.Tag)
 		if err != nil {
-			log.WithError(err).Error("resource/asset_tag:setAssetTag() %s: Error writing asset tag")
+			log.WithError(err).Error("resource/asset_tag:setAssetTag() Error writing asset tag")
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 		}
 

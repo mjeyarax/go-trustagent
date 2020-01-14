@@ -134,7 +134,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if port > 0 {
 		port, err = strconv.Atoi(environmentVariable)
 		if err != nil {
-			return errors.Wrapf(err, "Setup error: Invalid TRUSTAGENT_PORT value '%s' [%s]", environmentVariable)
+			return errors.Wrapf(err, "Setup error: Invalid TRUSTAGENT_PORT value '%s'", environmentVariable)
 		}
 	}
 

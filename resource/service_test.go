@@ -23,8 +23,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/gorilla/mux"
-
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -39,7 +37,7 @@ const (
 func CreateTestConfig() *config.TrustAgentConfiguration {
 
 	cfg := config.TrustAgentConfiguration{}
-	cfg.LogLevel = log.TraceLevel
+	cfg.LogLevel = "trace"
 	cfg.TrustAgentService.Port = TestPort
 	cfg.Tpm.OwnerSecretKey = TpmSecretKey
 

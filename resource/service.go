@@ -23,8 +23,6 @@ import (
 	"syscall"
 	"time"
 	
-	commLog "intel/isecl/lib/common/log"
-
 	"github.com/gorilla/handlers"
 	"github.com/sirupsen/logrus"
 	"github.com/gorilla/mux"
@@ -72,8 +70,6 @@ func (e endpointError) Error() string {
 }
 
 var cacheTime, _ = time.ParseDuration(constants.JWTCertsCacheTime)
-var log = commLog.GetDefaultLogger()
-var secLog = commLog.GetSecurityLogger()
 
 //To be implemented if JWT certificate is needed from any other services
 func fnGetJwtCerts() error {

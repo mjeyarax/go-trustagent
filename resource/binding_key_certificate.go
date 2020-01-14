@@ -17,8 +17,8 @@ import (
 // Ex. curl --request GET --user tagentadmin:TAgentAdminPassword https://localhost:1443/v2/binding-key-certificate -k --noproxy "*"
 func getBindingKeyCertificate() endpointHandler {
 	return func(httpWriter http.ResponseWriter, httpRequest *http.Request) error {
-		log.Trace("resource/asset_tag:setAssetTag() Entering")
-		defer log.Trace("resource/asset_tag:setAssetTag() Leaving")
+		log.Trace("resource/binding_key_certificate:getBindingKeyCertificate() Entering")
+		defer log.Trace("resource/binding_key_certificate:getBindingKeyCertificate() Leaving")
 
 		log.Debugf("resource/binding_key_certificate:getBindingKeyCertificate() Request: %s", httpRequest.URL.Path)
 

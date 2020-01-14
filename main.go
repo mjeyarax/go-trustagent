@@ -83,7 +83,7 @@ func updatePlatformInfo() error {
 	}
 
 	// collect the platform info
-	secLog.Info("%s main:updatePlatformInfo() Trying to fetch platform info", message.SU)
+	secLog.Infof("%s main:updatePlatformInfo() Trying to fetch platform info", message.SU)
 	platformInfo, err := platforminfo.GetPlatformInfo()
 	if err != nil {
 		return errors.Wrap(err, "main:updatePlatformInfo() Error while fetching platform info")
@@ -108,7 +108,7 @@ func updateMeasureLog() error {
 	log.Trace("main:updateMeasureLog() Entering")
 	defer log.Trace("main:updateMeasureLog() Leaving")
 
-	secLog.Info("%s main:updateMeasureLog() Running %s using system administrative privilages", message.SU, constants.ModuleAnalysis)
+	secLog.Infof("%s main:updateMeasureLog() Running %s using system administrative privilages", message.SU, constants.ModuleAnalysis)
 	cmd := exec.Command(constants.ModuleAnalysis)
 	cmd.Dir = constants.BinDir
 	results, err := cmd.Output()
@@ -125,13 +125,13 @@ func printVersion() {
 	if len(os.Args) > 2 && os.Args[2] == "short" {
 		major, err := util.GetMajorVersion()
 		if err != nil {
-			fmt.Fprintln(os.Stderr,"Error while fetching Major version: %+v", err)
+			fmt.Fprintf(os.Stderr,"Error while fetching Major version: %+v \n", err)
 			os.Exit(1)
 		}
 
 		minor, err := util.GetMinorVersion()
 		if err != nil {
-			fmt.Fprintln(os.Stderr,"Error while fetching Minor version: %+v", err)
+			fmt.Fprintf(os.Stderr,"Error while fetching Minor version: %+v \n", err)
 			os.Exit(1)
 		}
 
@@ -206,13 +206,13 @@ func uninstall() error {
 func main() {
 
 	if len(os.Args) <= 1 {
-		fmt.Fprintln(os.Stderr, "Invalid arguments: %s\n", os.Args)
+		fmt.Fprintf(os.Stderr, "Invalid arguments: %s\n", os.Args)
 		printUsage()
 		os.Exit(1)
 	}
 
 	if err := validation.ValidateStrings(os.Args); err != nil {
-		secLog.WithError(err).Error("%s main:main() Invalid arguments", message.InvalidInputBadParam)
+		secLog.WithError(err).Errorf("%s main:main() Invalid arguments", message.InvalidInputBadParam)
 		fmt.Fprintln(os.Stderr, "Invalid arguments")
 		printUsage()
 		os.Exit(1)
@@ -220,7 +220,7 @@ func main() {
 
 	cfg, err := config.NewConfigFromYaml(constants.ConfigFilePath)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "main:main() Error while parsing configuration file: %+v", err)
+		fmt.Fprintf(os.Stderr, "main:main() Error while parsing configuration file: %+v \n", err)
 		os.Exit(1)
 	}
 
@@ -351,13 +351,13 @@ func main() {
 
 		registry, err := tasks.CreateTaskRegistry(cfg, os.Args)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error while creating task registry %+v", err)
+			fmt.Fprintf(os.Stderr, "Error while creating task registry %+v \n", err)
 			os.Exit(1)
 		}
 
 		err = registry.RunCommand(setupCommand)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error while running setup Command %s, %+v", setupCommand, err)
+			fmt.Fprintf(os.Stderr, "Error while running setup Command %s, %+v \n", setupCommand, err)
 			os.Exit(1)
 		}
 

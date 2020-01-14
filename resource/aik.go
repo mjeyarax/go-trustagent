@@ -7,10 +7,14 @@ package resource
 import (
 	"bytes"
 	"intel/isecl/go-trust-agent/constants"
+	commLog "intel/isecl/lib/common/log"
 	"io/ioutil"
 	"net/http"
 	"os"
 	)
+
+var log = commLog.GetDefaultLogger()
+var secLog = commLog.GetSecurityLogger()
 
 //
 // Reads the provision aik certificate from /opt/trustagent/configuration/aik.cert
