@@ -7,8 +7,6 @@
 package main
 
 import (
-	"common/log/message"
-	"common/validation"
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
@@ -19,6 +17,8 @@ import (
 	"intel/isecl/go-trust-agent/tasks"
 	"intel/isecl/go-trust-agent/util"
 	commonExec "intel/isecl/lib/common/exec"
+	"intel/isecl/lib/common/message"
+	"intel/isecl/lib/common/validation"
 	"intel/isecl/lib/platform-info/platforminfo"
 	"intel/isecl/lib/tpmprovider"
 	"os"

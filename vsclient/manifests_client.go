@@ -10,7 +10,6 @@
 	 "io/ioutil"
 	 "net/http"
 	 "intel/isecl/lib/common/validation"
-
 	 "github.com/pkg/errors"
 	 log "github.com/sirupsen/logrus"
  )

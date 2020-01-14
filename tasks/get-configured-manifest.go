@@ -5,13 +5,13 @@
 package tasks
 
 import (
-	"common/log/message"
 	"encoding/xml"
 	"fmt"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/vsclient"
 	"intel/isecl/lib/common/setup"
 	"intel/isecl/lib/common/validation"
+	"intel/isecl/lib/common/message"
 	"io/ioutil"
 	"os"
 	"strings"
