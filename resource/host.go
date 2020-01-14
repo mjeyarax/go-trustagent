@@ -10,8 +10,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-
-	"github.com/pkg/errors"
 )
 
 // Assuming that the /opt/trustagent/var/system-info/platform-info file has been create

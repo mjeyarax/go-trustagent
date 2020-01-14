@@ -6,7 +6,6 @@ package tasks
 
 import (
 	"encoding/hex"
-	"fmt"
 	"github.com/pkg/errors"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/lib/common/setup"

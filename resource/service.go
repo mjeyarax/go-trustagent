@@ -26,6 +26,7 @@ import (
 	commLog "intel/isecl/lib/common/log"
 
 	"github.com/gorilla/handlers"
+	"github.com/sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
@@ -122,7 +123,7 @@ func (service *TrustAgentService) Start() error {
 	// Setup signal handlers to gracefully handle termination
 	stop := make(chan os.Signal)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	httpLog := stdlog.New(log.StandardLogger().Writer(), "", 0)
+	httpLog := stdlog.New(logrus.StandardLogger().Writer(), "", 0)
 	h := &http.Server{
 		Addr:      fmt.Sprintf(":%d", service.port),
 		Handler:   handlers.RecoveryHandler(handlers.RecoveryLogger(httpLog), handlers.PrintRecoveryStack(true))(handlers.CombinedLoggingHandler(os.Stderr, service.router)),

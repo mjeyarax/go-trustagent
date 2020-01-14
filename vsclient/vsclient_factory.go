@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/pkg/errors"
 )
 
 type VSClientFactory interface {

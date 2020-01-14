@@ -17,7 +17,7 @@ import (
 	"intel/isecl/go-trust-agent/tasks"
 	"intel/isecl/go-trust-agent/util"
 	commonExec "intel/isecl/lib/common/exec"
-	"intel/isecl/lib/common/message"
+	"intel/isecl/lib/common/log/message"
 	"intel/isecl/lib/common/validation"
 	"intel/isecl/lib/platform-info/platforminfo"
 	"intel/isecl/lib/tpmprovider"
@@ -113,7 +113,7 @@ func updateMeasureLog() error {
 	cmd.Dir = constants.BinDir
 	results, err := cmd.Output()
 	if err != nil {
-		return errors.Errof("main:updateMeasureLog() module_analysis_sh error: %s", results)
+		return errors.Errorf("main:updateMeasureLog() module_analysis_sh error: %s", results)
 	}
 
 	log.Info("main:updateMeasureLog() Successfully updated measureLog.xml")
@@ -246,11 +246,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		err = LogConfiguration(true, cfg.LogEnableStdout)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "main:main() Error while setting log configuration %+v", err)
-			os.Exit(1)
-		}
+		cfg.LogConfiguration(true, cfg.LogEnableStdout)
 
 		err = updatePlatformInfo()
 		if err != nil {
@@ -311,11 +307,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		err = LogConfiguration(true, cfg.LogEnableStdout)
-		if err != nil {
-			log.Errorf("main:main() Error while setting log configuration %+v", err)
-			os.Exit(1)
-		}
+		cfg.LogConfiguration(true, cfg.LogEnableStdout)
 
 		// make sure the config is valid before starting the trust agent service
 		err = cfg.Validate()
@@ -341,7 +333,7 @@ func main() {
 
 	case "setup":
 
-		err = LogConfiguration(true, cfg.LogEnableStdout)
+		cfg.LogConfiguration(true, cfg.LogEnableStdout)
 		// only apply env vars to config before starting 'setup' tasks
 		cfg.LoadEnvironmentVariables()
 

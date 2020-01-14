@@ -10,6 +10,7 @@ import (
 	commLog "intel/isecl/lib/common/log"
 	"io/ioutil"
 	"net/http"
+	"github.com/pkg/errors"
 )
 
 var log = commLog.GetDefaultLogger()
@@ -53,7 +54,7 @@ func (client *caCertificatesClientImpl) DownloadEndorsementAuthorities() ([]byte
 
 		ea, err = ioutil.ReadAll(response.Body)
 		if err != nil {
-			return nil, errors.Errorf(err, "vsclient/ca_certificates_client:DownloadEndorsementAuthorities() Error reading response")
+			return nil, errors.Wrap(err, "vsclient/ca_certificates_client:DownloadEndorsementAuthorities() Error reading response")
 		}
 	}
 

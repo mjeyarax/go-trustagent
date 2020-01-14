@@ -11,7 +11,7 @@ import (
 	"intel/isecl/go-trust-agent/vsclient"
 	"intel/isecl/lib/common/setup"
 	"intel/isecl/lib/common/validation"
-	"intel/isecl/lib/common/message"
+	"intel/isecl/lib/common/log/message"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -83,14 +83,13 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 	envVar = os.Getenv(constants.FlavorLabels)
 	if envVar != "" {
 		flavorLabels = strings.Split(envVar, ",")
-		for _, lbl := range flavorLabels {
-			err = validation.ValidateStrings(lbl)
-			if err != nil {
-				secLog.Errorf("%s tasks/get-configured-manifest:Run() Flavor Label:'%s' is not a valid label", message.InvalidInputBadParam, lbl)
-				return errors.Errorf("tasks/get-configured-manifest:Run() Flavor Label:'%s' is not a valid label", lbl)
-			}
-		}
 	}
+	err = validation.ValidateStrings(flavorLabels)
+        if err != nil {
+                secLog.Errorf("%s tasks/get-configured-manifest:Run() Flavor Labels:'%s' are not valid labels", message.InvalidInputBadParam, constants.FlavorLabels)
+                return errors.Errorf("tasks/get-configured-manifest:Run()  Flavor Labels:'%s' are not valid labels", constants.FlavorLabels)
+        }
+
 	if len(flavorUUIDs) == 0 && len(flavorLabels) == 0 {
 		return errors.Errorf("tasks/get-configured-manifest:Run() No manifests were specified via the '%s' or '%s' environment variables", constants.FlavorUUIDs, constants.FlavorLabels)
 	}

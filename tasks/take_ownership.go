@@ -5,7 +5,6 @@
 package tasks
 
 import (
-	"fmt"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/lib/common/crypt"
 	"intel/isecl/lib/common/setup"

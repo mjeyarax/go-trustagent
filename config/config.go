@@ -8,8 +8,6 @@ import (
 	commLog "intel/isecl/lib/common/log"
 	"intel/isecl/lib/common/log/message"
 	commLogInt "intel/isecl/lib/common/log/setup"
-	"intel/isecl/lib/common/setup"
-	"errors"
 	"fmt"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/lib/common/setup"
@@ -22,6 +20,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -71,7 +70,7 @@ func NewConfigFromYaml(pathToYaml string) (*TrustAgentConfiguration, error) {
 		yaml.NewDecoder(file).Decode(&c)
 	} else {
 		// file doesnt exist, create a new blank one
-		c.LogLevel = log.InfoLevel
+		c.LogLevel = logrus.InfoLevel.String()
 	}
 
 	c.configFile = pathToYaml
@@ -104,7 +103,7 @@ func (cfg *TrustAgentConfiguration) Save() error {
 	return yaml.NewEncoder(file).Encode(cfg)
 }
 
-func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) error {
+func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	var err error
 	dirty := false
 	var context setup.Context
@@ -116,9 +115,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	if environmentVariable != "" && cfg.Tpm.OwnerSecretKey != environmentVariable {
 		cfg.Tpm.OwnerSecretKey = environmentVariable
 		dirty = true
-	} else if strings.TrimSpace(tpmOwnerSecret) == ""{
-		return errors.Wrap(err, "TPM_OWNER_SECRET is not defined in environment or configuration file")
-	}
+	} 
 
 	//---------------------------------------------------------------------------------------------
 	// MTWILSON_API_URL
@@ -127,8 +124,6 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables(c setup.Context) er
 	if environmentVariable != "" && cfg.HVS.Url != environmentVariable {
 		cfg.HVS.Url = environmentVariable
 		dirty = true
-	} else if strings.TrimSpace(hvsApiUrl) == ""{
-		return errors.Wrap(err, "MTWILSON_API_URL is not defined in environment or configuration file")
 	}
 
 	//---------------------------------------------------------------------------------------------
@@ -261,13 +256,13 @@ func (cfg *TrustAgentConfiguration) PrintConfigSetting(settingKey string) {
 	}
 }
 
-func LogConfiguration(stdOut, logFile bool) {
+func (cfg *TrustAgentConfiguration) LogConfiguration(stdOut, logFile bool) {
 	log.Trace("config/config:LogConfiguration() Entering")
 	defer log.Trace("config/config:LogConfiguration() Leaving")
 
 	// creating the log file if not preset
 	var ioWriterDefault io.Writer
-	defaultLogFile, _ := os.OpenFile(constants.DefautLogFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0660)
+	defaultLogFile, _ := os.OpenFile(constants.DefaultLogFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0660)
 	secLogFile, _ := os.OpenFile(constants.SecurityLogFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0660)
 
 	ioWriterDefault = defaultLogFile
@@ -279,17 +274,17 @@ func LogConfiguration(stdOut, logFile bool) {
 	}
 	ioWriterSecurity := io.MultiWriter(ioWriterDefault, secLogFile)
 
-	if Configuration.LogLevel == "" {
-		Configuration.LogLevel = logrus.InfoLevel.String()
+	if cfg.LogLevel == "" {
+		cfg.LogLevel = logrus.InfoLevel.String()
 	}
 
-	llp, err := logrus.ParseLevel(Configuration.LogLevel)
+	llp, err := logrus.ParseLevel(cfg.LogLevel)
 	if err != nil {
-		Configuration.LogLevel = logrus.InfoLevel.String()
-		llp, _ = logrus.ParseLevel(Configuration.LogLevel)
+		cfg.LogLevel = logrus.InfoLevel.String()
+		llp, _ = logrus.ParseLevel(cfg.LogLevel)
 	}
-	commLogInt.SetLogger(commLog.DefaultLoggerName, llp, &commLog.LogFormatter{MaxLength: Configuration.LogEntryMaxLength}, ioWriterDefault, false)
-	commLogInt.SetLogger(commLog.SecurityLoggerName, llp, &commLog.LogFormatter{MaxLength: Configuration.LogEntryMaxLength}, ioWriterSecurity, false)
+	commLogInt.SetLogger(commLog.DefaultLoggerName, llp, &commLog.LogFormatter{MaxLength: cfg.LogEntryMaxLength}, ioWriterDefault, false)
+	commLogInt.SetLogger(commLog.SecurityLoggerName, llp, &commLog.LogFormatter{MaxLength: cfg.LogEntryMaxLength}, ioWriterSecurity, false)
 
 	secLog.Infof("config/config:LogConfiguration() %s", message.LogInit)
 	log.Infof("config/config:LogConfiguration() %s", message.LogInit)

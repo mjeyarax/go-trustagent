@@ -6,7 +6,6 @@ package resource
 
 import (
 	"bytes"
-	commLog "intel/isecl/lib/common/log"
 	"intel/isecl/go-trust-agent/constants"
 	"io/ioutil"
 	"net/http"

@@ -13,7 +13,7 @@ const (
 	ModuleAnalysis             = BinDir + "module_analysis.sh"
 	LogDir                     = "/var/log/trustagent/"
 	DefaultLogFilePath         = LogDir + "trustagent.log"
-	SecureLogFilePath          = LogDir + "trustagent-security.log"
+	SecurityLogFilePath        = LogDir + "trustagent-security.log"
 	TLSCertFilePath            = ConfigDir + "tls-cert.pem"
 	TLSKeyFilePath             = ConfigDir + "tls-key.pem"
 	EndorsementAuthoritiesFile = ConfigDir + "endorsement.pem"
@@ -31,6 +31,7 @@ const (
 	TagentUserName             = "tagent"
 	DefaultPort                = 1443
 	FlavorUUIDs                = "FLAVOR_UUIDS"
+	DefaultLogEntryMaxlength   = 300
 	FlavorLabels               = "FLAVOR_LABELS"
 	ServiceName                = "tagent.service"
 	AASServiceName             = "TA"
@@ -39,7 +40,7 @@ const (
 	ServiceStartCommand        = "systemctl start " + ServiceName
 	ServiceDisableCommand      = "systemctl disable " + ServiceName
 	UninstallTbootXmScript     = "/opt/tbootxm/bin/tboot-xm-uninstall.sh"
-	LogEntryMaxlengthEnv       = 300
+	LogEntryMaxlengthEnv       = "LOG_ENTRY_MAXLENGTH"
 	TrustedJWTSigningCertsDir  = ConfigDir + "jwt/"
 	TrustedCaCertsDir          = ConfigDir + "cacerts/"
 	DefaultKeyAlgorithm        = "rsa"

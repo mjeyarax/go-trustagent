@@ -11,7 +11,6 @@ import (
 	consts "intel/isecl/go-trust-agent/constants"
 	"intel/isecl/lib/clients"
 	"intel/isecl/lib/common/crypt"
-	commLog "intel/isecl/lib/common/log"
 	csetup "intel/isecl/lib/common/setup"
 	"io"
 	"io/ioutil"

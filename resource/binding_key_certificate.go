@@ -6,7 +6,6 @@ package resource
 
 import (
 	"bytes"
-	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/constants"
 	"io/ioutil"
 	"net/http"

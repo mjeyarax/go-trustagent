@@ -8,10 +8,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"intel/isecl/lib/common/validation"
 	"io/ioutil"
 	"net/http"
-	"intel/isecl/lib/common/validation"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
 )
@@ -115,7 +114,7 @@ func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteri
 	hosts := HostCollection{}
 
 	url := fmt.Sprintf("%s/hosts", client.cfg.BaseURL)
-	request, _:= http.NewRequest("GET", url, nil)
+	request, _ := http.NewRequest("GET", url, nil)
 	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 
 	query := request.URL.Query()
@@ -217,7 +216,7 @@ func (client *hostsClientImpl) CreateHost(hostCreateCriteria *HostCreateCriteria
 	url := fmt.Sprintf("%s/hosts", client.cfg.BaseURL)
 	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
+	request.Header.Set("Authorization", "Bearer "+ client.cfg.BearerToken)
 
 	log.Debugf("vsclient/hosts_client:CreateHost() Sending Post request to url %s with json body: %s ", url, string(jsonData))
 
