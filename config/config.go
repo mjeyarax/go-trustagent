@@ -134,7 +134,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if port > 0 {
 		port, err = strconv.Atoi(environmentVariable)
 		if err != nil {
-			return fmt.Errorf("Setup error: Invalid TRUSTAGENT_PORT value '%s' [%s]", environmentVariable, err.Error())
+			return errors.Wrapf(err, "Setup error: Invalid TRUSTAGENT_PORT value '%s' [%s]", environmentVariable)
 		}
 	}
 
@@ -176,7 +176,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 		}
 
 		if err = validation.ValidateHexString(environmentVariable); err != nil {
-			return fmt.Errorf("Setup error:  %s is not a valid hex string: %s", constants.EnvCMSTLSCertDigest, environmentVariable)
+			return errors.Errorf("Setup error:  %s is not a valid hex string: %s", constants.EnvCMSTLSCertDigest, environmentVariable)
 		}
 
 		if cfg.CMS.TLSCertDigest != environmentVariable {
