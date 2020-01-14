@@ -22,9 +22,10 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-	
+
+	log "github.com/sirupsen/logrus"
+	commLog "intel/isecl/lib/common/log"
 	"github.com/gorilla/handlers"
-	"github.com/sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
@@ -58,23 +59,25 @@ type privilegeError struct {
 }
 
 func (e privilegeError) Error() string {
-	log.Trace("resource/service:Error() Entering")
-	defer log.Trace("resource/service:Error() Leaving")
+	log.Trace("resource/resource:Error() Entering")
+	defer log.Trace("resource/resource:Error() Leaving")
 	return fmt.Sprintf("%d: %s", e.StatusCode, e.Message)
 }
 
 func (e endpointError) Error() string {
-	log.Trace("resource/service:Error() Entering")
-	defer log.Trace("resource/service:Error() Leaving")
+	log.Trace("resource/resource:Error() Entering")
+	defer log.Trace("resource/resource:Error() Leaving")
 	return fmt.Sprintf("%d: %s", e.StatusCode, e.Message)
 }
 
 var cacheTime, _ = time.ParseDuration(constants.JWTCertsCacheTime)
+var clog = commLog.GetDefaultLogger()
+var seclog = commLog.GetSecurityLogger()
 
 //To be implemented if JWT certificate is needed from any other services
 func fnGetJwtCerts() error {
-	log.Trace("server:fnGetJwtCerts() Entering")
-	defer log.Trace("server:fnGetJwtCerts() Leaving")
+	clog.Trace("server:fnGetJwtCerts() Entering")
+	defer clog.Trace("server:fnGetJwtCerts() Leaving")
 	return nil
 }
 
@@ -130,21 +133,18 @@ func (service *TrustAgentService) Start() error {
 	// dispatch web server go routine
 	go func() {
 		if err := h.ListenAndServeTLS(constants.TLSCertFilePath, constants.TLSKeyFilePath); err != nil {
-			secLog.Errorf("tasks/service:Start() %s", message.TLSConnectFailed)
-			secLog.WithError(err).Fatalf("server:startServer() Failed to start HTTPS server: %s\n", err.Error())
-			log.Tracef("%+v", err)
+			clog.WithError(err).Info("Failed to start trustagent server")
 			stop <- syscall.SIGTERM
 		}
 	}()
-	secLog.Info(message.ServiceStart)
-	secLog.Infof("TrustAgent service is running: %d", service.port)
+
+	clog.Infof("TrustAgent service is running: %d", service.port)
 
 	<-stop
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := h.Shutdown(ctx); err != nil {
-		fmt.Printf("Failed to gracefully shutdown webserver: %v\n", err)
-		log.WithError(err).Info("Failed to gracefully shutdown webserver")
+		clog.WithError(err).Info("Failed to gracefully shutdown webserver")
 		return err
 	}
 	secLog.Info(message.ServiceStop)
@@ -155,15 +155,15 @@ func (service *TrustAgentService) Start() error {
 // replace intel/isecl/lib/common => gitlab.devtools.intel.com/sst/isecl/lib/common.git v1.0/task/roles-and-permissions
 // requiresPermission - ensures that correct permission is present in JWT
 func requiresPermission(eh endpointHandler, permissionNames []string) endpointHandler {
-	log.Trace("resource/service:requiresPermission() Entering")
-	defer log.Trace("resource/service:requiresPermission() Leaving")
+	log.Trace("resource/resource:requiresPermission() Entering")
+	defer log.Trace("resource/resource:requiresPermission() Leaving")
 	return func(w http.ResponseWriter, r *http.Request) error {
 		privileges, err := commContext.GetUserPermissions(r)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Could not get user roles from http context"))
-			secLog.Errorf("resource/service:requiresPermission() %s Roles: %v | Context: %v", message.AuthenticationFailed, permissionNames, r.Context())
-			return errors.Wrap(err, "resource/service:requiresPermission() Could not get user roles from http context")
+			seclog.Errorf("resource/resource:requiresPermission() %s Roles: %v | Context: %v", message.AuthenticationFailed, permissionNames, r.Context())
+			return errors.Wrap(err, "resource/resource:requiresPermission() Could not get user roles from http context")
 		}
 		reqPermissions := ct.PermissionInfo{Service: constants.AASServiceName, Rules: permissionNames}
 
@@ -171,11 +171,11 @@ func requiresPermission(eh endpointHandler, permissionNames []string) endpointHa
 			true)
 		if !foundMatchingPermission {
 			w.WriteHeader(http.StatusUnauthorized)
-			secLog.Error(message.UnauthorizedAccess)
-			secLog.Errorf("resource/service:requiresPermission() %s Insufficient privileges to access %s", message.UnauthorizedAccess, r.RequestURI)
+			seclog.Error(message.UnauthorizedAccess)
+			seclog.Errorf("resource/resource:requiresPermission() %s Insufficient privileges to access %s", message.UnauthorizedAccess, r.RequestURI)
 			return &privilegeError{Message: "Insufficient privileges to access " + r.RequestURI, StatusCode: http.StatusUnauthorized}
 		}
-		secLog.Infof("resource/service:requiresPermission() %s - %s", message.AuthorizedAccess, r.RequestURI)
+		seclog.Infof("resource/resource:requiresPermission() %s - %s", message.AuthorizedAccess, r.RequestURI)
 		return eh(w, r)
 	}
 }
@@ -185,8 +185,8 @@ func requiresPermission(eh endpointHandler, permissionNames []string) endpointHa
 type endpointHandler func(w http.ResponseWriter, r *http.Request) error
 
 func errorHandler(eh endpointHandler) http.HandlerFunc {
-	log.Trace("resource/service:errorHandler() Entering")
-	defer log.Trace("resource/service:errorHandler() Leaving")
+	log.Trace("resource/resource:errorHandler() Entering")
+	defer log.Trace("resource/resource:errorHandler() Leaving")
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := eh(w, r); err != nil {
 			if gorm.IsRecordNotFoundError(err) {

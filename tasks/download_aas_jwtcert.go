@@ -11,6 +11,7 @@ import (
 	consts "intel/isecl/go-trust-agent/constants"
 	"intel/isecl/lib/clients"
 	"intel/isecl/lib/common/crypt"
+	commLog "intel/isecl/lib/common/log"
 	csetup "intel/isecl/lib/common/setup"
 	"io"
 	"io/ioutil"
@@ -21,6 +22,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+var cLog = commLog.GetDefaultLogger()
+var seclog = commLog.GetSecurityLogger()
+
 // DownloadAASJWTCert is a setup task for setting roles in AAS
 type DownloadAASJWTCert struct {
 	Flags []string
@@ -29,8 +33,8 @@ type DownloadAASJWTCert struct {
 
 // Run will run the AAS Connection setup task, but will skip if Validate() returns no errors
 func (aasjwt DownloadAASJWTCert) Run(c csetup.Context) error {
-	log.Trace("tasks/download_aas_jwtcert:Run() Entering")
-	defer log.Trace("tasks/download_aas_jwtcert:Run() Leaving")
+	cLog.Trace("tasks/download_aas_jwtcert:Run() Entering")
+	defer cLog.Trace("tasks/download_aas_jwtcert:Run() Leaving")
 
 	var err error
 
@@ -41,13 +45,13 @@ func (aasjwt DownloadAASJWTCert) Run(c csetup.Context) error {
 
 	err = fs.Parse(aasjwt.Flags)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "setup download-aas-jwt-cert: Unable to parse flags")
-		return errors.New("tasks/download_aas_jwtcert:Run() Unable to parse flags")
+		fmt.Println("setup download-aas-jwt-cert: Unable to parse flags")
+		return fmt.Errorf("setup download-aas-jwt-cert: Unable to parse flags")
 	}
 
 	if aasjwt.Validate(c) == nil && !*force {
 		fmt.Println("setup download-aas-jwt-cert: setup task already complete. Skipping...")
-		log.Info("tasks/download_aas_jwtcert:Run() AAS configuration config already setup, skipping ...")
+		cLog.Info("tasks/download_aas_jwtcert:Run() AAS configuration config already setup, skipping ...")
 		return nil
 	}
 
@@ -69,23 +73,23 @@ func (aasjwt DownloadAASJWTCert) Run(c csetup.Context) error {
 	}
 
 	aasjwt.cfg.Save()
-	log.Info("tasks/aas:Run() AAS endpoint updated")
+	cLog.Info("tasks/aas:Run() AAS endpoint updated")
 
 	//Fetch JWT Certificate from AAS
 	err = fnGetJwtCerts(aasjwt.cfg.AAS.BaseURL)
 	if err != nil {
-		log.Tracef("%+v", err)
-		return errors.Wrap(err, "tasks/download_aas_jwtcert:Run() Failed to fetch JWT Auth Certs")
+		cLog.Tracef("%+v", err)
+		return errors.Wrap(err, "Failed to fetch JWT Auth Certs")
 	}
 
-	log.Info("tasks/download_aas_jwtcert:Run() aasconnection setup task successful")
+	cLog.Info("tasks/download_aas_jwtcert:Run() aasconnection setup task successful")
 	return nil
 }
 
 // Validate checks whether or not the AAS Connection setup task was completed successfully
 func (aas DownloadAASJWTCert) Validate(c csetup.Context) error {
-	log.Trace("tasks/download_aas_jwtcert:Validate() Entering")
-	defer log.Trace("tasks/download_aas_jwtcert:Validate() Leaving")
+	cLog.Trace("tasks/download_aas_jwtcert:Validate() Entering")
+	defer cLog.Trace("tasks/download_aas_jwtcert:Validate() Leaving")
 
 	_, err := os.Stat(consts.TrustedJWTSigningCertsDir)
 	if os.IsNotExist(err) {
@@ -102,12 +106,8 @@ func (aas DownloadAASJWTCert) Validate(c csetup.Context) error {
 }
 
 func isPathContainPemFile(name string) bool {
-	log.Trace("tasks/download_aas_jwtcert:isPathContainPemFile() Entering")
-	defer log.Trace("tasks/download_aas_jwtcert:isPathContainPemFile() Leaving")
-
 	f, err := os.Open(name)
 	if err != nil {
-		log.WithError(err).Errorf("tasks/download_aas_jwtcert:isPathContainPemFile() Erron while opening file: %s", name)
 		return false
 	}
 	defer f.Close()
@@ -117,10 +117,10 @@ func isPathContainPemFile(name string) bool {
 
 	// if EOF detected path is empty
 	if err != io.EOF && len(fname) > 0 && strings.HasSuffix(fname[0].Name(), ".pem") {
-		log.Debug("tasks/download_aas_jwtcert:isPathContainPemFile() fname is ", fname[0].Name())
+		cLog.Trace("tasks/download_aas_jwtcert:isPathContainPemFile() fname is ", fname[0].Name())
 		_, errs := crypt.GetCertFromPemFile(name + "/" + fname[0].Name())
 		if errs == nil {
-			log.Error("tasks/download_aas_jwtcert:isPathContainPemFile() full path valid PEM ", name+"/"+fname[0].Name())
+			cLog.Trace("tasks/download_aas_jwtcert:isPathContainPemFile() full path valid PEM ", name+"/"+fname[0].Name())
 			return true
 		}
 	}
@@ -128,16 +128,16 @@ func isPathContainPemFile(name string) bool {
 }
 
 func fnGetJwtCerts(aasURL string) error {
-	log.Trace("tasks/download_aas_jwtcert:fnGetJwtCerts() Entering")
-	defer log.Trace("tasks/download_aas_jwtcert:fnGetJwtCerts() Leaving")
+	cLog.Trace("tasks/download_aas_jwtcert:fnGetJwtCerts() Entering")
+	defer cLog.Trace("tasks/download_aas_jwtcert:fnGetJwtCerts() Leaving")
 	url := aasURL + "noauth/jwt-certificates"
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Add("accept", "application/x-pem-file")
-	secLog.Debugf("tasks/download_aas_jwtcert:fnGetJwtCerts() Connecting to AAS Endpoint %s", url)
+	seclog.Debugf("tasks/download_aas_jwtcert:fnGetJwtCerts() Connecting to AAS Endpoint %s", url)
 
 	hc, err := clients.HTTPClientWithCADir(consts.TrustedCaCertsDir)
 	if err != nil {
-		return errors.Wrap(err, "tasks/download_aas_jwtcert:fnGetJwtCerts() Error setting up HTTP client")
+		return errors.Wrapf(err, "tasks/download_aas_jwtcert:fnGetJwtCerts() Error setting up HTTP client: %s", err.Error())
 	}
 
 	res, err := hc.Do(req)
@@ -153,7 +153,7 @@ func fnGetJwtCerts(aasURL string) error {
 
 	err = crypt.SavePemCertWithShortSha1FileName(body, consts.TrustedJWTSigningCertsDir)
 	if err != nil {
-		return errors.Wrap(err, "tasks/download_aas_jwtcert:fnGetJwtCerts() Error while saving certificate")
+		return errors.Wrap(err, "tasks/download_aas_jwtcert:fnGetJwtCerts() Error in certificate setup")
 	}
 
 	return nil

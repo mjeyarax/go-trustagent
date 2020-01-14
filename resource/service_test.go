@@ -23,6 +23,8 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/gorilla/mux"
+
+	log "github.com/sirupsen/logrus"
 )
 
 const (

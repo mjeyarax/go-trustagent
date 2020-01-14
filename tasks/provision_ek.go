@@ -141,6 +141,11 @@ func (task *ProvisionEndorsementKey) downloadEndorsementAuthorities() error {
 		task.caCertificatesClient = task.clientFactory.CACertificatesClient()
 	}
 
+	// initialize if nil
+	if task.caCertificatesClient == nil {
+		task.caCertificatesClient = task.clientFactory.CACertificatesClient()
+	}
+
 	ea, err := task.caCertificatesClient.DownloadEndorsementAuthorities()
 	if err != nil {
 		return errors.Wrap(err, "tasks/provision_ek:downloadEndorsementAuthorities() Error while downloading endorsement authorities")
@@ -195,6 +200,11 @@ func (task *ProvisionEndorsementKey) isEkRegisteredWithMtWilson() (bool, error) 
 		task.tpmEndorsementsClient = task.clientFactory.TpmEndorsementsClient()
 	}
 
+	// initialize if nil
+	if task.tpmEndorsementsClient == nil {
+		task.tpmEndorsementsClient = task.clientFactory.TpmEndorsementsClient()
+	}
+
 	hardwareUUID, err := platforminfo.HardwareUUID()
 	if err != nil {
 		return false, errors.Wrap(err, "tasks/provision_ek:isEkRegisteredWithMtWilson() Error while fetching hardware uuid")
@@ -208,6 +218,11 @@ func (task *ProvisionEndorsementKey) isEkRegisteredWithMtWilson() (bool, error) 
 func (task *ProvisionEndorsementKey) registerEkWithMtWilson() error {
 	log.Trace("tasks/provision_ek:registerEkWithMtWilson() Entering")
 	defer log.Trace("tasks/provision_ek:registerEkWithMtWilson() Leaving")
+
+	// initialize if nil
+	if task.tpmEndorsementsClient == nil {
+		task.tpmEndorsementsClient = task.clientFactory.TpmEndorsementsClient()
+	}
 
 	// initialize if nil
 	if task.tpmEndorsementsClient == nil {

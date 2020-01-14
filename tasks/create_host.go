@@ -84,6 +84,9 @@ func (task *CreateHost) Validate(c setup.Context) error {
 	// Initialize the PrivacyCA client using the factory - this will be reused in Run
 	task.hostsClient = task.clientFactory.HostsClient()
 
+	// Initialize the PrivacyCA client using the factory - this will be reused in Run
+	task.hostsClient = task.clientFactory.HostsClient()
+
 	hostFilterCriteria := vsclient.HostFilterCriteria{NameEqualTo: task.ip}
 	hostCollection, err := task.hostsClient.SearchHosts(&hostFilterCriteria)
 	if err != nil {

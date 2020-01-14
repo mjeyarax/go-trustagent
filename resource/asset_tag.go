@@ -10,6 +10,8 @@ import (
 	"intel/isecl/lib/tpmprovider"
 	"io/ioutil"
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // json request format sent from HVS...

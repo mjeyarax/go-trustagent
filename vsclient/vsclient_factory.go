@@ -9,7 +9,6 @@ import (
 	"intel/isecl/lib/clients"
 	"net/http"
 	"net/url"
-
 )
 
 type VSClientFactory interface {

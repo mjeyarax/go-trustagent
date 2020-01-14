@@ -31,6 +31,11 @@ func (task *DownloadPrivacyCA) Run(c setup.Context) error {
 		task.privacyCAClient = task.clientFactory.PrivacyCAClient()
 	}
 
+	// initialize if nil
+	if task.privacyCAClient == nil {
+		task.privacyCAClient = task.clientFactory.PrivacyCAClient()
+	}
+
 	ca, err := task.privacyCAClient.DownloadPrivacyCa()
 	if err != nil {
 		return errors.Wrap(err,"tasks/download_privacy_ca:Run() Error while downloading privacyCA file")

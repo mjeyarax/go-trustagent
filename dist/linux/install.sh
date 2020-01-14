@@ -7,7 +7,7 @@
 # 3. Create tagent user
 # 4. Create directories, copy files and own them by tagent user.
 # 5. Make sure tpm2-abrmd is started and deploy tagent service.
-# 6. If 'automatic provisioning' is enabled (PROVISION_ATTESTATION=y), initiate 'tagent setup'. 
+# 6. If 'automatic provisioning' is enabled (PROVISION_ATTESTATION=y), initiate 'tagent setup'.
 #    Otherwise, exit with a message that the user must provision the trust agent and start the
 #    service.
 #--------------------------------------------------------------------------------------------------
@@ -40,13 +40,13 @@ TPM2_ABRMD_SERVICE=tpm2-abrmd.service
 #--------------------------------------------------------------------------------------------------
 echo "Starting trustagent installation from " $USER_PWD
 
-if [[ $EUID -ne 0 ]]; then 
+if [[ $EUID -ne 0 ]]; then
     echo "This installer must be run as root"
     exit 1
 fi
 
 # make sure tagent.service is not running or install won't work
-systemctl status $TRUSTAGENT_SERVICE 2>&1 > /dev/null
+systemctl status $TRUSTAGENT_SERVICE 2>&1 >/dev/null
 if [ $? -eq 0 ]; then
     echo "Please stop the tagent service before running the installer"
     exit 1
@@ -55,7 +55,7 @@ fi
 # make sure dependencies are installed
 for i in ${TRUSTAGENT_DEPENDENCIES[@]}; do
     echo "Checking for dependency ${i}"
-    rpm -qa | grep ${i} > /dev/null
+    rpm -qa | grep ${i} >/dev/null
     if [ $? -ne 0 ]; then
         echo "Error: Dependency ${i} must be installed."
         exit 1
@@ -63,7 +63,7 @@ for i in ${TRUSTAGENT_DEPENDENCIES[@]}; do
 done
 
 # make sure tpm2-abrmd service is installed
-systemctl list-unit-files --no-pager | grep $TPM2_ABRMD_SERVICE > /dev/null
+systemctl list-unit-files --no-pager | grep $TPM2_ABRMD_SERVICE >/dev/null
 if [ $? -ne 0 ]; then
     echo "The tpm2-abrmd service must be installed"
     exit 1
@@ -153,31 +153,31 @@ mkdir -p $TRUSTAGENT_CFG_DIR/cacerts
 mkdir -p $TRUSTAGENT_CFG_DIR/jwt
 
 # copy 'tagent' to bin dir
-cp $TRUSTAGENT_EXE $TRUSTAGENT_BIN_DIR/ 
+cp $TRUSTAGENT_EXE $TRUSTAGENT_BIN_DIR/
 
 # copy module analysis scripts to bin dier
-cp $TRUSTAGENT_MODULE_ANALYSIS_SH $TRUSTAGENT_BIN_DIR/ 
-cp $TRUSTAGENT_MODULE_ANALYSIS_DA_SH $TRUSTAGENT_BIN_DIR/ 
+cp $TRUSTAGENT_MODULE_ANALYSIS_SH $TRUSTAGENT_BIN_DIR/
+cp $TRUSTAGENT_MODULE_ANALYSIS_DA_SH $TRUSTAGENT_BIN_DIR/
 cp $TRUSTAGENT_MODULE_ANALYSIS_DA_TCG_SH $TRUSTAGENT_BIN_DIR/
 
 # make a link in /usr/bin to tagent...
 ln -sfT $TRUSTAGENT_BIN_DIR/$TRUSTAGENT_EXE /usr/bin/$TRUSTAGENT_EXE
 
 # Install systemd script
-cp $TRUSTAGENT_SERVICE $TRUSTAGENT_HOME 
+cp $TRUSTAGENT_SERVICE $TRUSTAGENT_HOME
 
 # copy default and workload software manifest to /opt/trustagent/var/ (application-agent)
-if ! stat $TRUSTAGENT_VAR_DIR/manifest_* 1> /dev/null 2>&1; then
-  TA_VERSION=`tagent version short`
-  UUID=$(uuidgen)
-  cp manifest_tpm20.xml $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
-  sed -i "s/Uuid=\"\"/Uuid=\"${UUID}\"/g" $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
-  sed -i "s/Label=\"ISecL_Default_Application_Flavor_v\"/Label=\"ISecL_Default_Application_Flavor_v${TA_VERSION}_TPM2.0\"/g" $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
+if ! stat $TRUSTAGENT_VAR_DIR/manifest_* 1>/dev/null 2>&1; then
+    TA_VERSION=$(tagent version short)
+    UUID=$(uuidgen)
+    cp manifest_tpm20.xml $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
+    sed -i "s/Uuid=\"\"/Uuid=\"${UUID}\"/g" $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
+    sed -i "s/Label=\"ISecL_Default_Application_Flavor_v\"/Label=\"ISecL_Default_Application_Flavor_v${TA_VERSION}_TPM2.0\"/g" $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
 
-  UUID=$(uuidgen)
-  cp manifest_wlagent.xml $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
-  sed -i "s/Uuid=\"\"/Uuid=\"${UUID}\"/g" $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
-  sed -i "s/Label=\"ISecL_Default_Workload_Flavor_v\"/Label=\"ISecL_Default_Workload_Flavor_v${TA_VERSION}\"/g" $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
+    UUID=$(uuidgen)
+    cp manifest_wlagent.xml $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
+    sed -i "s/Uuid=\"\"/Uuid=\"${UUID}\"/g" $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
+    sed -i "s/Label=\"ISecL_Default_Workload_Flavor_v\"/Label=\"ISecL_Default_Workload_Flavor_v${TA_VERSION}\"/g" $TRUSTAGENT_VAR_DIR/manifest_"$UUID".xml
 fi
 
 # file ownership/permissions
@@ -193,15 +193,17 @@ chmod 1777 /tmp
 if [ -f "$TRUSTAGENT_CFG_DIR/tpm-version" ]; then
     rm -f $TRUSTAGENT_CFG_DIR/tpm-version
 fi
-echo "2.0" > $TRUSTAGENT_CFG_DIR/tpm-version
+echo "2.0" >$TRUSTAGENT_CFG_DIR/tpm-version
 
 #--------------------------------------------------------------------------------------------------
 # 5. Enable/configure services, etc.
 #--------------------------------------------------------------------------------------------------
 # make sure the tss user owns /dev/tpm0 or tpm2-abrmd service won't start (this file does not
 # exist when using the tpm simulator, so check for its existence)
-if [ -f /dev/tpm0 ]; then
+if [ -c /dev/tpm0 ]; then
     chown tss:tss /dev/tpm0
+fi
+if [ -c /dev/tpmrm0 ]; then
     chown tss:tss /dev/tpmrm0
 fi
 
@@ -209,7 +211,7 @@ fi
 systemctl enable $TPM2_ABRMD_SERVICE
 
 # Enable tagent service
-systemctl disable $TRUSTAGENT_SERVICE > /dev/null 2>&1
+systemctl disable $TRUSTAGENT_SERVICE >/dev/null 2>&1
 systemctl enable $TRUSTAGENT_HOME/$TRUSTAGENT_SERVICE
 systemctl daemon-reload
 
@@ -220,15 +222,15 @@ if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PR
     echo "Automatic provisioning is enabled, using mtwilson url $MTWILSON_API_URL"
 
     # make sure that tpm2-abrmd is running before running 'tagent setup'
-    systemctl status $TPM2_ABRMD_SERVICE 2>&1 > /dev/null
+    systemctl status $TPM2_ABRMD_SERVICE 2>&1 >/dev/null
     if [ $? -ne 0 ]; then
         echo "Starting $TPM2_ABRMD_SERVICE"
-        systemctl start $TPM2_ABRMD_SERVICE 2>&1 > /dev/null
+        systemctl start $TPM2_ABRMD_SERVICE 2>&1 >/dev/null
         sleep 3
 
         # TODO:  in production we want to check that is is running, but in development
         # the simulator needs to be started first -- for now warn, don't error...
-        systemctl status $TPM2_ABRMD_SERVICE 2>&1 > /dev/null
+        systemctl status $TPM2_ABRMD_SERVICE 2>&1 >/dev/null
         if [ $? -ne 0 ]; then
             echo "WARNING: Could not start $TPM2_ABRMD_SERVICE"
         fi
@@ -237,13 +239,13 @@ if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PR
     $TRUSTAGENT_EXE setup
     setup_results=$?
 
-    if [ $setup_results -eq 0 ]; then         
+    if [ $setup_results -eq 0 ]; then
 
         systemctl start $TRUSTAGENT_SERVICE
         echo "Waiting for $TRUSTAGENT_SERVICE to start"
         sleep 3
 
-        systemctl status $TRUSTAGENT_SERVICE 2>&1 > /dev/null
+        systemctl status $TRUSTAGENT_SERVICE 2>&1 >/dev/null
         if [ $? -ne 0 ]; then
             echo "Installation completed with errors - $TRUSTAGENT_SERVICE did not start."
             echo "Please check errors in syslog using \`journalctl -u $TRUSTAGENT_SERVICE\`"
@@ -251,7 +253,7 @@ if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PR
         fi
 
         echo "$TRUSTAGENT_SERVICE is running"
-    else 
+    else
         echo "'$TRUSTAGENT_EXE setup' failed"
         exit 1
     fi
