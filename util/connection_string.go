@@ -24,6 +24,6 @@ func GetConnectionString(cfg *config.TrustAgentConfiguration) (string, error) {
 		return "", errors.Wrap(err, "util/connection_string:GetConnectionString() Error While retrieving local IP")
 	}
 
-	connectionString := fmt.Sprintf("intel:https://%s:%d;", ip, cfg.TrustAgentService.Port)
+	connectionString := fmt.Sprintf("intel:https://%s:%d", ip, cfg.TrustAgentService.Port)
 	return connectionString, nil
 }

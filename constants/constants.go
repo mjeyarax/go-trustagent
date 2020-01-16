@@ -12,6 +12,7 @@ const (
 	TagentExe                  = BinDir + "tagent"
 	ModuleAnalysis             = BinDir + "module_analysis.sh"
 	LogDir                     = "/var/log/trustagent/"
+	HttpLogFile                = LogDir + "http.log"
 	DefaultLogFilePath         = LogDir + "trustagent.log"
 	SecurityLogFilePath        = LogDir + "trustagent-security.log"
 	TLSCertFilePath            = ConfigDir + "tls-cert.pem"

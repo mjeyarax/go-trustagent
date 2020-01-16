@@ -269,7 +269,7 @@ func main() {
 			log.Errorf("main:main() Could not parse tagent user uid '%s'", tagentUser.Uid)
 			os.Exit(1)
 		}
-
+		
 		gid, err := strconv.ParseUint(tagentUser.Gid, 10, 32)
 		if err != nil {
 			log.Errorf("main:main() Could not parse tagent user gid '%s'", tagentUser.Gid)
@@ -288,13 +288,21 @@ func main() {
 
 			return nil
 		})
+		_ = filepath.Walk(constants.LogDir, func(fileName string, info os.FileInfo, err error) error {
+                        err = os.Chown(fileName, int(uid), int(gid))
+                        if err != nil {
+                                log.Errorf("main:main() Could not own file '%s'", fileName)
+                                return err
+                        }
 
+                        return nil
+                })
 		// spawn 'tagent startService' as the 'tagent' user
 		cmd := exec.Command(constants.TagentExe, "startService")
 		cmd.SysProcAttr = &syscall.SysProcAttr{}
 		cmd.Dir = constants.BinDir
 		cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
-
+		
 		err = cmd.Start()
 		if err != nil {
 			log.Errorf("main:main() error while starting the command %s : %s", constants.TagentExe, err)
@@ -306,7 +314,7 @@ func main() {
 			fmt.Printf("'tagent startService' must be run as the agent user, not  user '%s'\n", currentUser.Username)
 			os.Exit(1)
 		}
-
+		
 		cfg.LogConfiguration(cfg.LogEnableStdout)
 
 		// make sure the config is valid before starting the trust agent service

@@ -82,6 +82,8 @@ func fnGetJwtCerts() error {
 }
 
 func CreateTrustAgentService(config *config.TrustAgentConfiguration, tpmFactory tpmprovider.TpmFactory) (*TrustAgentService, error) {
+	log.Trace("resource/service:CreateTrustAgentService() Entering")
+        defer log.Trace("resource/service:CreateTrustAgentService() Leaving")
 
 	if config.TrustAgentService.Port == 0 {
 		return nil, errors.New("Port cannot be zero")
@@ -108,8 +110,8 @@ func CreateTrustAgentService(config *config.TrustAgentConfiguration, tpmFactory 
 }
 
 func (service *TrustAgentService) Start() error {
-	log.Trace("server:Start() Entering")
-	defer log.Trace("server:Start() Leaving")
+	log.Trace("resource/service:Start() Entering")
+	defer log.Trace("resource/service:Start() Leaving")
 
 	tlsconfig := &tls.Config{
 		MinVersion: tls.VersionTLS12,
@@ -122,7 +124,17 @@ func (service *TrustAgentService) Start() error {
 	// Setup signal handlers to gracefully handle termination
 	stop := make(chan os.Signal)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	httpLog := stdlog.New(logrus.StandardLogger().Writer(), "", 0)
+
+	httpWriter := os.Stderr
+	if httpLogFile, err := os.OpenFile(constants.HttpLogFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666); err != nil {
+		secLog.WithError(err).Errorf("resource/service:Start() Failed to open http log file: %s\n", err.Error())
+		log.Tracef("resource/service:Start() %+v", err)
+	} else {
+		defer httpLogFile.Close()
+		httpWriter = httpLogFile
+	}
+
+	httpLog := stdlog.New(httpWriter, "", 0)
 	h := &http.Server{
 		Addr:      fmt.Sprintf(":%d", service.port),
 		Handler:   handlers.RecoveryHandler(handlers.RecoveryLogger(httpLog), handlers.PrintRecoveryStack(true))(handlers.CombinedLoggingHandler(os.Stderr, service.router)),
