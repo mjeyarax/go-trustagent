@@ -230,7 +230,7 @@ func (task *ProvisionAttestationIdentityKey) getTpmSymetricKey(key []byte) ([]by
 	if err != nil {
 		return nil, errors.Wrap(err,"tasks/provision_aik:getTpmSymetricKey() Error encrypting tpm symmetric key")
 	}
-	secLog.Info("%s tasks/provision_aik:getTpmSymetricKey()", message.EncKeyUsed)
+	secLog.Infof("%s tasks/provision_aik:getTpmSymetricKey() Returning encrypted tpm symmetric key", message.EncKeyUsed)
 
 	return ekAsymetricBytes, nil
 }
