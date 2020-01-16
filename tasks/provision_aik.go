@@ -19,6 +19,7 @@ import (
 	"intel/isecl/go-trust-agent/vsclient"
 	"intel/isecl/lib/common/crypt"
 	"intel/isecl/lib/common/setup"
+	"intel/isecl/lib/common/log/message"
 	"intel/isecl/lib/tpmprovider"
 	"io/ioutil"
 	"math/big"
@@ -229,6 +230,7 @@ func (task *ProvisionAttestationIdentityKey) getTpmSymetricKey(key []byte) ([]by
 	if err != nil {
 		return nil, errors.Wrap(err,"tasks/provision_aik:getTpmSymetricKey() Error encrypting tpm symmetric key")
 	}
+	secLog.Info("%s tasks/provision_aik:getTpmSymetricKey()", message.EncKeyUsed)
 
 	return ekAsymetricBytes, nil
 }
@@ -460,7 +462,7 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 	if err != nil {
 		return nil, errors.Wrap(err, "tasks/provision_aik:activateCredential() Error while performing tpm activate credential operation")
 	}
-
+	
 	//   - SymmetricBlob
 	//     - int32 length of encrypted blob
 	//     - TpmKeyParams

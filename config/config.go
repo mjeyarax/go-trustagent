@@ -100,6 +100,7 @@ func (cfg *TrustAgentConfiguration) Save() error {
 		}
 	}
 	defer file.Close()
+	secLog.Info(message.ConfigChanged)
 	return yaml.NewEncoder(file).Encode(cfg)
 }
 
@@ -167,16 +168,47 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	}
 
 	//---------------------------------------------------------------------------------------------
+        // LOG_ENTRY_MAXLENGTH
+        //---------------------------------------------------------------------------------------------
+	logEntryMaxLength, err := context.GetenvInt(constants.LogEntryMaxlengthEnv, "Maximum length of each entry in a log")
+	if err == nil && logEntryMaxLength >= 300 {
+		cfg.LogEntryMaxLength = logEntryMaxLength
+	} else {
+		log.Info("config/config:LoadEnvironmentVariables() Invalid Log Entry Max Length defined (should be >= ", constants.DefaultLogEntryMaxlength, "), using default value:", constants.DefaultLogEntryMaxlength)
+		cfg.LogEntryMaxLength = constants.DefaultLogEntryMaxlength
+	}
+
+	//---------------------------------------------------------------------------------------------
+        // TRUSTAGENT_LOG_LEVEL
+        //---------------------------------------------------------------------------------------------
+	ll, err := context.GetenvString("TRUSTAGENT_LOG_LEVEL", "Logging Level")
+	if err != nil {
+		if cfg.LogLevel == "" {
+			log.Infof("config/config:LoadEnvironmentVariables() LOG_LEVEL not defined, using default log level: Info")
+			cfg.LogLevel = logrus.InfoLevel.String()
+		}
+	} else {
+		llp, err := logrus.ParseLevel(ll)
+		if err != nil {
+			log.Info("config/config:LoadEnvironmentVariables() Invalid log level specified in env, using default log level: Info")
+			cfg.LogLevel = logrus.InfoLevel.String()
+		} else {
+			cfg.LogLevel = llp.String()
+			log.Infof("config/config:LoadEnvironmentVariables() Log level set %s\n", ll)
+		}
+	}
+
+	//---------------------------------------------------------------------------------------------
 	// CMS_TLS_CERT_SHA384
 	//---------------------------------------------------------------------------------------------
 	environmentVariable, err = context.GetenvString(constants.EnvCMSTLSCertDigest, "CMS TLS SHA384 Digest")
 	if environmentVariable != "" {
 		if len(environmentVariable) != 96 {
-			return fmt.Errorf("Setup error:  Invalid length %s: %d", constants.EnvCMSTLSCertDigest, len(environmentVariable))
+			return errors.Errorf("config/config:LoadEnvironmentVariables()  Invalid length %s: %d", constants.EnvCMSTLSCertDigest, len(environmentVariable))
 		}
 
 		if err = validation.ValidateHexString(environmentVariable); err != nil {
-			return errors.Errorf("Setup error:  %s is not a valid hex string: %s", constants.EnvCMSTLSCertDigest, environmentVariable)
+			return errors.Errorf("config/config:LoadEnvironmentVariables()  %s is not a valid hex string: %s", constants.EnvCMSTLSCertDigest, environmentVariable)
 		}
 
 		if cfg.CMS.TLSCertDigest != environmentVariable {
@@ -192,7 +224,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if err == nil && environmentVariable != "" {
 		cfg.TLS.CertDNS = environmentVariable
 	} else if strings.TrimSpace(cfg.TLS.CertDNS) == "" {
-		log.Info("config/config:SaveConfiguration() TA_TLS_CERT_CN not defined, using default value")
+		log.Info("config/config:LoadEnvironmentVariables() TA_TLS_CERT_CN not defined, using default value")
 		cfg.TLS.CertDNS = constants.DefaultTaTlsCn
 	}
 
@@ -203,7 +235,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
         if err == nil && environmentVariable != "" {
                 cfg.TLS.CertIP = environmentVariable
         } else if strings.TrimSpace(cfg.TLS.CertIP) == "" {
-                log.Info("config/config:SaveConfiguration() TA_TLS_CERT_IP not defined, using default value")
+                log.Info("config/config:LoadEnvironmentVariables() TA_TLS_CERT_IP not defined, using default value")
                 cfg.TLS.CertIP = constants.DefaultTaTlsSan
         }
 
@@ -214,7 +246,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if dirty {
 		err = cfg.Save()
 		if err != nil {
-			return errors.Wrap(err, "Setup error:  Error saving configuration")
+			return errors.Wrap(err, "config/config:LoadEnvironmentVariables:  Error saving configuration")
 		}
 	}
 
@@ -256,7 +288,7 @@ func (cfg *TrustAgentConfiguration) PrintConfigSetting(settingKey string) {
 	}
 }
 
-func (cfg *TrustAgentConfiguration) LogConfiguration(stdOut, logFile bool) {
+func (cfg *TrustAgentConfiguration) LogConfiguration(stdOut bool) {
 	log.Trace("config/config:LogConfiguration() Entering")
 	defer log.Trace("config/config:LogConfiguration() Leaving")
 
@@ -266,11 +298,8 @@ func (cfg *TrustAgentConfiguration) LogConfiguration(stdOut, logFile bool) {
 	secLogFile, _ := os.OpenFile(constants.SecurityLogFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0660)
 
 	ioWriterDefault = defaultLogFile
-	if stdOut && logFile {
+	if stdOut {
 		ioWriterDefault = io.MultiWriter(os.Stdout, defaultLogFile)
-	}
-	if stdOut && !logFile {
-		ioWriterDefault = os.Stdout
 	}
 	ioWriterSecurity := io.MultiWriter(ioWriterDefault, secLogFile)
 

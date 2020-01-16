@@ -246,7 +246,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		cfg.LogConfiguration(true, cfg.LogEnableStdout)
+		cfg.LogConfiguration(cfg.LogEnableStdout)
 
 		err = updatePlatformInfo()
 		if err != nil {
@@ -307,7 +307,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		cfg.LogConfiguration(true, cfg.LogEnableStdout)
+		cfg.LogConfiguration(cfg.LogEnableStdout)
 
 		// make sure the config is valid before starting the trust agent service
 		err = cfg.Validate()
@@ -333,7 +333,7 @@ func main() {
 
 	case "setup":
 
-		cfg.LogConfiguration(true, cfg.LogEnableStdout)
+		cfg.LogConfiguration(cfg.LogEnableStdout)
 		// only apply env vars to config before starting 'setup' tasks
 		cfg.LoadEnvironmentVariables()
 
