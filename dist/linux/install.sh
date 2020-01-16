@@ -29,9 +29,9 @@ TRUSTAGENT_MODULE_ANALYSIS_DA_SH=module_analysis_da.sh
 TRUSTAGENT_MODULE_ANALYSIS_DA_TCG_SH=module_analysis_da_tcg.sh
 TRUSTAGENT_SERVICE=tagent.service
 TRUSTAGENT_BIN_DIR=$TRUSTAGENT_HOME/bin
-TRUSTAGENT_LOG_DIR=$TRUSTAGENT_HOME/logs
+TRUSTAGENT_LOG_DIR=/var/log/trustagent
 TRUSTAGENT_CFG_DIR=$TRUSTAGENT_HOME/configuration
-TRUSTAGENT_VAR_DIR=/var/log/trustagent/
+TRUSTAGENT_VAR_DIR=/var/trustagent/
 TRUSTAGENT_DEPENDENCIES=('tpm2-abrmd-2.[01]' 'dmidecode-3' 'redhat-lsb-core-4.1' 'tboot-1.9.7' 'compat-openssl10-1.0')
 TPM2_ABRMD_SERVICE=tpm2-abrmd.service
 
