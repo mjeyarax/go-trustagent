@@ -1,44 +1,43 @@
 # GTA Low Level Design (ISecl v2.0)
 ## Introduction
-This is a low level design specification of Go Trust Agent (GTA) which is a part of ISecLv2 development. This document describes the detailed working of GTA and is broken into four sections...
+This is a low level design specification (LLD) of Go Trust Agent (GTA), which is a part of ISecLv2 development. This document describes is broken into four sections...
 
 | Section | Description |
 |---------|-------------|
-| [Installation](#Installation) | Describes how GTA deploys files, creates tagent user and other system artifacts.|
-| [Setup](#Setup) | Covers how GTA provisions the TPM, HVS and other depenencies in order to run as a service.|
-| [Operations](#Operations) | Describes how to start/stop GTA and register it with HVS to support features such as remote-attestation, asset tagging, etc..|
-| [Reference](#Reference) | Miscellaneous tables, listings, etc.|
+| [Installation](#installation) | Describes how GTA deploys files, creates tagent user and other system artifacts.|
+| [Setup](#setup) | Covers how GTA provisions the TPM, HVS and other depenencies in order to run as a service.|
+| [Operations](#operations) | Describes how to start/stop GTA and register it with HVS to support features such as remote-attestation, asset tagging, etc..|
+| [TrustAgent APIs](#trustagent-apis)|Lists the REST endpoints exposed by the GTA.|
+| [Reference](#reference) | Miscellaneous tables and listings surrounding GTA's configuration files, environment variables, etc.|
 
-See 'GTA High Level Design v1.0.docx'
 
 *Note:  This document does not include details regarding the installation and operation of application-integity or workload-agent.*
 
 # Installation
-Installation is reponsible for ensuring the presence of 3rd party libraries, deploying GTA files, creating system users/services, etc.  GTA is distributed as a self extracting makeself/.bin file that supports the following two use cases...
+Installation is reponsible for deploying dependencies, GTA files, creating system users/services, etc.  GTA is distributed as a self extracting makeself/.bin file that supports the following use cases...
 
 | Use Case | Description |
 |----------|-------------|
-|Minimal Install| The GTA installer only deploys files and creates system users/services.  It does not attempt to provision the agent, which needs to be performed before operation.|
-|Automatic Provisioning| The installer is invoked with the 'trustagent.env' file containing configuration information.  The installer will use that data to provision the agent with the TPM, HVS, AAS, CMS, etc.|
+|Minimal Install| The GTA makeself installer will perform a 'minimal install' when there is *not* a `trustagent.env` in the current directory (or when that file contains `PROVISION_ATTESTATION=n`). It only installs dependencies, the GTA files and creates users/services, etc.  After a minimal install, GTA must be provisioned via `tagent setup` and started to be integrated into the ISecL platform.|
+|Automatic Provisioning| The GTA makeself installer will perform 'automatic provisioning' when a valid `trustagent.env` file in the current directory (and the file contains `PROVISION_ATTESTATION=y`).  'Automatic provisioning' will perform a 'Minimal Install' and also configures GTA for integration with ISecL.|
 | Uninstall|  Allows the administrator to remove the GTA from the host.|
 
-*For installation instructions see [install.md](install.md).*
+*For installation instructions see [INSTALL.md](INSTALL.md).*
 
 ## Minimal Install
 During minimal installation, the installer performs the following activities...
-1. Ensure that the system has the appropriate prerequisites ([see Software Dependencies](#Software-Dependencies)])
+1. Installs 3rd party software dependencies ([see Software Dependencies](#software-dependencies))
 2. Creates the 'tagent' user, adding it to the 'tss' group so that it can access TPM (ex. /dev/tpm0)
 3. Deploys the files for GTA.
-4. Deploys application-integrity (tboot-xm, libwml).
-5. Configures tpm2-abrmd and tagent systemd services.
+5. Creates tagent systemd services.
 
-*After a minimal install is completed, the administrator must provision the GTA and start the 'tagent' service.*
+*After a minimal install is completed, the administrator must provision the GTA and start the 'tagent' service.  See [Setup](#setup).*
 
 ## Automatic Provisioning
-When the GTA installer is invoked with a valid `trustagent.env` file in the same directory ([see trustagent.env file reference](#trustagent-env)), and that file contains `PROVISION_ATTESTATION=Y`, the installer will...
+When the GTA installer is invoked with a valid `trustagent.env` file in the same directory (see [trustagent.env Reference](#trustagent.env-reference)), and that file contains `PROVISION_ATTESTATION=Y`, the installer will...
 1. Perform the 'minimal installation' listed above.
-2. Start the `tpm2-abrmd` service to provision the TPM, AAS/CMS and HVS.
-3. Invoke `tagent setup`.
+2. Starts the `tpm2-abrmd` service to provision the TPM, AAS/CMS and HVS.
+3. Invokes `tagent setup` (see [Setup](#setup) for more information).
 4. Start the `tagent` service.
 
 ## Uninstall
@@ -56,32 +55,37 @@ GTA exposes a command line interface (CLI) that supports 'setup'. Setup is the p
 |AAS/CMS Provisioning|Provisions the TLS certificate, users and roles needed for ISecL microservices to access the GTA http endpoints.|
 |HVS Provisioning|Interacts with HVS to establish authentication during remote-attestation.|
 
-By default, the `tagent setup` command (or `tagent setup all`) is used to provision the TPM, AAS/CMS and HVS and performs the tasks listed in the table below.  When completed successfully, GTA will be ready to started as a service.  `tagent` will exit with an error code if any of the tasks fail. 
+By default, the `tagent setup` command (or `tagent setup all`) is used during installation to provision the TPM, AAS/CMS and HVS and performs the tasks listed in the table below.  When completed successfully, GTA will be started as a service.  `tagent` will exit with an error code if any of the tasks fail. 
+
+`tagent setup` executes the setup commands in the order listed below. 
 
 |Task|Description|Results| Env Var(s)|
 |----|-----------|-------|-----------|
-|create-tls-keypair|Generates a TLS cert used for the GTA http endpoint host.|Creates tls-cert.pem and tls-key.pem in /opt/trustagent/configuration (for use by the http endpoint host).||
-|download-privacy-ca|Downloads a certificate from HVS (/ca-certificates/privacy) which is used to encrypt data during 'provision-aik'. |Creates /opt/trustagent/configuration/privacy-ca.cer.|MTWILSON_API_URL, MTWILSON_API_USERNAME, MTWILSON_API_PASSWORD|
+|download-root-ca-cert|Downloads the root CA certificate from Certificate Management Service (CMS)|Creates a .pem file containing the Root CA certificate chain (root CA and Intermediate CA) in /opt/trustagent/configuration/cacerts/|CMS_BASE_URL|
+|download-ca-cert|Generates a asymmetric keypair and obtains the signed TLS certificate for Trust Agent webservice from Certificate CMS|Creates two files in /opt/trustagent/configuration: tls-key.pem containing the private key and tls-cert.pem containing the signed public key TLS cert signed by CMS|CMS_BASE_URL, TA_TLS_CERT_CN, TA_TLS_CERT_IP|
+|download-aas-jwt-cert|Obtains the certificate from AAS required for validating that JWT tokens|Places the certificate pem file in /opt/trustagent/configuration/jwt/ path|AAS_API_URL|
+|download-privacy-ca|Downloads a certificate from HVS (/ca-certificates/privacy) which is used to encrypt data during 'provision-aik'. |Creates /opt/trustagent/configuration/privacy-ca.cer.|MTWILSON_API_URL, BEARER_TOKEN|
 |take-ownership|Uses the value of TPM_OWNER_SECRET (or generates a new random secret) to take ownership of the TPM. |Takes ownership of the TPM and saves the secret key in /opt/trustagent/configuration/config.yml.  Fails if the TPM is already owned.|TPM_OWNER_SECRET|
-|provision-ek|Validates the TPM's endorsement key (EK) against the list stored in HVS.|Validates the TPM's EK against the  manufacture certs downloaded from HVS (/ca-certificates?domain=ek).  Stores the manufacture EKs from HVS at /opt/trustagent/configuration/endorsement.pem.  Returns an error if the TPM EK is not valid.  Optionally registers the EK with HVS (if not present).|TPM_OWNER_SECRET, MTWILSON_API_URL, MTWILSON_API_USERNAME, MTWILSON_API_PASSWORD|
-|provision-aik|Performs dark magic that provisions an AIK with HVS, supporting the ability to collect authenticated tpm quotes. |Generates an AIK secret key that is stored in /opt/trustagent/configuration/config.yml.  Creates /opt/trustagent/configuration/aik.cer that is hosted in the /aik endpoint.|TPM_OWNER_SECRET, MTWILSON_API_URL, MTWILSON_API_USERNAME, MTWILSON_API_PASSWORD|
+|provision-ek|Validates the TPM's endorsement key (EK) against the list stored in HVS.|Validates the TPM's EK against the  manufacture certs downloaded from HVS (/ca-certificates?domain=ek).  Stores the manufacture EKs from HVS at /opt/trustagent/configuration/endorsement.pem.  Returns an error if the TPM EK is not valid.  Optionally registers the EK with HVS (if not present).|TPM_OWNER_SECRET, MTWILSON_API_URL, BEARER_TOKEN|
+|provision-aik|Performs dark magic that provisions an AIK with HVS, supporting the ability to collect authenticated tpm quotes. |Generates an AIK secret key that is stored in /opt/trustagent/configuration/config.yml.  Creates /opt/trustagent/configuration/aik.cer that is hosted in the /aik endpoint.|TPM_OWNER_SECRET, MTWILSON_API_URL, BEARER_TOKEN|
 |provision-primary-key|Allocates a primary key in the TPM used by WLA to create the binding/singing keys.|Allocates a new primary key in the TPM at index 0x81000000.|TPM_OWNER_SECRET|
 
-*Note:  While GTA supports the option of executing these tasks independently (ex. `tagent setup create-tls-keypair`), it is not recommended due to complex order and interdependencies.*
+*Note:  While GTA supports the option of independently executing the tasks below (ex. `tagent setup create-tls-keypair`), it is not recommended due to complex ordering and interdependencies.*
 
 # Operations
 Provided the trust-agent has been installed and provisioned (aka 'setup'), administrators are then able to manage the service and register the host with HVS (to integrate the host into the ISecL platform). 
 
 ## Service Management
-During installation, /opt/trustagent/tagent.service is created and enabled with systemd.  Managing the tagent service is done via `systemctl`.  The following table shows the `systemctl` commands for managing GTA...
+During installation, /opt/trustagent/tagent.service is created and enabled with systemd.  The following table shows the service commands for managing GTA...
 
-|Action|Command|
-|------|-------|
-|Start tagent service|`systemctl start tagent`|
-|Stop tagent service|`systemctl stop tagent`|
-|Get the status tagent service|`systemctl status tagent`|
+|Action|Command|'systemctl' Command|
+|------|-------|-----------------|
+|Start tagent service|tagent start|`systemctl start tagent`|
+|Stop tagent service|tagent stop|`systemctl stop tagent`|
+|Get the status tagent service|tagent status|`systemctl status tagent`|
+|Restart the tagent service|tagent restart|`systemctl status tagent`|
 
-Once the trust-agent is successfully operating under systemd, it will be restarted after reboots.
+Once the trust-agent is successfully operating under systemd, it will be restarted after system boot.
 
 ## HVS Registration/Configuration
 Provided GTA service is running, the agent can be registered with HVS to support remote-attestation, asset-tagging, etc.  Registration entails adding the host to HVS' list of known hosts and establishing flavors for the host.  There are two ways to register the host with HVS...
@@ -100,28 +104,41 @@ Provided GTA service is running, the agent can be registered with HVS to support
 
 Once registered/configured with HVS, the host will be available for quotes, asset tagging and other ISecL use cases.
 
-# Reference
-The following sections are provided as a reference of GTA.
+# TrustAgent APIs
 
-## TrustAgent APIs
+## AAS User/Roles
 
-### /aik (GET)
+Authentication on the basis of stored credentials (BasicAuth) has been deprecated and going forward all Trust Agent APIs will use JSON Web Tokens (JWT) supplied the Authentication field of the request header to authenticate the source of the request.
+
+The JWT tokens must be:
+
+1. Currently valid - current server time on TA must be between *issued at (iat)* time and *expires at (eat)* time of JWT
+2. Contain the permissions required by the API in Permissions field.
+3. Signed by an known instance of Authentication and Authorization Service (AAS) configured at the the time of the deployment (using the **download-aas-jwt-cert** setup task).
+
+The public certificate of the AAS instance will be provisioned to the TA service at the time of installation to ascertain JWT source's credibility and also validity (expiry time) and 
+
+## /aik (GET)
     Description: The AIK is an asymmetric keypair generated by the host's Trusted Platform Module for the purpose of cryptographically securing attestation quotes for transmission to the Host Verification Server. The getAik REST API is used to retrieve the public Attestation Identity Key (AIK) certificate for the host.
 
-    Authentication: TODO (currently requires basic auth using trust-agent username/password)
+    Authentication: Requires aik:retrieve permission 
 
     Input: None
 
-    Output: Contents of /opt/trustagent/configuration/aik.cer (generated during provision-aik task) with Content-Type 'application/octet-stream'.
+    Output: 
+        - Contents of /opt/trustagent/configuration/aik.cer (generated during provision-aik task) with Content-Type 'application/octet-stream'.      
+        
+        - Status: 200 on success, 400 with invalid input, 401 if not authorized, 500 for all other server errors.
 
-### /host (GET)
-    Description: Retrieves the host specific information (aka “Platform-Info”) from the host.
+## /host (GET)
+    Description: Retrieves the host specific information (aka 'Platform-Info') from the host.
 
-    Authentication: TODO (currently requires basic auth using trust-agent username/password)
+    Authentication: Requires host_info:retrieve permission
 
     Input: None
 
-    Output: Contents of /opt/trustagent/var/system-info/platform-info with Content-Type 'application-json'.  Ex...
+    Output: 
+        - Contents of /opt/trustagent/var/system-info/platform-info with Content-Type 'application-json'.  Ex...
 
         {
             "errorCode": 0,
@@ -161,13 +178,15 @@ The following sections are provided as a reference of GTA.
                 "tagent"
             ]
         }
+                
+        - Status: 200 on success, 400 with invalid input, 401 if not authorized, 500 for all other server errors.
 
 
 
-### /tag (POST)
+## /tag (POST)
     Description: Creates a new Asset Tag certificate in x509 format. Asset Tag certificates contain all key/value pairs to be tagged to a specific host, and the subject of the certificate is the hardware UUID of the host to be tagged.
 
-    Authentication: TODO (currently requires basic auth using trust-agent username/password)
+    Authentication: Requires deploy_tag:create permission
 
     Input: json with the base64 encoded asset tag hash form HVS...
     
@@ -176,12 +195,13 @@ The following sections are provided as a reference of GTA.
             "hardware_uuid"   : "7a569dad-2d82-49e4-9156-069b0065b262"
         }
 
-    Output: STATUS OK (200) on success.
+    Output: 
+        - Status: 200 on success, 400 with invalid input, 401 if not authorized, 500 for all other server errors.
 
-### /tpm/quote (POST)
+## /tpm/quote (POST)
     Description: The TPM quote operation returns signed data and a signature. The data that is signed contains the PCRs selected for the operation, the composite hash for the selected PCRs, and a nonce provided as input, and used to prevent replay attacks. At provisioning time, the data that is signed is stored, not just the composite hash. The signature is discarded. This API is used to retrieve the AIK signed quote from TPM.
 
-    Authentication: TODO (currently requires basic auth using trust-agent username/password)
+    Authentication: Requires quote:create permission
 
     Input: json containing HVS' 'nonce' and pcr/pcrbanks to collect in the quote.  Ex....
         { 
@@ -209,12 +229,13 @@ The following sections are provided as a reference of GTA.
             <isTagProvisioned>true</isTagProvisioned>
             <assetTag>EtQNTJ3Lh1sgaaCRSncyMfbgzc1q9dor4snFY+9tvbhaWQ3m8MVnr1BsbzUIepJl</assetTag>
         </tpm_quote_response>
-    
+            
+        - Status: 200 on success, 400 with invalid input, 401 if not authorized, 500 for all other server errors.
 
-### /deploy/manifest (GET)
-    Description: Allows users of HVS to deploy a list of directories/files (aka a ‘manifest’ in xml format) to establish “Application Integrity”.
+## /deploy/manifest (GET)
+    Description: Allows users of HVS to deploy a list of directories/files (aka a 'manifest' in xml format) to establish 'Application Integrity'.
 
-    Authentication: TODO (currently requires basic auth using trust-agent username/password)
+    Authentication: Requires deploy_manifest:create permission
 
     Input: XML Manifest...
 
@@ -225,13 +246,16 @@ The following sections are provided as a reference of GTA.
             <File Path="/opt/someapp/scripts/.*" SearchType="regex"/>
         </Manifest>
 
-    Output:  Stores the manifest to /opt/trustagent/var/manifest-b49f69a5-4fa1-4de2-afa7-629248894680.xml
+    Output:  
+        - Stores the manifest to /opt/trustagent/var/manifest-b49f69a5-4fa1-4de2-afa7-629248894680.xml
+            
+        - Status: 200 on success, 400 with invalid input, 401 if not authorized, 500 for all other server errors.
 
 
-### /host/application-measurement (POST)
+## /host/application-measurement (POST)
     Description: Measures application manifest provided as input, which is then used to generate software flavor.
 
-    Authentication: TODO (currently requires basic auth using trust-agent username/password)
+    Authentication: Requires application_measurement:create permission
 
     Input:  XML Manifest...
     
@@ -242,7 +266,8 @@ The following sections are provided as a reference of GTA.
             <File Path="/opt/someapp/scripts/.*" SearchType="regex"/>
         </Manifest>
 
-    Output:  Performs the measurement and returns its xml...
+    Output:  
+        - Returns the xml results of the measurement...
 
         <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
         <Measurement xmlns="lib:wml:measurements:1.0" Label="ISecL_Test_Application_Flavor_v1.0_TPM2.0" Uuid="b49f69a5-4fa1-4de2-afa7-629248894680" DigestAlg="SHA384">
@@ -250,77 +275,104 @@ The following sections are provided as a reference of GTA.
             <CumulativeHash>cdff21f2be26b31a31143595a8aebed3ff44966df5e1...</CumulativeHash>
         </Measurement> 
 
-### /binding-key-certificate (GET)
+        - Status: 200 on success, 400 with invalid input, 401 if not authorized, 500 for all other server errors.
+
+## /binding-key-certificate (GET)
     Description: Retrieves the TPM binding key certificate to support the VM-C use case implemented in WLA.  This endpoint is operational when WLA has been installed an /host (platform-info) includes 'wlagent' in the list of 'installed_components'.
 
-    Authentication: TODO (currently requires basic auth using trust-agent username/password)
+    Authentication: Requires **binding_key:retrieve** permission
 
     Input: None
 
-    Output: Contents of /etc/workload-agent/bindingkey.pem (generated during WLA installation) with Content-Type 'application/octet-stream'.
+    Output: 
+        - Contents of /etc/workload-agent/bindingkey.pem (generated during WLA installation) with Content-Type 'application/octet-stream'.
+                
+        - Status: 200 on success, 400 with invalid input, 401 if not authorized, 500 for all other server errors.
+
+# Reference
+The following sections are provided as a reference of GTA.
 
 ## CLI Options
 |Option|Description| Required Env Var(s)|
 |------|-----------|-----------|
 |`tagent config aik.secret`|When populated in /opt/trustagent/configuration/config.yml, prints the aik secret key to stdout (supports WLA to create signing/binding keys.).||
 |`tagent help`|Prints usage to stdout.||
-|`tagent setup` or `tagent setup all`|Analogous to the legacy TA's "provision-attestation" command.  [See Setup](#Setup)||
-|`tagent setup create-host`|Adds the local host to the list of HVS' known hosts.| MTWILSON_API_URL, MTWILSON_API_USERNAME, MTWILSON_API_PASSWORD|
-|`tagent setup create-host-unique-flavor`|Registers the local hosts' unique flavor with HVS.| MTWILSON_API_URL, MTWILSON_API_USERNAME, MTWILSON_API_PASSWORD|
-|`tagent setup get-configured-manifest`|Use environment variables, adds an application manifest from HVS to the local host to be measured at boot.  When invoked, the setup command will look for a comma seperated list of environment variables with the name 'FLAVOR_UUIDS' or 'FLAVOR_LABELS'.  It will then use that list to pull one or more manifest from HVS into the /opt/trustagent/var directory (so the manifest will be measured at next boot).  | MTWILSON_API_URL, MTWILSON_API_USERNAME, MTWILSON_API_PASSWORD, (FLAVOR_UUIDS or FLAVOR_LABELS)|
-|`tagent setup replace-tls-keypair`|Regenerates TLS certs by deleting `tls-key.pem` and `tls-cert.pem` from `/opt/trustagent/configuration` and reruns 'create-tls-keypair' command.| MTWILSON_API_URL, MTWILSON_API_USERNAME, MTWILSON_API_PASSWORD|
-|`tagent start`|Starts the trust-agent service/http host. <p/>*This command should not be invoked directly.  Instead, use `systemctl` ([see Service Management](#Service-Management)).*||
-|`tagent uninstall`|Uninstalls the trust-agent.  [See Uninstall](#Uninstall)||
+|`tagent setup` or `tagent setup all`|Analogous to the legacy TA's "provision-attestation" command.  Also supports a third parameter (i.e. `tagent setup trustagent.env`) that can be used to provide configuration options to the GTA.  [See Setup](#setup)||
+|`tagent setup create-host`|Adds the local host to the list of HVS' known hosts.| MTWILSON_API_URL, BEARER_TOKEN|
+|`tagent setup create-host-unique-flavor`|Registers the local hosts' unique flavor with HVS.| MTWILSON_API_URL, BEARER_TOKEN|
+|`tagent setup get-configured-manifest`|Use environment variables, adds an application manifest from HVS to the local host to be measured at boot.  When invoked, the setup command will look for a comma seperated list of environment variables with the name 'FLAVOR_UUIDS' or 'FLAVOR_LABELS'.  It will then use that list to pull one or more manifest from HVS into the /opt/trustagent/var directory (so the manifest will be measured at next boot).  | MTWILSON_API_URL, BEARER_TOKEN, (FLAVOR_UUIDS or FLAVOR_LABELS)|
+|`tagent setup replace-tls-keypair`|Regenerates TLS certs by deleting `tls-key.pem` and `tls-cert.pem` from `/opt/trustagent/configuration` and reruns 'create-tls-keypair' command.| MTWILSON_API_URL, BEARER_TOKEN|
+|`tagent start`|Starts the trust-agent service/http host similar to `systemctl status tagent`.||
+|`tagent status`|Retrieves information about the trust-agent service/http host similar to `systemctl status tagent`.||
+|`tagent stop`|Stops the trust-agent service/http host similar to `systemctl stop tagent`.||
+|`tagent restart`|Restarts the trust-agent service/http host similar to `systemctl restart tagent`.||
 |`tagent version`|Prints version information to stdout.  Ex. "```tagent v1.0.0-da14377 [2019-11-22T10:37:52-08:00]```".||
 |`tagent version short`|Prints 'short' (major/minor) version information to stdout (to support the creation of application-integrity manifest files.) Ex. "```1.0```".||
-
+|`tagent uninstall`|Uninstalls the trust-agent.  [See Uninstall](#uninstall)||
 
 ## trustagent.env Reference
 If the GTA installer is run with a valid 'trustagent.env' file, it will parse the file's values and export them as environment variables that are then evaluated by `tagent setup`.  Below is a table of environment variables used by GTA...
 
-| Env Var | Description | Example | Required?|
-|---------|-------------|---------|----------|
-|MTWILSON_API_URL|The url used by GTA during setup to request information from HVS. |MTWILSON_API_URL=https://{host}:{port}/mtwilson/v2|Yes|
-|BEARER_TOKEN| JWT auth token needed to access HVS endpoints.
-|CMS_TLS_CERT_SHA384|TLS cert hash from HVS.|CMS_TLS_CERT_SHA384=6d8a18f...|Yes|
-|PROVISION_ATTESTATION|When present, enables/disables whether `tagent setup` is called during installation.  If trustagent.env is not present, the value defaults to no ('N').|PROVISION_ATTESTATION=Y||
-|TBOOTXM_INSTALL|Used by the makeself installer to determine if 'Application Integrity' should be installed.  Defaults to 'Y' (yes).  If set to 'N', 'Application Integrity' is not installed.|TBOOTXM_INSTALL=N||
-|TPM_OWNER_SECRET|20 byte hex value to be used as the secret key when taking ownership of the tpm.  *Note: If this field is not specified, GTA will generate a random secret key.*|TPM_OWNER_SECRET=625d6...||
-|TRUSTAGENT_PORT|Port to run `tagent` service.  Defaults to 1443.|TRUSTAGENT_PORT=8443||
-
-*TODO:  Update when AAS/CMS is integrated.*
-
-## AAS User/Roles (TBD)
+| Env Var | Description | Example | Required?|Default|
+|---------|-------------|---------|----------|-------|
+|AAS_API_URL|API URL for Authentication Authorization Service (AAS)|AAS_API_URL=https://{host}:{port}/aas/v1|Yes|NA|
+|AUTOMATIC_REGISTRATION|Automatically registers the host with HVS similar to `tagent setup create-host`.|AUTOMATIC_REGISTRATION=Y|No|N|
+|BEARER_TOKEN|JWT containing the roles and permissions needed for access HVS services for various setup tasks (use jwt.io to parse the token)|BEARER_TOKEN=eyJhbGciOiJSUzM4NCIsjdkMTdiNmUz...|Yes|NA|
+|CMS_BASE_URL|API URL for Certificate Management Service (CMS)|CMS_BASE_URL=https://{host}:{port}/cms/v1|Yes|NA|
+|CMS_TLS_CERT_SHA384|SHA384 Hash sum for verifying the CMS TLS certificate|CMS_TLS_CERT_SHA384=bd8ebf5091289958b5765da4...|Yes|NA|
+|MTWILSON_API_URL|The url used by GTA during setup to request information from HVS. |MTWILSON_API_URL=https://{host}:{port}/mtwilson/v2|Yes|NA|
+|PROVISION_ATTESTATION|When present, enables/disables whether `tagent setup` is called during installation.  If trustagent.env is not present, the value defaults to no ('N').|PROVISION_ATTESTATION=Y|No|N|
+|TA_TLS_CERT_CN|Sets the value for Common Name in the TA TLS certificate.  Defaults to CN=trustagent.|TA_TLS_CERT_CN=Acme Trust Agent 007|No|"Trust Agent TLS Certificate"|
+|TA_TLS_CERT_IP|CSV list that sets the value for SAN list in the TA TLS certificate.  Defaults to 127.0.0.1.|TA_TLS_CERT_IP=10.123.100.1,201.102.10.22,mya.example.com|No|"127.0.0.1,localhost"|
+|TPM_OWNER_SECRET|20 byte hex value to be used as the secret key when taking ownership of the tpm.  *Note: If this field is not specified, GTA will generate a random secret key.*|TPM_OWNER_SECRET=625d6...|No|""|
+|TPM_QUOTE_IPV4|When enabled (`=y`), uses the local system's ip address as a salt when processing a quote nonce.  This field must align with the configuration of HVS.|TPM_QUOTE_IPV4=no|No|N|
+|TPM_SRK_SECRET|When provided, sets the TPM's SRK secret key.  The value must be a 20 byte hex value simlar to TPM_OWNER_SECRET.  If not set, the SRK is set to all zeros.|TPM_SRK_SECRET=0fd392b8...|No|"0000000000000000000000000"|
+|TRUSTAGENT_PORT|Port to run `tagent` service.  Defaults to 1443.|TRUSTAGENT_PORT=8443|No|1443|
 
 ## Installed Files
-The following files are created on the host during a 'minimal installation'...
+The following files are present after installation, setup and measured launch.
 ```
 /opt/trustagent/
-├── bin
-│   ├── module_analysis_da.sh
-│   ├── module_analysis_da_tcg.sh
-│   ├── module_analysis.sh
-│   └── tagent
-├── configuration
-│   └── tpm-version
-├── logs
-├── tagent.service
-└── var
-    ├── manifest_{uid}.xml
-    ├── manifest_{uid}.xml
-    ├── ramfs
-    └── system-info
++-- bin
+¦   +-- module_analysis_da.sh
+¦   +-- module_analysis_da_tcg.sh
+¦   +-- module_analysis.sh
+¦   +-- tagent
++-- cacerts
+¦   +-- cacertfile.pem
++-- configuration
+¦   +-- aik.cer
+¦   +-- config.yml
+¦   +-- endorsement.pem
+¦   +-- tpm-version
+¦   +-- tls-cert.pem
+¦   +-- tls-key.pem
+¦   +-- jwt
+¦       +-- aasjwtcertfile.pem
++-- logs
+¦   +-- trustagent.log
++-- tagent.service
++-- var
+    +-- manifest_{uid}.xml
+    +-- measureLog.xml
+    +-- ramfs
+    ¦   +-- pcr_event_log
+    ¦   +-- measurement_{uid}.xml
+    +-- system-info
+        +-- platform-info
 ```
 
 ## Software Dependencies
-For the ISecL v2.0 release, GTA will target RHEL 8.0 only.  The following dependencies must be present on the host for the installer to run.
+The GTA installer will update the system with the following dependencies.
 
     1. tpm2-abrmd-2.1
     2. tpm2-tss-2.0
     2. dmidecode-3
     3. redhat-lsb-core-4.1
-    4. tboot-1.9.7
+    4. tboot-1.9.7*
     5. compat-openssl10-1.0
+
+\* tboot is only installed when sUEFI is not enabled.  
 
 ## config.yml
 The GTA stores configuration information in /opt/trustagent/configuration/config.yml.  The contents of the file is based on environment variables (`trustagent.env`) provided during `tagent setup`.  
@@ -330,11 +382,16 @@ loglevel: info
 trustagentservice:
   port: 1443
 hvs:
-  url: https://127.0.0.1:8443/mtwilson/v2
+  url: https://10.105.168.239:8443/mtwilson/v2
 tpm:
-  ownersecretkey: 7fa014c4c8116678d0492eaae50625c514be416d
-  aiksecretkey: 0492eaae50625c514be416d7fa014c4c8116678d
+  ownersecretkey: 625d6d8a18f98bf794760fd392b8c01be0b4e959
+  aiksecretkey: 0758026a90029dbda474830e9a09c934544d482c
+aas:
+  baseurl: https://10.105.168.239:8444/aas/
+cms:
+  baseurl: https://10.105.168.239:8445/cms/v1
+  tlscertdigest: bd8ebf06105091289958b5765da4c5a9560656eaad4024195d774ed0ea66b5a1ed88313c16c8b101b2e2eda3c8918887
+tls:
+  certip: 10.123.100.55
+  certdns: Trust Agent TLS Certificate
 ```
-## Platform/Feature Matrix (TBD)
-KWT/TODO
-
