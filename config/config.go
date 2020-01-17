@@ -54,8 +54,8 @@ type TrustAgentConfiguration struct {
 		TLSCertDigest string
 	}
 	TLS struct {
-		CertIP  string
-		CertDNS string
+		CertSAN  string
+		CertCN string
 	}
 }
 
@@ -222,21 +222,21 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
         //---------------------------------------------------------------------------------------------
         environmentVariable, err = context.GetenvString(constants.EnvTLSCertCommonName, "Trustagent TLS Certificate Common Name")
 	if err == nil && environmentVariable != "" {
-		cfg.TLS.CertDNS = environmentVariable
-	} else if strings.TrimSpace(cfg.TLS.CertDNS) == "" {
+		cfg.TLS.CertCN = environmentVariable
+	} else if strings.TrimSpace(cfg.TLS.CertCN) == "" {
 		log.Info("config/config:LoadEnvironmentVariables() TA_TLS_CERT_CN not defined, using default value")
-		cfg.TLS.CertDNS = constants.DefaultTaTlsCn
+		cfg.TLS.CertCN = constants.DefaultTaTlsCn
 	}
 
 	//---------------------------------------------------------------------------------------------
-        // TA_TLS_CERT_IP
+        // TA_CERT_SAN
         //---------------------------------------------------------------------------------------------
         environmentVariable, err = context.GetenvString(constants.EnvCertSanList, "Trustagent TLS Certificate SAN LIST")
         if err == nil && environmentVariable != "" {
-                cfg.TLS.CertIP = environmentVariable
-        } else if strings.TrimSpace(cfg.TLS.CertIP) == "" {
-                log.Info("config/config:LoadEnvironmentVariables() TA_TLS_CERT_IP not defined, using default value")
-                cfg.TLS.CertIP = constants.DefaultTaTlsSan
+                cfg.TLS.CertSAN = environmentVariable
+        } else if strings.TrimSpace(cfg.TLS.CertSAN) == "" {
+                log.Info("config/config:LoadEnvironmentVariables() TA_CERT_SAN not defined, using default value")
+                cfg.TLS.CertSAN = constants.DefaultTaTlsSan
         }
 
 

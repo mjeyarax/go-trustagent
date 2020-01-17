@@ -97,9 +97,9 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 		KeyAlgorithmLength: constants.DefaultKeyAlgorithmLength,
 		CmsBaseURL:         cfg.CMS.BaseURL,
 		Subject: pkix.Name{
-			CommonName: cfg.TLS.CertDNS,
+			CommonName: cfg.TLS.CertCN,
 		},
-		SanList:       cfg.TLS.CertIP,
+		SanList:       cfg.TLS.CertSAN,
 		CertType:      "TLS",
 		CaCertsDir:    constants.TrustedCaCertsDir,
 		BearerToken:   "",

@@ -46,8 +46,6 @@ const (
 	TrustedCaCertsDir          = ConfigDir + "cacerts/"
 	DefaultKeyAlgorithm        = "rsa"
 	DefaultKeyAlgorithmLength  = 3072
-	DefaultTLSCertIP           = "127.0.0.1"
-	DefaultTLSCertDNS          = "CN=trustagent"
 	EnvBearerToken             = "BEARER_TOKEN"
 	JWTCertsCacheTime          = "1m"
 	AdministratorGroup         = "Administrator"
@@ -58,7 +56,7 @@ const (
 	EnvCMSTLSCertDigest        = "CMS_TLS_CERT_SHA384"
 	EnvAASBaseURL              = "AAS_API_URL"
 	EnvTLSCertCommonName       = "TA_TLS_CERT_CN"
-        EnvCertSanList             = "TA_TLS_CERT_IP"
+        EnvCertSanList             = "TA_CERT_SAN"
 	DefaultTaTlsCn             = "Trust Agent TLS Certificate"
 	DefaultTaTlsSan            = "127.0.0.1,localhost"	
 )
