@@ -19,7 +19,7 @@ const (
 	TLSKeyFilePath             = ConfigDir + "tls-key.pem"
 	EndorsementAuthoritiesFile = ConfigDir + "endorsement.pem"
 	AikBlob                    = ConfigDir + "aik.blob"
-	AikCert                    = ConfigDir + "aik.cer"
+	AikCert                    = ConfigDir + "aik.pem"
 	PrivacyCA                  = ConfigDir + "privacy-ca.cer"
 	VarDir                     = InstallationDir + "var/"
 	RamfsDir                   = VarDir + "ramfs/"
@@ -56,7 +56,7 @@ const (
 	EnvCMSTLSCertDigest        = "CMS_TLS_CERT_SHA384"
 	EnvAASBaseURL              = "AAS_API_URL"
 	EnvTLSCertCommonName       = "TA_TLS_CERT_CN"
-        EnvCertSanList             = "TA_CERT_SAN"
+	EnvCertSanList             = "TA_CERT_SAN"
 	DefaultTaTlsCn             = "Trust Agent TLS Certificate"
-	DefaultTaTlsSan            = "127.0.0.1,localhost"	
+	DefaultTaTlsSan            = "127.0.0.1,localhost"
 )

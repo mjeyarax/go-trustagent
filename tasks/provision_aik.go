@@ -13,6 +13,7 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/pem"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/util"
@@ -138,10 +139,21 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 		return errors.Wrap(err, "tasks/provision_aik:Run() Error while parsing the aik certificate")
 	}
 
-	// save the aik cert to disk
+	// save the aik pem cert to disk
 	err = ioutil.WriteFile(constants.AikCert, decrypted2, 0600)
 	if err != nil {
 		return errors.Wrapf(err, "tasks/provision_aik:Run() Error while writing aik certificate file %s", constants.AikCert)
+	}
+
+	certOut, err := os.OpenFile(constants.AikCert, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0)
+	if err != nil {
+		return errors.Wrapf(err, "tasks/provision_aik:Run() Error: Could not open file for writing: %v", err)
+	}
+	defer certOut.Close()
+
+	os.Chmod(constants.AikCert, 0640)
+	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: decrypted2}); err != nil {
+		return errors.Wrapf(err, "tasks/provision_aik:Run() Error: Could not pem encode cert: %v", err)
 	}
 
 	return nil
@@ -462,7 +474,7 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 	if err != nil {
 		return nil, errors.Wrap(err, "tasks/provision_aik:activateCredential() Error while performing tpm activate credential operation")
 	}
-	
+
 	//   - SymmetricBlob
 	//     - int32 length of encrypted blob
 	//     - TpmKeyParams

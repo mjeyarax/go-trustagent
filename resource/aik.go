@@ -6,6 +6,8 @@ package resource
 
 import (
 	"bytes"
+	"crypto/x509"
+	"encoding/pem"
 	"intel/isecl/go-trust-agent/constants"
 	commLog "intel/isecl/lib/common/log"
 	"io/ioutil"
@@ -39,8 +41,14 @@ func getAik() endpointHandler {
 			return &endpointError{Message: "Unable to fetch AIK certificate", StatusCode: http.StatusInternalServerError}
 		}
 
+		aikDer, _ := pem.Decode(aikBytes)
+		_, err = x509.ParseCertificate(aikDer.Bytes)
+		if err != nil {
+			return &endpointError{Message: "Error parsing AIK certificate file.", StatusCode: http.StatusInternalServerError}
+		}
+
 		httpWriter.WriteHeader(http.StatusOK)
-		_, _ = bytes.NewBuffer(aikBytes).WriteTo(httpWriter)
+		_, _ = bytes.NewBuffer(aikDer.Bytes).WriteTo(httpWriter)
 		return nil
 	}
 }
