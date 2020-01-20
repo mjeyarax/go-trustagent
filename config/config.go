@@ -229,13 +229,13 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	}
 
 	//---------------------------------------------------------------------------------------------
-        // TA_CERT_SAN
+        // SAN_LIST
         //---------------------------------------------------------------------------------------------
         environmentVariable, err = context.GetenvString(constants.EnvCertSanList, "Trustagent TLS Certificate SAN LIST")
         if err == nil && environmentVariable != "" {
                 cfg.TLS.CertSAN = environmentVariable
         } else if strings.TrimSpace(cfg.TLS.CertSAN) == "" {
-                log.Info("config/config:LoadEnvironmentVariables() TA_CERT_SAN not defined, using default value")
+                log.Info("config/config:LoadEnvironmentVariables() SAN_LIST not defined, using default value")
                 cfg.TLS.CertSAN = constants.DefaultTaTlsSan
         }
 
