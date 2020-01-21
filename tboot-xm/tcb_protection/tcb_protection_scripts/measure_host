@@ -1,0 +1,346 @@
+#!/bin/bash
+# initramfs local-premount script for fixrtc
+#%stage: filesystem
+#%depends: resume
+#%programs: /bin/measure /bin/tpmextend /usr/bin/sha1sum /usr/bin/sha256sum 
+#%modules: tpm
+
+TBOOTXM_REPOSITORY="/var/tbootxm"
+CONFIG_FILE="$TBOOTXM_REPOSITORY/measure_host.cfg"
+INITRD_LOG_FILE="/tmp/initrd.log"
+echo "" > $INITRD_LOG_FILE
+
+log()
+{
+	echo $1
+	echo $1 >> $INITRD_LOG_FILE
+}
+log "Log Creation Time: `date`"
+os=CUR_OS
+
+PREREQ=""
+
+if [ $os = "ubuntu" ]
+then
+    ROOT_MOUNT_PATH=${ROOT}
+	CONFIG_FILE=${CONFIG_FILE_PATH}
+elif [ $os = "suse"  ]
+then
+    source /config/mount.sh
+    ROOT_MOUNT_PATH=${rootdev}
+	CONFIG_FILE=${CONFIG_FILE_PATH}
+else
+    source /lib/dracut-lib.sh
+    ROOT_MOUNT_PATH="$(getarg root=)"
+    ROOT_MOUNT_PATH=`echo $ROOT_MOUNT_PATH | sed s/\"//g`
+	CONFIG_FILE="$(getarg CONFIG_FILE_PATH=)"
+fi
+
+log "CONFIG_FILE_PATH = $CONFIG_FILE"
+if [ ! $CONFIG_FILE ] || [ -z $CONFIG_FILE ]
+then
+	#CONFIG_FILE="/measure_host.cfg"	
+	CONFIG_FILE="/tbootxm.conf"
+	log "CONFIG_FILE_PATH = $CONFIG_FILE"
+fi
+
+log "ROOT_MOUNT_PATH = $ROOT_MOUNT_PATH"
+CONFIG_FILE=`echo $CONFIG_FILE | sed s/\"//g`	
+log "CONFIG_FILE_PATH = $CONFIG_FILE"
+load_configuration()
+{
+	log "Loading configuration"
+	if [ -e $tmp_root/$CONFIG_FILE ]
+	then
+		log "configuration file : $CONFIG_FILE exist"
+	else
+		log "Configuration file not found"
+		unmount_partitions
+		return 1
+	fi
+	for key in `cat $tmp_root/$CONFIG_FILE | awk 'BEGIN {FS="="}{print $1}'`
+	do
+		log "key = $key"
+		keylen=`echo -n $key | wc -c`
+		log "keylen = $keylen"
+		keylen=`expr $keylen + 2`
+		log "keylen = $keylen"
+		value=`grep $key $tmp_root/$CONFIG_FILE | cut -c $keylen-`
+		log "`echo $value`"
+		log "`echo Exporting $key=$value`"
+		export $key=$value
+	done
+	MANIFEST_PATH=`echo $MANIFEST_PATH | sed s/\"//g`
+	log "MANIFEST_PATH=${MANIFEST_PATH}"
+	PARTITION_INFO=`echo $PARTITION_INFO | sed s/\"//g`
+	log "PARTITION_INFO=${PARTITION_INFO}"
+	log "Configuration loaded"
+	return 0
+}
+# Output pre-requisites
+prereqs()
+{
+        echo "$PREREQ"
+}
+
+case "$1" in
+    prereqs)
+        prereqs
+        exit 0
+        ;;
+esac
+
+
+#LOADING - RPMMIO DRIVERS
+#load_rpmmio_drivers()
+#{
+#	log "RPMMIO Driver Load - STARTED"
+#
+#	log "Load our own rpmmio driver, and create device rpmmio0, for direct TPM access"
+#	insmod /lib/modules/`uname -r`/kernel/drivers/char/tpm/rpmmio.ko
+#	major=$(awk '$2 == "rpmmio" {print $1}' /proc/devices)
+#	mknod /dev/rpmmio0 c $major 0
+#	chmod 777 /dev/rpmmio0
+#	log "RPMMIO Driver Load - COMPLETE"
+#}
+
+#MOUNT / IN /TMP/ROOT
+mount_root()
+{
+	log "/ Mount STARTED"
+	tmp_root=/tmp/root
+	mkdir -p $tmp_root
+	#echo -e "\nMount ${roflag} ${FSTYPE:+-t ${FSTYPE} }${ROOTFLAGS} ${ROOT} ${tmp_root}"
+	#mount ${FSTYPE:+-t ${FSTYPE} }${ROOTFLAGS} ${ROOT} $tmp_root
+	#root_mntDev=`echo $root | awk 'BEGIN{FS=":"}{print $2}'`
+	echo $ROOT_MOUNT_PATH
+	UUID_STR="UUID"
+	strip=`echo $ROOT_MOUNT_PATH | cut -c1-4`
+	if [[ $strip = "$UUID_STR" ]]; then
+		drive_name=`findfs $ROOT_MOUNT_PATH`
+		ROOT_MOUNT_PATH=$drive_name
+		log "UUID to drive conversion = $ROOT_MOUNT_PATH"
+	fi 
+	mount -t auto $ROOT_MOUNT_PATH $tmp_root
+	if [ $? -eq 0 ] ; then
+		log "Root mounted successfully"
+	else
+		log "Root mount failed, waiting for 15 seconds"
+	fi
+	log "/ Mount COMPLETED"
+}
+
+
+
+#UNMOUNT THE PARTITIONS
+unmount_partitions()
+{
+	log "Unmount Partitions - STARTED"
+	for mntPoint in `echo $part_info | awk 'BEGIN{FS=","} { for ( i = 1 ; i <= NF ; i++ ) print $i }' | cut -f2 -d":" | sort -r`
+	do
+		log "unmounting $tmp_root/$mntPoint"
+		cp $INITRD_LOG_FILE $tmp_root/var/log/.
+		if [ $mntPoint = "/" ]
+		then
+			cat $INITRD_LOG_FILE >> $tcb_log_file
+			cp $tcb_log_file $tmp_root/tmp/.
+			umount $tmp_root/$mntPoint
+		else
+			umount $tmp_root/$mntPoint
+		fi
+		if [ $? -ne 0 ]
+		then
+			log "ERROR: Failed to unmount $tmp_root/$mntPoint"
+		else
+			log "Successfully unmounted $tmp_root/$mntPoint"
+		fi
+	done
+	log "Unmount Paritions - COMPLETE"
+}
+#End of Unmount Fn
+
+
+
+#MOUNT OTHER PARTITIONS
+mount_partitions()
+{
+	log "Mount Other Partitions - STARTED"
+	part_info=$PARTITION_INFO
+	part_info=`echo $part_info | sed 's/{\|}//g'`
+	for value in `echo $part_info | awk 'BEGIN{FS=","} { for ( i = 1 ; i <= NF ; i++ ) print $i }' ` 
+ 	do 
+		mntDevice=`echo $value | awk 'BEGIN{FS=":"}{ print $1}'`
+	 	mntPoint=`echo $value | awk 'BEGIN{FS=":"}{ print $2}'`
+	 	if [ $mntPoint = "/" ] 
+	 	then 
+			log "Skipping mount for / "
+	 	else 
+			mkdir -p $tmp_root/$mntPoint
+			mount -t auto $mntDevice $tmp_root/$mntPoint 
+	 	fi 
+	done
+	log "Mount Partitions - COMPLETE"
+}
+
+#CALCULATE THE HASHES MAKING USE OF MEASURE
+manifest_verify()
+{
+	log "TCB Verification STARTED"
+	#Grab the tcb-manifest file path from Grub Entry
+	manifest_path=$MANIFEST_PATH
+	if [ ! -e "$tmp_root/$manifest_path" ]; then
+        log "Manifest Path INCORRECT. No directory Found named $tmp_root/$manifest_path"
+		unmount_partitions
+        return 1
+	fi
+
+	export WML_LOG_LEVEL=DEBUG
+	export WML_LOG_FILE=$tmp_root/var/log/wml/measure.log
+	
+	log "WML_LOG_LEVEL : $WML_LOG_LEVEL"
+	log "WML_LOG_FILE : $WML_LOG_FILE"
+	
+	rm -rf $tmp_root/$manifest_path/ramfs/*
+	measurement_path=$tmp_root/$manifest_path/ramfs/measurement
+	
+	for filename in `ls $tmp_root/$manifest_path/manifest_*.xml`; do
+		manifest_file="$(basename "$filename")"
+		log "manifest file : $manifest_file"
+		uuid=${manifest_file:9:36}
+		log "uuid : $uuid"
+
+		if ! [[ $uuid =~ ^\{?[A-F0-9a-f]{8}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{12}\}?$ ]]; then
+			continue
+		fi
+
+		manifest_xml=`cat $filename`
+		log "manifest xml : $manifest_xml"
+		measurement_file="$measurement_path"_$uuid.xml
+		log "measurement file : $measurement_file"
+	
+		#Run the Measure and the check for its results
+		#/bin/verifier $tmp_root/$manifest_path $tmp_root/ HOST >> $INITRD_LOG_FILE 2>&1
+		log "/bin/measure \"$manifest_xml\" \"$tmp_root\"/ 2>> $tmp_root/var/log/wml/measure.log > \"$measurement_file\""
+		/bin/measure "$manifest_xml" "$tmp_root"/ 2>> $tmp_root/var/log/wml/measure.log > "$measurement_file"
+		if [ $? -ne 0 ]; then
+			log "TCB Verification FAILED"
+			unmount_partitions
+			return 1
+		else
+			log "TCB Verification PASSED"
+		fi
+	done
+	log "TCB Verification COMPLETE"
+	return 0
+}
+
+
+#EXTEND THE PCR 15 VALUE BY MAKING USE OF TPMEXTEND
+tpm_extend()
+{
+	log "TPM Extend STARTED"
+	log "SHA hash will be used to extend PCR"
+	
+	tpm_version_file=$tmp_root/opt/trustagent/configuration/tpm-version
+	log "tpm version file : $tpm_version_file"
+	event_log_file=$tmp_root/$manifest_path/ramfs/pcr_event_log
+	log "event log file : $event_log_file"
+
+	#Grab the value of tpm_version from TrustAgent Configuration
+	tpm_version=`cat $tpm_version_file`
+	log "tpm version : $tpm_version"
+	if [ "$tpm_version" = "" ]; then
+        	log "No TPM version specified"
+        	unmount_partitions
+        	return 1
+        fi
+
+	for filename in `ls "$measurement_path"_*.xml`; do
+		measurement_file="$(basename "$filename")"
+		log "measurement file : $measurement_file"
+		uuid=${measurement_file:12:36}
+		log "uuid : $uuid"
+
+		if ! [[ $uuid =~ ^\{?[A-F0-9a-f]{8}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{12}\}?$ ]]; then
+			continue
+		fi
+
+		measurement_xml=`cat $filename`
+		log "measurement xml : $measurement_xml"
+
+		flavor_label=${measurement_xml#*Label=\"}
+		flavor_label=${flavor_label%%\"*}
+		flavor_label=`echo $flavor_label | sed -e 's/ //g'`
+		log "flavor label : $flavor_label"
+
+		image_hash=${measurement_xml#*Hash>}
+		image_hash=${image_hash%%</*}
+
+		if [ "$tpm_version" == "1.2" ]; then
+			image_hash=`echo $image_hash | sed 's/\([0-9A-F]\{2\}\)/\\\\\\x\1/gI' | xargs printf | sha1sum - | awk '{ print $1; }'`
+		else
+			image_hash=`echo $image_hash | sed 's/\([0-9A-F]\{2\}\)/\\\\\\x\1/gI' | xargs printf | sha256sum - | awk '{ print $1; }'`
+		fi
+		log "image hash : $image_hash"
+
+		if [ "$image_hash" = "" ]; then
+			log "No cumulative hash to extend"
+			unmount_partitions
+			return 1
+		fi
+
+		log "Run TPM Extend for Extending PCR 15"
+		/bin/tpmextend 15 $image_hash $tpm_version >> $INITRD_LOG_FILE 2>&1
+		if [ $? -ne 0 ]; then
+			log "TPM Extend FAILED"
+			unmount_partitions
+			return 1
+		else
+			log "TPM Extend PASSED"
+		fi
+
+		log "TPM Extend Log"
+		if [ "$tpm_version" == "1.2" ]; then
+			echo "SHA1	15	$flavor_label-$uuid	$image_hash" >> "$event_log_file"
+		else
+			echo "SHA256	15	$flavor_label-$uuid	$image_hash" >> "$event_log_file"
+		fi
+	done
+	log "TPM Extend COMPLETE"
+	return 0
+}
+
+#Step 1 - Load the RPMMIO Drivers
+#load_rpmmio_drivers
+
+#Step 2 - Mount /
+mount_root
+
+tcb_log_file=$tmp_root/var/log/tcb.log
+log "Activate all logical volumes"
+log "`lvm vgchange -ay`"
+
+
+load_configuration
+
+if [ $? -eq 0 ]
+then
+
+	#Step 3 - Mount Other Partitions
+	mount_partitions
+
+	#Step 4 - Measurement - Verifier
+	manifest_verify
+
+	if [ $? -eq 0 ]
+	then
+		#Step 5 - Extend PCR 15 using TPM Extend
+		tpm_extend
+		if [ $? -eq 0 ]
+		then
+			#Step 6 - Unmount all the Partitions that were mounted in the process
+			unmount_partitions
+		fi
+	fi
+fi
+#log "END OF APPLICATION AGENT"

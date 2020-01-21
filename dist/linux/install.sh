@@ -6,8 +6,9 @@
 # 2. Load trustagent.env if present and apply exports.
 # 3. Create tagent user
 # 4. Create directories, copy files and own them by tagent user.
-# 5. Make sure tpm2-abrmd is started and deploy tagent service.
-# 6. If 'automatic provisioning' is enabled (PROVISION_ATTESTATION=y), initiate 'tagent setup'.
+# 5. Install application-agent
+# 6. Make sure tpm2-abrmd is started and deploy tagent service.
+# 7. If 'automatic provisioning' is enabled (PROVISION_ATTESTATION=y), initiate 'tagent setup'.
 #    Otherwise, exit with a message that the user must provision the trust agent and start the
 #    service.
 #--------------------------------------------------------------------------------------------------
@@ -242,7 +243,29 @@ fi
 echo "2.0" >$TRUSTAGENT_CFG_DIR/tpm-version
 
 #--------------------------------------------------------------------------------------------------
-# 5. Enable/configure services, etc.
+# 5. Install application-agent
+#--------------------------------------------------------------------------------------------------
+if [[ ${container} == "docker" ]]; then
+    DOCKER=true
+else
+    DOCKER=false
+fi
+
+if [[ ${DOCKER} == "false" ]]; then
+  if [ "$TBOOTXM_INSTALL" != "N" ] && [ "$TBOOTXM_INSTALL" != "No" ] && [ "$TBOOTXM_INSTALL" != "n" ] && [ "$TBOOTXM_INSTALL" != "no" ]; then
+    echo "Installing application-agent..."
+    TBOOTXM_PACKAGE=`ls -1 application-agent*.bin 2>/dev/null | tail -n 1`
+    if [ -z "$TBOOTXM_PACKAGE" ]; then
+      echo_failure "Failed to find application-agent installer package"
+      exit -1
+    fi
+    ./$TBOOTXM_PACKAGE
+    if [ $? -ne 0 ]; then echo_failure "Failed to install application-agent"; exit -1; fi
+  fi
+fi
+
+#--------------------------------------------------------------------------------------------------
+# 6. Enable/configure services, etc.
 #--------------------------------------------------------------------------------------------------
 # make sure the tss user owns /dev/tpm0 or tpm2-abrmd service won't start (this file does not
 # exist when using the tpm simulator, so check for its existence)
@@ -262,7 +285,7 @@ systemctl enable $TRUSTAGENT_HOME/$TRUSTAGENT_SERVICE
 systemctl daemon-reload
 
 #--------------------------------------------------------------------------------------------------
-# 6. If automatic provisioning is enabled, do it here...
+# 5. If automatic provisioning is enabled, do it here...
 #--------------------------------------------------------------------------------------------------
 if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PROVISION_ATTESTATION" == "yes" ]]; then
     echo "Automatic provisioning is enabled, using mtwilson url $MTWILSON_API_URL"

@@ -24,6 +24,9 @@ package: gta
 	cp dist/linux/module_analysis_da_tcg.sh out/installer/module_analysis_da_tcg.sh && chmod +x out/installer/module_analysis_da_tcg.sh
 	cp dist/linux/manifest_tpm20.xml out/installer/manifest_tpm20.xml
 	cp dist/linux/manifest_wlagent.xml out/installer/manifest_wlagent.xml
+
+	cd tboot-xm && $(MAKE) package
+	cp tboot-xm/out/application-agent*.bin out/installer/
 	
 	cp out/tagent out/installer/tagent
 	makeself out/installer out/trustagent-$(VERSION).bin "TrustAgent $(VERSION)" ./install.sh
@@ -35,4 +38,5 @@ build_test: gta
 all: gta
 
 clean:
+	cd tboot-xm && $(MAKE) clean
 	rm -rf out/

@@ -5,3 +5,7 @@ cover.*
 /builds
 NVChip*
 *.test
+tboot-xm/build
+tboot-xm/bin
+tboot-xm/lib
+tboot-xm/out
