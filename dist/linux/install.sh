@@ -12,7 +12,54 @@
 #    service.
 #--------------------------------------------------------------------------------------------------
 #!/bin/bash
+# TERM_DISPLAY_MODE can be "plain" or "color"
 
+TERM_DISPLAY_MODE=color
+TERM_COLOR_GREEN="\\033[1;32m"
+TERM_COLOR_CYAN="\\033[1;36m"
+TERM_COLOR_RED="\\033[1;31m"
+TERM_COLOR_YELLOW="\\033[1;33m"
+TERM_COLOR_NORMAL="\\033[0;39m"
+
+# Environment:
+# - TERM_DISPLAY_MODE
+# - TERM_DISPLAY_GREEN
+# - TERM_DISPLAY_NORMAL
+echo_success() {
+  if [ "$TERM_DISPLAY_MODE" = "color" ]; then echo -en "${TERM_COLOR_GREEN}"; fi
+  echo ${@:-"[  OK  ]"}
+  if [ "$TERM_DISPLAY_MODE" = "color" ]; then echo -en "${TERM_COLOR_NORMAL}"; fi
+  return 0
+}
+
+# Environment:
+# - TERM_DISPLAY_MODE
+# - TERM_DISPLAY_RED
+# - TERM_DISPLAY_NORMAL
+echo_failure() {
+  if [ "$TERM_DISPLAY_MODE" = "color" ]; then echo -en "${TERM_COLOR_RED}"; fi
+  echo ${@:-"[FAILED]"}
+  if [ "$TERM_DISPLAY_MODE" = "color" ]; then echo -en "${TERM_COLOR_NORMAL}"; fi
+  return 1
+}
+
+# Environment:
+# - TERM_DISPLAY_MODE
+# - TERM_DISPLAY_YELLOW
+# - TERM_DISPLAY_NORMAL
+echo_warning() {
+  if [ "$TERM_DISPLAY_MODE" = "color" ]; then echo -en "${TERM_COLOR_YELLOW}"; fi
+  echo ${@:-"[WARNING]"}
+  if [ "$TERM_DISPLAY_MODE" = "color" ]; then echo -en "${TERM_COLOR_NORMAL}"; fi
+  return 1
+}
+
+echo_info() {
+  if [ "$TERM_DISPLAY_MODE" = "color" ]; then echo -en "${TERM_COLOR_CYAN}"; fi
+  echo ${@:-"[INFO]"}
+  if [ "$TERM_DISPLAY_MODE" = "color" ]; then echo -en "${TERM_COLOR_NORMAL}"; fi
+  return 1
+}
 #--------------------------------------------------------------------------------------------------
 # Script variables
 #--------------------------------------------------------------------------------------------------
@@ -32,7 +79,8 @@ TRUSTAGENT_BIN_DIR=$TRUSTAGENT_HOME/bin
 TRUSTAGENT_LOG_DIR=/var/log/trustagent
 TRUSTAGENT_CFG_DIR=$TRUSTAGENT_HOME/configuration
 TRUSTAGENT_VAR_DIR=$TRUSTAGENT_HOME/var/
-TRUSTAGENT_DEPENDENCIES=('tpm2-abrmd-2.[01]' 'dmidecode-3' 'redhat-lsb-core-4.1' 'tboot-1.9.7' 'compat-openssl10-1.0')
+TRUSTAGENT_YUM_PACKAGES="tpm2-tss-2.0.0-4.el8.x86_64 tpm2-abrmd-2.1.1-3.el8.x86_64 dmidecode compat-openssl10 logrotate"
+TBOOT_DEPENDENCY="tboot-1.9.7"
 TPM2_ABRMD_SERVICE=tpm2-abrmd.service
 
 #--------------------------------------------------------------------------------------------------
@@ -41,48 +89,45 @@ TPM2_ABRMD_SERVICE=tpm2-abrmd.service
 echo "Starting trustagent installation from " $USER_PWD
 
 if [[ $EUID -ne 0 ]]; then
-    echo "This installer must be run as root"
+    echo_failure "This installer must be run as root"
     exit 1
+fi
+
+# if secure efi is not enabled, require tboot to be present
+bootctl status 2> /dev/null | grep 'Secure Boot: disabled' > /dev/null
+if [ $? -eq 0 ]; then
+    TRUSTAGENT_YUM_PACKAGES+=" $TBOOT_DEPENDENCY"
 fi
 
 # make sure tagent.service is not running or install won't work
 systemctl status $TRUSTAGENT_SERVICE 2>&1 >/dev/null
 if [ $? -eq 0 ]; then
-    echo "Please stop the tagent service before running the installer"
+    echo_failure "Please stop the tagent service before running the installer"
     exit 1
 fi
 
-# make sure dependencies are installed
-for i in ${TRUSTAGENT_DEPENDENCIES[@]}; do
-    echo "Checking for dependency ${i}"
-    rpm -qa | grep ${i} >/dev/null
+# 5.2 Install prerequisites
+install_packages() {
+local yum_packages=$(eval "echo \$TRUSTAGENT_YUM_PACKAGES")
+
+  for package in ${yum_packages}; do
+    echo "Checking for dependency ${package}"
+    rpm -qa | grep ${package} >/dev/null
     if [ $? -ne 0 ]; then
-        echo "Error: Dependency ${i} must be installed."
-        exit 1
-    fi
-done
+        echo "Installing ${package}..."
+        yum -y install ${package} 
+        if [ $? -ne 0 ]; then echo_failure "Failed to install ${package} "; return 1; fi
+    fi    
+  done
+}
+
+install_packages
 
 # make sure tpm2-abrmd service is installed
 systemctl list-unit-files --no-pager | grep $TPM2_ABRMD_SERVICE >/dev/null
 if [ $? -ne 0 ]; then
-    echo "The tpm2-abrmd service must be installed"
+    echo_failure "The tpm2-abrmd service must be installed"
     exit 1
-fi
-
-
-logrotate=""
-
-local logrotaterc=$(ls -1 /etc/logrotate.conf 2>/dev/null | tail -n 1)
-logrotate=$(which logrotate 2>/dev/null)
-if [ -z "$logrotate" ] && [ -f "/usr/sbin/logrotate" ]; then
-  logrotate="/usr/sbin/logrotate"
-fi
-
-if [ -z "$logrotate" ]; then
-  echo "logrotate is not installed"
-  exit 1
-else
-  echo "logrotate installed in $logrotate"
 fi
 
 export LOG_ROTATION_PERIOD=${LOG_ROTATION_PERIOD:-weekly}
@@ -233,7 +278,7 @@ if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PR
         # the simulator needs to be started first -- for now warn, don't error...
         systemctl status $TPM2_ABRMD_SERVICE 2>&1 >/dev/null
         if [ $? -ne 0 ]; then
-            echo "WARNING: Could not start $TPM2_ABRMD_SERVICE"
+            echo_warning "WARNING: Could not start $TPM2_ABRMD_SERVICE"
         fi
     fi
 
@@ -248,14 +293,14 @@ if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PR
 
         systemctl status $TRUSTAGENT_SERVICE 2>&1 >/dev/null
         if [ $? -ne 0 ]; then
-            echo "Installation completed with errors - $TRUSTAGENT_SERVICE did not start."
-            echo "Please check errors in syslog using \`journalctl -u $TRUSTAGENT_SERVICE\`"
+            echo_failure "Installation completed with errors - $TRUSTAGENT_SERVICE did not start."
+            echo_failure "Please check errors in syslog using \`journalctl -u $TRUSTAGENT_SERVICE\`"
             exit 1
         fi
 
         echo "$TRUSTAGENT_SERVICE is running"
     else
-        echo "'$TRUSTAGENT_EXE setup' failed"
+        echo_failure "'$TRUSTAGENT_EXE setup' failed"
         exit 1
     fi
 else
@@ -265,4 +310,4 @@ else
     echo "start tagent.service'"
 fi
 
-echo "Installation succeeded"
+echo_success "Installation succeeded"
