@@ -17,6 +17,7 @@ import (
 	"intel/isecl/go-trust-agent/tasks"
 	"intel/isecl/go-trust-agent/util"
 	commonExec "intel/isecl/lib/common/exec"
+	commLog "intel/isecl/lib/common/log"
 	"intel/isecl/lib/common/log/message"
 	"intel/isecl/lib/common/validation"
 	"intel/isecl/lib/platform-info/platforminfo"
@@ -27,7 +28,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"syscall"
-
 )
 
 var log = commLog.GetDefaultLogger()
@@ -42,27 +42,29 @@ func printUsage() {
 	fmt.Println("    help|-h|-help    Show this help message")
 	fmt.Println("    setup [task]     Run setup task")
 	fmt.Println("    uninstall        Uninstall tagent")
-	fmt.Println("    version          Show the version of trustagent")
-	fmt.Println("    start*           Used by systemd to start the trustagent")
-	fmt.Println("")
-	fmt.Println("    * Please use 'systemctl' to manage the trustagent service")
+	fmt.Println("    version          Print build version info")
+	fmt.Println("    start            Start the trustagent service")
+	fmt.Println("    stop             Stop the trustagent service")
+	fmt.Println("    restart          Restart the trustagent service")
+	fmt.Println("    status           Get the status of the trustagent service")
 	fmt.Println("")
 	fmt.Println("Available Tasks for setup:")
 	fmt.Println("    tagent setup all (or with empty 3rd argument)")
 	fmt.Println("        - Runs all setup tasks to provision the trustagent.")
 	fmt.Println("    tagent setup download-ca-cert [--force]")
-	fmt.Println("        - Fetches the latest CMS Root CA Certificates. --force option overwrites existing root CA certificates.")
+	fmt.Println("        - Fetches the latest CMS Root CA Certificates.")
+	fmt.Println("        --force option overwrites existing root CA certificates.")
 	fmt.Println("    tagent setup download-cert [--force]")
-	fmt.Println("        - Fetches a signed TLS Certificate from CMS. --force option overwrites existing TLS certificates.")
+	fmt.Println("        - Fetches a signed TLS Certificate from CMS.")
+	fmt.Println("        --force option overwrites existing TLS certificates.")
 	fmt.Println("    tagent setup create-host")
 	fmt.Println("        - Registers the trustagent with the verification service.")
 	fmt.Println("    tagent setup create-host-unique-flavor")
 	fmt.Println("        - Populates the verification service with the host unique flavor")
-	fmt.Println("    tagent setup get-configured-manifest")
-	fmt.Println("        - Uses environment variables to pull application-integrity")
+	fmt.Println("    tagent setup get-configured-manifest [--force]")
+	fmt.Println("        - Uses environment variables to pull application-integrity.")
 	fmt.Println("          manifests from the verification service.")
-	fmt.Println("    tagent setup replace-tls-keypair")
-	fmt.Println("        - Recreates the trustagent's tls key/pair.")
+	fmt.Println("          --force option repulls manifests from VS.")
 	fmt.Println("")
 }
 
@@ -108,7 +110,7 @@ func updateMeasureLog() error {
 	log.Trace("main:updateMeasureLog() Entering")
 	defer log.Trace("main:updateMeasureLog() Leaving")
 
-	secLog.Infof("%s main:updateMeasureLog() Running %s using system administrative privilages", message.SU, constants.ModuleAnalysis)
+	secLog.Infof("%s main:updateMeasureLog() Running %s using system administrative privileges", message.SU, constants.ModuleAnalysis)
 	cmd := exec.Command(constants.ModuleAnalysis)
 	cmd.Dir = constants.BinDir
 	results, err := cmd.Output()
@@ -314,7 +316,7 @@ func main() {
 			fmt.Printf("'tagent startService' must be run as the agent user, not  user '%s'\n", currentUser.Username)
 			os.Exit(1)
 		}
-		
+
 		cfg.LogConfiguration(cfg.LogEnableStdout)
 
 		// make sure the config is valid before starting the trust agent service
@@ -338,6 +340,18 @@ func main() {
 		}
 
 		service.Start()
+
+	case "status":
+		cfg.LogConfiguration(cfg.LogEnableStdout)
+		status()
+
+	case "restart":
+		cfg.LogConfiguration(cfg.LogEnableStdout)
+		restart()
+
+	case "stop":
+		cfg.LogConfiguration(cfg.LogEnableStdout)
+		stop()
 
 	case "setup":
 
@@ -393,4 +407,52 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Invalid option: '%s'\n\n", cmd)
 		printUsage()
 	}
+}
+
+func stop() error {
+	log.Trace("main:stop() Entering")
+	defer log.Trace("main:stop() Leaving")
+
+	fmt.Println("Stopping Trust Agent Service")
+
+	_, _, err := commonExec.RunCommandWithTimeout("systemctl stop tagent", 5)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Could not stop Trust Agent Service")
+		fmt.Println("Error : ", err)
+		log.WithError(err).Error("main:stop() Could not stop Trust Agent Service")
+		log.Tracef("%+v", err)
+	}
+	return err
+}
+
+func restart() error {
+	log.Trace("main:restart() Entering")
+	defer log.Trace("main:restart() Leaving")
+
+	fmt.Println("Forwarding to systemctl restart tagent")
+	log.Info("main:restart() tagent restart")
+	systemctl, err := exec.LookPath("systemctl")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error trying to look up for systemctl path")
+		log.WithError(err).Error("main:restart() Error trying to look up for systemctl path")
+		log.Tracef("%+v", err)
+		os.Exit(1)
+	}
+	return syscall.Exec(systemctl, []string{"systemctl", "restart", "tagent"}, os.Environ())
+}
+
+func status() error {
+	log.Trace("main:status() Entering")
+	defer log.Trace("main:status() Leaving")
+
+	fmt.Println("Forwarding to systemctl status tagent")
+	log.Info("main:status() tagent status")
+	systemctl, err := exec.LookPath("systemctl")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error trying to look up for systemctl path")
+		log.WithError(err).Error("main:status() Error trying to look up for systemctl path")
+		log.Tracef("%+v", err)
+		os.Exit(1)
+	}
+	return syscall.Exec(systemctl, []string{"systemctl", "status", "tagent"}, os.Environ())
 }

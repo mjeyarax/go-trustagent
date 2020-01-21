@@ -289,6 +289,18 @@ The public certificate of the AAS instance will be provisioned to the TA service
                 
         - Status: 200 on success, 400 with invalid input, 401 if not authorized, 500 for all other server errors.
 
+## /version (GET)
+    Description: Retrieves the version and build information for the Go Trust Agent.
+
+    Authentication: None
+
+    Input: None
+
+    Output:             
+        - Returns the contents of Version struct in util package - containing the build version and githash.
+
+        - Status: 200 OK on response.
+
 # Reference
 The following sections are provided as a reference of GTA.
 

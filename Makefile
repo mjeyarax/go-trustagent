@@ -1,6 +1,8 @@
 GITTAG := $(shell git describe --tags --abbrev=0 2> /dev/null)
 GITCOMMIT := $(shell git describe --always)
-GITCOMMITDATE := $(shell git log -1 --date=iso-strict --pretty=format:%cd)
+GITCOMMITDATE := $(shell git log -1 --date=short --pretty=format:%cd)
+GITBRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+TIMESTAMP := $(shell date --iso=seconds)
 VERSION := $(or ${GITTAG}, v1.0.0)
 APPLICATION-AGENT-ARTIFACT = application-agent-4.6-SNAPSHOT-rhel.bin
 GITLAB-TOKEN = gpgtQ5xyjKwDYECNjc9T

@@ -6,6 +6,7 @@ package tasks
 
 import (
 	"encoding/xml"
+	"flag"
 	"fmt"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/vsclient"
@@ -20,6 +21,7 @@ import (
 )
 
 type GetConfiguredManifest struct {
+	Flags []string
 	clientFactory      vsclient.VSClientFactory
 	manifestsClient    vsclient.ManifestsClient
 	savedManifestFiles []string
@@ -59,6 +61,21 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 	var err error
 	var flavorUUIDs []string
 	var flavorLabels []string
+
+	fs := flag.NewFlagSet("get-configured-manifest", flag.ExitOnError)
+	force := fs.Bool("force", false, "force creation of host unique flavor")
+
+	err = fs.Parse(task.Flags)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "setup create-host-unique-flavor: Unable to parse flags")
+		return errors.New("tasks/get-configured-manifest:Run() Unable to parse flags")
+	}
+
+	if task.Validate(c) == nil && !*force {
+		fmt.Println("setup get-configured-manifest: setup task already complete. Skipping...")
+		log.Info("tasks/get-configured-manifest:Run() Host, skipping ...")
+		return nil
+	}
 
 	// initialize if nil
 	if task.manifestsClient == nil {

@@ -28,8 +28,6 @@ const (
 	DownloadRootCACertCommand              = "download-ca-cert"
 	DownloadCertCommand                    = "download-cert"
 	TakeOwnershipCommand                   = "take-ownership"
-	CreateTLSKeyPairCommand                = "create-tls-keypair"
-	ReplaceTLSKeyPairCommand               = "replace-tls-keypair"
 	ProvisionEndorsementKeyCommand         = "provision-ek"
 	ProvisionAttestationIdentityKeyCommand = "provision-aik"
 	DownloadPrivacyCACommand               = "download-privacy-ca"
@@ -162,11 +160,6 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 			clientFactory: vsClientFactory,
 			cfg:           cfg,
 		},
-	}
-
-	registry.taskMap[ReplaceTLSKeyPairCommand] = []setup.Task{
-		&DeleteTlsKeypair{},
-		&downloadTLSCert,
 	}
 
 	registry.taskMap[GetConfiguredManifestCommand] = []setup.Task{

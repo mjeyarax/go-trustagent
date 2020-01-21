@@ -95,6 +95,7 @@ func CreateTrustAgentService(config *config.TrustAgentConfiguration, tpmFactory 
 
 	// Register routes...
 	trustAgentService.router = mux.NewRouter()
+	trustAgentService.router.HandleFunc("/version", getVersion).Methods("GET")
 	trustAgentService.router.Use(middleware.NewTokenAuth(constants.TrustedJWTSigningCertsDir, constants.TrustedCaCertsDir, fnGetJwtCerts, cacheTime))
 
 	// use permission-based access control for webservices
@@ -123,7 +124,7 @@ func (service *TrustAgentService) Start() error {
 
 	// Setup signal handlers to gracefully handle termination
 	stop := make(chan os.Signal)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGKILL)
 
 	httpWriter := os.Stderr
 	if httpLogFile, err := os.OpenFile(constants.HttpLogFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666); err != nil {
@@ -163,9 +164,7 @@ func (service *TrustAgentService) Start() error {
 	return nil
 }
 
-// this requires lib/common to be sourced from
-// replace intel/isecl/lib/common => gitlab.devtools.intel.com/sst/isecl/lib/common.git v1.0/task/roles-and-permissions
-// requiresPermission - ensures that correct permission is present in JWT
+// requiresPermission checks the JWT in the request for the required access permissions
 func requiresPermission(eh endpointHandler, permissionNames []string) endpointHandler {
 	log.Trace("resource/resource:requiresPermission() Entering")
 	defer log.Trace("resource/resource:requiresPermission() Leaving")

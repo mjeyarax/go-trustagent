@@ -4,9 +4,8 @@ Description=TrustAgent Service
 [Service]
 Type=forking
 WorkingDirectory=/opt/trustagent/bin
-ExecStart=/opt/trustagent/bin/tagent start
-ExecStop=/opt/trustagent/bin/tagent stop
-ExecReload=/bin/kill -s HUP $MAINPID
+ExecStart=/opt/trustagent/bin/tagent startService
+ExecStop=/bin/kill -s HUP $MAINPID
 TimeoutStartSec=45
 Restart=on-failure
 PermissionsStartOnly=true

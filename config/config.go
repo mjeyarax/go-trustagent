@@ -318,19 +318,3 @@ func (cfg *TrustAgentConfiguration) LogConfiguration(stdOut bool) {
 	secLog.Infof("config/config:LogConfiguration() %s", message.LogInit)
 	log.Infof("config/config:LogConfiguration() %s", message.LogInit)
 }
-
-
-// func load(path string) *TrustAgentConfiguration {
-// 	var c TrustAgentConfiguration
-// 	file, err := os.Open(path)
-// 	if err == nil {
-// 		defer file.Close()
-// 		yaml.NewDecoder(file).Decode(&c)
-// 	} else {
-// 		// file doesnt exist, create a new blank one
-// 		c.LogLevel = log.InfoLevel
-// 	}
-
-// 	c.configFile = path
-// 	return &c
-// }

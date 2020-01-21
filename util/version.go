@@ -20,7 +20,7 @@ func GetMajorVersion() (int, error) {
 
 	endIdx := strings.Index(Version, ".")
 	if endIdx <= 0 {
-		return 0, errors.Errorf("util/version:GetMinorVersion() Could not parse version string %s", Version)
+		return 0, errors.Errorf("util/version:GetMajorVersion() Could not parse version string %s", Version)
 	}
 
 	major, err := strconv.Atoi(strings.Replace(Version[0:endIdx], "v", "", -1))
