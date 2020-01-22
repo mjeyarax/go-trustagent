@@ -97,6 +97,7 @@ fi
 # if secure efi is not enabled, require tboot to be present
 bootctl status 2> /dev/null | grep 'Secure Boot: disabled' > /dev/null
 if [ $? -eq 0 ]; then
+    SUEFI_ENABLED="false"
     TRUSTAGENT_YUM_PACKAGES+=" $TBOOT_DEPENDENCY"
 fi
 
@@ -123,6 +124,100 @@ local yum_packages=$(eval "echo \$TRUSTAGENT_YUM_PACKAGES")
 }
 
 install_packages
+
+# check if a command is already on path
+is_command_available() {
+  which $* > /dev/null 2>&1
+  local result=$?
+  if [ $result -eq 0 ]; then return 0; else return 1; fi
+}  
+
+is_txtstat_installed() {
+  is_command_available txt-stat
+}
+
+is_measured_launch() {
+  local mle=$(txt-stat | grep 'TXT measured launch: TRUE')
+  if [ -n "$mle" ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+is_uefi_boot() {
+  if [ -d /sys/firmware/efi ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+define_grub_file() {
+  if is_uefi_boot; then
+    if [ -f "/boot/efi/EFI/redhat/grub.cfg" ]; then
+      DEFAULT_GRUB_FILE="/boot/efi/EFI/redhat/grub.cfg"
+    fi
+  else
+    if [ -f "/boot/grub2/grub.cfg" ]; then
+      DEFAULT_GRUB_FILE="/boot/grub2/grub.cfg"
+    fi
+  fi
+  GRUB_FILE=${GRUB_FILE:-$DEFAULT_GRUB_FILE}
+}
+
+is_tpm_driver_loaded() {
+  define_grub_file
+  
+  if [ ! -e /dev/tpm0 ]; then
+    local is_tpm_tis_force=$(grep '^GRUB_CMDLINE_LINUX' /etc/default/grub | grep 'tpm_tis.force=1')
+    local is_tpm_tis_force_any=$(grep '^GRUB_CMDLINE_LINUX' /etc/default/grub | grep 'tpm_tis.force')
+    if [ -n "$is_tpm_tis_force" ]; then
+      echo "TPM driver not loaded, tpm_tis.force=1 already in /etc/default/grub"
+    elif [ -n "$is_tpm_tis_force_any" ]; then
+      echo "TPM driver not loaded, tpm_tis.force present but disabled in /etc/default/grub"
+    else
+      sed -i -e '/^GRUB_CMDLINE_LINUX/ s/"$/ tpm_tis.force=1"/' /etc/default/grub
+      is_tpm_tis_force=$(grep '^GRUB_CMDLINE_LINUX' /etc/default/grub | grep 'tpm_tis.force=1')
+      if [ -n "$is_tpm_tis_force" ]; then
+        echo "TPM driver not loaded, added tpm_tis.force=1 to /etc/default/grub"
+        grub2-mkconfig -o $GRUB_FILE
+      else
+        echo "TPM driver not loaded, failed to add tpm_tis.force=1 to /etc/default/grub"
+      fi
+    fi
+    return 1
+  fi
+  return 0
+}
+
+is_reboot_required() {
+  local should_reboot=no
+  if is_txtstat_installed; then
+    if ! is_measured_launch; then
+      echo_warning "Not in measured launch environment, reboot required"
+      should_reboot=yes
+    else
+      echo "Already in measured launch environment"
+    fi
+  fi
+  
+  if ! is_tpm_driver_loaded; then
+    echo_warning "TPM driver is not loaded, reboot required"
+    should_reboot=yes
+  else
+    echo "TPM driver is already loaded"
+  fi
+  
+  if [ "$should_reboot" == "yes" ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+is_reboot_required
+rebootRequired=$?
 
 # make sure tpm2-abrmd service is installed
 systemctl list-unit-files --no-pager | grep $TPM2_ABRMD_SERVICE >/dev/null
@@ -334,3 +429,10 @@ else
 fi
 
 echo_success "Installation succeeded"
+
+
+if [[ $rebootRequired -eq 0 ]] && [[ $SUEFI_ENABLED == "false" ]]; then
+    echo
+    echo "Trust Agent: A reboot is required."
+    echo
+fi
