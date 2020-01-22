@@ -178,7 +178,7 @@ func requiresPermission(eh endpointHandler, permissionNames []string) endpointHa
 		}
 		reqPermissions := ct.PermissionInfo{Service: constants.AASServiceName, Rules: permissionNames}
 
-		_, foundMatchingPermission := auth.ValidatePermissionAndGetRoleContext(privileges, reqPermissions,
+		_, foundMatchingPermission := auth.ValidatePermissionAndGetPermissionsContext(privileges, reqPermissions,
 			true)
 		if !foundMatchingPermission {
 			w.WriteHeader(http.StatusUnauthorized)
