@@ -218,9 +218,9 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	}
 
 	//---------------------------------------------------------------------------------------------
-        // TA_TLS_CERT_CN
-        //---------------------------------------------------------------------------------------------
-        environmentVariable, err = context.GetenvString(constants.EnvTLSCertCommonName, "Trustagent TLS Certificate Common Name")
+	// TA_TLS_CERT_CN
+	//---------------------------------------------------------------------------------------------
+	environmentVariable, err = context.GetenvString(constants.EnvTLSCertCommonName, "Trustagent TLS Certificate Common Name")
 	if err == nil && environmentVariable != "" {
 		cfg.TLS.CertCN = environmentVariable
 	} else if strings.TrimSpace(cfg.TLS.CertCN) == "" {
@@ -229,15 +229,15 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	}
 
 	//---------------------------------------------------------------------------------------------
-        // SAN_LIST
-        //---------------------------------------------------------------------------------------------
-        environmentVariable, err = context.GetenvString(constants.EnvCertSanList, "Trustagent TLS Certificate SAN LIST")
-        if err == nil && environmentVariable != "" {
-                cfg.TLS.CertSAN = environmentVariable
-        } else if strings.TrimSpace(cfg.TLS.CertSAN) == "" {
-                log.Info("config/config:LoadEnvironmentVariables() SAN_LIST not defined, using default value")
-                cfg.TLS.CertSAN = constants.DefaultTaTlsSan
-        }
+	// SAN_LIST
+	//---------------------------------------------------------------------------------------------
+	environmentVariable, err = context.GetenvString(constants.EnvCertSanList, "Trustagent TLS Certificate SAN LIST")
+	if err == nil && environmentVariable != "" {
+		cfg.TLS.CertSAN = environmentVariable
+	} else if strings.TrimSpace(cfg.TLS.CertSAN) == "" {
+		log.Info("config/config:LoadEnvironmentVariables() SAN_LIST not defined, using default value")
+		cfg.TLS.CertSAN = constants.DefaultTaTlsSan
+	}
 
 
 	//---------------------------------------------------------------------------------------------

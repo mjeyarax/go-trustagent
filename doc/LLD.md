@@ -335,7 +335,7 @@ If the GTA installer is run with a valid 'trustagent.env' file, it will parse th
 |MTWILSON_API_URL|The url used by GTA during setup to request information from HVS. |MTWILSON_API_URL=https://{host}:{port}/mtwilson/v2|Yes|NA|
 |PROVISION_ATTESTATION|When present, enables/disables whether `tagent setup` is called during installation.  If trustagent.env is not present, the value defaults to no ('N').|PROVISION_ATTESTATION=Y|No|N|
 |TA_TLS_CERT_CN|Sets the value for Common Name in the TA TLS certificate.  Defaults to CN=trustagent.|TA_TLS_CERT_CN=Acme Trust Agent 007|No|"Trust Agent TLS Certificate"|
-|TA_TLS_CERT_IP|CSV list that sets the value for SAN list in the TA TLS certificate.  Defaults to 127.0.0.1.|TA_TLS_CERT_IP=10.123.100.1,201.102.10.22,mya.example.com|No|"127.0.0.1,localhost"|
+|SAN_LIST|CSV list that sets the value for SAN list in the TA TLS certificate.  Defaults to 127.0.0.1.|SAN_LIST=10.123.100.1,201.102.10.22,mya.example.com|No|"127.0.0.1,localhost"|
 |TPM_OWNER_SECRET|20 byte hex value to be used as the secret key when taking ownership of the tpm.  *Note: If this field is not specified, GTA will generate a random secret key.*|TPM_OWNER_SECRET=625d6...|No|""|
 |TPM_QUOTE_IPV4|When enabled (`=y`), uses the local system's ip address as a salt when processing a quote nonce.  This field must align with the configuration of HVS.|TPM_QUOTE_IPV4=no|No|N|
 |TPM_SRK_SECRET|When provided, sets the TPM's SRK secret key.  The value must be a 20 byte hex value simlar to TPM_OWNER_SECRET.  If not set, the SRK is set to all zeros.|TPM_SRK_SECRET=0fd392b8...|No|"0000000000000000000000000"|

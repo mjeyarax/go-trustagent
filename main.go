@@ -33,6 +33,13 @@ import (
 var log = commLog.GetDefaultLogger()
 var secLog = commLog.GetSecurityLogger()
 
+const (
+	SYSTEMCTL_START   = "start"
+	SYSTEMCTL_STOP    = "stop"
+	SYSTEMCTL_STATUS  = "status"
+	SYSTEMCTL_RESTART = "restart"
+)
+
 func printUsage() {
 	fmt.Println("Usage:")
 	fmt.Println("")
@@ -232,7 +239,7 @@ func main() {
 	switch cmd {
 	case "version":
 		printVersion()
-	case "start":
+	case "startService":
 
 		//
 		// The legacy trust agent was a shell script that did work like creating platform-info,
@@ -290,17 +297,19 @@ func main() {
 
 			return nil
 		})
-		_ = filepath.Walk(constants.LogDir, func(fileName string, info os.FileInfo, err error) error {
-                        err = os.Chown(fileName, int(uid), int(gid))
-                        if err != nil {
-                                log.Errorf("main:main() Could not own file '%s'", fileName)
-                                return err
-                        }
 
-                        return nil
-                })
+		_ = filepath.Walk(constants.LogDir, func(fileName string, info os.FileInfo, err error) error {
+			err = os.Chown(fileName, int(uid), int(gid))
+			if err != nil {
+					log.Errorf("main:main() Could not own file '%s'", fileName)
+					return err
+			}
+
+			return nil
+		})
+				
 		// spawn 'tagent startService' as the 'tagent' user
-		cmd := exec.Command(constants.TagentExe, "startService")
+		cmd := exec.Command(constants.TagentExe, "startWebService")
 		cmd.SysProcAttr = &syscall.SysProcAttr{}
 		cmd.Dir = constants.BinDir
 		cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
@@ -311,9 +320,9 @@ func main() {
 			os.Exit(1)
 		}
 
-	case "startService":
+	case "startWebService":
 		if currentUser.Username != constants.TagentUserName {
-			fmt.Printf("'tagent startService' must be run as the agent user, not  user '%s'\n", currentUser.Username)
+			fmt.Printf("'tagent startWebService' must be run as the agent user, not  user '%s'\n", currentUser.Username)
 			os.Exit(1)
 		}
 
@@ -341,17 +350,49 @@ func main() {
 
 		service.Start()
 
+	case "start":
+		cfg.LogConfiguration(cfg.LogEnableStdout)
+
+		output, err := run_systemctl(SYSTEMCTL_START)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "An error occurred attempting to start the Trust Agent Service...")
+			fmt.Fprintln(os.Stderr, output)
+			os.Exit(1)
+		}
+
+		fmt.Println("Successfully started the Trust Agent Service")
+
 	case "status":
 		cfg.LogConfiguration(cfg.LogEnableStdout)
-		status()
 
+		// systemctl status returns an error code when the service is not running --
+		// don't report an error, just show the results to the console in either case
+		output, _ := run_systemctl(SYSTEMCTL_STATUS)
+		fmt.Fprintln(os.Stdout, output)
+	
 	case "restart":
 		cfg.LogConfiguration(cfg.LogEnableStdout)
-		restart()
+
+		output, err := run_systemctl(SYSTEMCTL_RESTART)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "An error occurred attempting to restart the Trust Agent Service...")
+			fmt.Fprintln(os.Stderr, output)
+			os.Exit(1)
+		}
+
+		fmt.Println("Successfully restarted the Trust Agent Service")
 
 	case "stop":
 		cfg.LogConfiguration(cfg.LogEnableStdout)
-		stop()
+
+		output, err := run_systemctl(SYSTEMCTL_STOP)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "An error occurred attempting to stop the Trust Agent Service...")
+			fmt.Fprintln(os.Stderr, output)
+			os.Exit(1)
+		}
+
+		fmt.Println("Successfully stopped the Trust Agent Service")
 
 	case "setup":
 
@@ -409,50 +450,27 @@ func main() {
 	}
 }
 
-func stop() error {
-	log.Trace("main:stop() Entering")
-	defer log.Trace("main:stop() Leaving")
+func run_systemctl(systemCtlCmd string) (string, error) {
+	log.Trace("main:run_systemctl() Entering")
+	defer log.Trace("main:run_systemctl() Leaving")
 
-	fmt.Println("Stopping Trust Agent Service")
-
-	_, _, err := commonExec.RunCommandWithTimeout("systemctl stop tagent", 5)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Could not stop Trust Agent Service")
-		fmt.Println("Error : ", err)
-		log.WithError(err).Error("main:stop() Could not stop Trust Agent Service")
-		log.Tracef("%+v", err)
-	}
-	return err
-}
-
-func restart() error {
-	log.Trace("main:restart() Entering")
-	defer log.Trace("main:restart() Leaving")
-
-	fmt.Println("Forwarding to systemctl restart tagent")
-	log.Info("main:restart() tagent restart")
 	systemctl, err := exec.LookPath("systemctl")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error trying to look up for systemctl path")
-		log.WithError(err).Error("main:restart() Error trying to look up for systemctl path")
+		log.WithError(err).Error("main:run_systemctl() Error trying to look up for systemctl path")
 		log.Tracef("%+v", err)
 		os.Exit(1)
 	}
-	return syscall.Exec(systemctl, []string{"systemctl", "restart", "tagent"}, os.Environ())
-}
 
-func status() error {
-	log.Trace("main:status() Entering")
-	defer log.Trace("main:status() Leaving")
+	log.Infof("main:run_systemctl() Running 'systemctl %s tagent'", systemCtlCmd)
 
-	fmt.Println("Forwarding to systemctl status tagent")
-	log.Info("main:status() tagent status")
-	systemctl, err := exec.LookPath("systemctl")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error trying to look up for systemctl path")
-		log.WithError(err).Error("main:status() Error trying to look up for systemctl path")
+	cmd := exec.Command(systemctl, systemCtlCmd, "tagent")
+	out, err := cmd.CombinedOutput()
+	if err != nil && systemCtlCmd != SYSTEMCTL_STATUS {
+		log.WithError(err).Errorf("main:run_systemctl() Error running 'systemctl %s tagent'", systemCtlCmd)
 		log.Tracef("%+v", err)
-		os.Exit(1)
+		return string(out), err
 	}
-	return syscall.Exec(systemctl, []string{"systemctl", "status", "tagent"}, os.Environ())
+
+	return string(out), nil
 }
