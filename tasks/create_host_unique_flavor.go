@@ -5,6 +5,7 @@
 package tasks
 
 import (
+	"fmt"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/util"
 	"intel/isecl/go-trust-agent/vsclient"
@@ -25,7 +26,7 @@ func (task *CreateHostUniqueFlavor) Run(c setup.Context) error {
 	log.Trace("tasks/create_host_unique_flavor:Run() Entering")
 	defer log.Trace("tasks/create_host_unique_flavor:Run() Leaving")
 	var err error
-
+	fmt.Println("Running setup task: create-host-unique-flavor")
 	// initialize if nil
 	if task.flavorsClient == nil {
 		task.flavorsClient = task.clientFactory.FlavorsClient()

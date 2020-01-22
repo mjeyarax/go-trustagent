@@ -14,6 +14,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/pem"
+	"fmt"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/util"
@@ -62,7 +63,7 @@ type ProvisionAttestationIdentityKey struct {
 func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	log.Trace("tasks/provision_aik:Run() Entering")
 	defer log.Trace("tasks/provision_aik:Run() Leaving")
-
+	fmt.Println("Running setup task: provision-aik")
 	var err error
 
 	// initialize if nil

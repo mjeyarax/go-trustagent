@@ -7,6 +7,7 @@ package tasks
 import (
 	"crypto/x509"
 	"encoding/base64"
+	"fmt"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/vsclient"
@@ -44,6 +45,7 @@ func (task *ProvisionEndorsementKey) Run(c setup.Context) error {
 	var registered bool
 	var isEkSigned bool
 
+	fmt.Println("Running setup task: provision-ek")
 	tpmProvider, err := task.tpmFactory.NewTpmProvider()
 	if err != nil {
 		return errors.Wrap(err, "tasks/provision_ek:Run() Error while creating NewTpmProvider")

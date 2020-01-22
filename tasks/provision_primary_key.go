@@ -22,7 +22,7 @@ type ProvisionPrimaryKey struct {
 func (task *ProvisionPrimaryKey) Run(c setup.Context) error {
 	log.Trace("tasks/provision_primary_key:Run() Entering")
 	defer log.Trace("tasks/provision_primary_key:Run() Leaving")
-
+	fmt.Println("Running setup task: provision-primary-key")
 	tpm, err := task.tpmFactory.NewTpmProvider()
 	if err != nil {
 		return errors.Wrap(err,"tasks/provision_primary_key:Run() Error while creating NewTpmProvider")

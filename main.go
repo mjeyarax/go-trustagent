@@ -134,13 +134,13 @@ func printVersion() {
 	if len(os.Args) > 2 && os.Args[2] == "short" {
 		major, err := util.GetMajorVersion()
 		if err != nil {
-			fmt.Fprintf(os.Stderr,"Error while fetching Major version: %+v \n", err)
+			fmt.Fprintf(os.Stderr,"Error while fetching Major version: %v \n", err)
 			os.Exit(1)
 		}
 
 		minor, err := util.GetMinorVersion()
 		if err != nil {
-			fmt.Fprintf(os.Stderr,"Error while fetching Minor version: %+v \n", err)
+			fmt.Fprintf(os.Stderr,"Error while fetching Minor version: %v \n", err)
 			os.Exit(1)
 		}
 
@@ -229,7 +229,7 @@ func main() {
 
 	cfg, err := config.NewConfigFromYaml(constants.ConfigFilePath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "main:main() Error while parsing configuration file: %+v \n", err)
+		fmt.Fprintf(os.Stderr, "main:main() Error while parsing configuration file %v \n", err)
 		os.Exit(1)
 	}
 
@@ -414,13 +414,15 @@ func main() {
 
 		registry, err := tasks.CreateTaskRegistry(cfg, os.Args)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error while creating task registry %+v \n", err)
+			fmt.Fprintln(os.Stderr, "Error while creating task registry")
+			log.Errorf("main:main() Error while creating task registry %+v", err)
 			os.Exit(1)
 		}
 
 		err = registry.RunCommand(setupCommand)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error while running setup Command %s, %+v \n", setupCommand, err)
+			fmt.Fprintf(os.Stderr, "Error while running setup Command %s\n", setupCommand)
+			log.Errorf("main:main() Error while running setup Command %s, %+v", setupCommand, err)
 			os.Exit(1)
 		}
 

@@ -5,6 +5,7 @@
 package tasks
 
 import (
+	"fmt"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/lib/common/crypt"
 	"intel/isecl/lib/common/setup"
@@ -24,6 +25,7 @@ type TakeOwnership struct {
 func (task *TakeOwnership) Run(c setup.Context) error {
 	log.Trace("tasks/take_ownership:Run() Entering")
 	defer log.Trace("tasks/take_ownership:Run() Leaving")
+	fmt.Println("Running setup task: take-ownership")
 	// The OwnerSecretKey is either set via trustagent.env (env var) and trustagent_config.go,
 	// or is empty.  If it is empty, generate a new random key.  Note:  It could also be
 	// present from the config.yml, but we assume this task is only called when taking

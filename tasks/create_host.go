@@ -5,6 +5,7 @@
 package tasks
 
 import (
+	"fmt"
 	commLog "intel/isecl/lib/common/log"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/util"
@@ -34,7 +35,7 @@ func (task *CreateHost) Run(c setup.Context) error {
 	defer log.Trace("tasks/create_host:Run() Leaving")
 
 	var err error
-
+	fmt.Println("Running setup task: create-host")
 	// initialize if nil
 	if task.hostsClient == nil {
 		task.hostsClient = task.clientFactory.HostsClient()

@@ -83,7 +83,7 @@ func fnGetJwtCerts() error {
 
 func CreateTrustAgentService(config *config.TrustAgentConfiguration, tpmFactory tpmprovider.TpmFactory) (*TrustAgentService, error) {
 	log.Trace("resource/service:CreateTrustAgentService() Entering")
-        defer log.Trace("resource/service:CreateTrustAgentService() Leaving")
+	defer log.Trace("resource/service:CreateTrustAgentService() Leaving")
 
 	if config.TrustAgentService.Port == 0 {
 		return nil, errors.New("Port cannot be zero")
@@ -95,17 +95,19 @@ func CreateTrustAgentService(config *config.TrustAgentConfiguration, tpmFactory 
 
 	// Register routes...
 	trustAgentService.router = mux.NewRouter()
-	trustAgentService.router.HandleFunc("/version", getVersion).Methods("GET")
-	trustAgentService.router.Use(middleware.NewTokenAuth(constants.TrustedJWTSigningCertsDir, constants.TrustedCaCertsDir, fnGetJwtCerts, cacheTime))
+	noAuthRouter := trustAgentService.router.PathPrefix("").Subrouter()
+	authRouter := trustAgentService.router.PathPrefix("/v2/").Subrouter()
+	noAuthRouter.HandleFunc("/version", getVersion).Methods("GET")
+	authRouter.Use(middleware.NewTokenAuth(constants.TrustedJWTSigningCertsDir, constants.TrustedCaCertsDir, fnGetJwtCerts, cacheTime))
 
 	// use permission-based access control for webservices
-	trustAgentService.router.HandleFunc("/v2/aik", errorHandler(requiresPermission(getAik(), []string{getAIKPerm}))).Methods("GET")
-	trustAgentService.router.HandleFunc("/v2/host", errorHandler(requiresPermission(getPlatformInfo(), []string{getHostInfoPerm}))).Methods("GET")
-	trustAgentService.router.HandleFunc("/v2/tpm/quote", errorHandler(requiresPermission(getTpmQuote(config, tpmFactory), []string{postQuotePerm}))).Methods("POST")
-	trustAgentService.router.HandleFunc("/v2/binding-key-certificate", errorHandler(requiresPermission(getBindingKeyCertificate(), []string{getBindingKeyPerm}))).Methods("GET")
-	trustAgentService.router.HandleFunc("/v2/tag", errorHandler(requiresPermission(setAssetTag(config, tpmFactory), []string{postDeployTagPerm}))).Methods("POST")
-	trustAgentService.router.HandleFunc("/v2/host/application-measurement", errorHandler(requiresPermission(getApplicationMeasurement(), []string{postAppMeasurementPerm}))).Methods("POST")
-	trustAgentService.router.HandleFunc("/v2/deploy/manifest", errorHandler(requiresPermission(deployManifest(), []string{postDeployManifestPerm}))).Methods("POST")
+	authRouter.HandleFunc("/aik", errorHandler(requiresPermission(getAik(), []string{getAIKPerm}))).Methods("GET")
+	authRouter.HandleFunc("/host", errorHandler(requiresPermission(getPlatformInfo(), []string{getHostInfoPerm}))).Methods("GET")
+	authRouter.HandleFunc("/tpm/quote", errorHandler(requiresPermission(getTpmQuote(config, tpmFactory), []string{postQuotePerm}))).Methods("POST")
+	authRouter.HandleFunc("/binding-key-certificate", errorHandler(requiresPermission(getBindingKeyCertificate(), []string{getBindingKeyPerm}))).Methods("GET")
+	authRouter.HandleFunc("/tag", errorHandler(requiresPermission(setAssetTag(config, tpmFactory), []string{postDeployTagPerm}))).Methods("POST")
+	authRouter.HandleFunc("/host/application-measurement", errorHandler(requiresPermission(getApplicationMeasurement(), []string{postAppMeasurementPerm}))).Methods("POST")
+	authRouter.HandleFunc("/deploy/manifest", errorHandler(requiresPermission(deployManifest(), []string{postDeployManifestPerm}))).Methods("POST")
 
 	return &trustAgentService, nil
 }

@@ -58,6 +58,7 @@ func (task GetConfiguredManifest) saveManifest(manifestXml []byte) error {
 func (task *GetConfiguredManifest) Run(c setup.Context) error {
 	log.Trace("tasks/get-configured-manifest:Run() Entering")
 	defer log.Trace("tasks/get-configured-manifest:Run() Leaving")
+	fmt.Println("Running setup task: get-configured-manifest")
 	var err error
 	var flavorUUIDs []string
 	var flavorLabels []string

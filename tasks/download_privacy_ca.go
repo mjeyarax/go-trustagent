@@ -5,6 +5,7 @@
 package tasks
 
 import (
+	"fmt"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/util"
@@ -25,7 +26,7 @@ type DownloadPrivacyCA struct {
 func (task *DownloadPrivacyCA) Run(c setup.Context) error {
 	log.Trace("tasks/download_privacy_ca:Run() Entering")
 	defer log.Trace("tasks/download_privacy_ca:Run() Leaving")
-
+	fmt.Println("Running setup task: download-privacy-ca")
 	// initialize if nil
 	if task.privacyCAClient == nil {
 		task.privacyCAClient = task.clientFactory.PrivacyCAClient()
