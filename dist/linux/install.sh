@@ -405,6 +405,10 @@ if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PR
 
     if [ $setup_results -eq 0 ]; then
 
+        if [[ "$AUTOMATIC_REGISTRATION" == "y" || "$AUTOMATIC_REGISTRATION" == "Y" || "$AUTOMATIC_REGISTRATION" == "yes" ]]; then
+            tagent setup create-host
+        fi
+
         systemctl start $TRUSTAGENT_SERVICE
         echo "Waiting for $TRUSTAGENT_SERVICE to start"
         sleep 3

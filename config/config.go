@@ -36,6 +36,7 @@ type TrustAgentConfiguration struct {
 	LogLevel          string
 	LogEnableStdout   bool
 	LogEntryMaxLength int
+	TpmQuoteIPv4      bool
 	TrustAgentService struct {
 		Port     int
 	}
@@ -239,6 +240,31 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 		cfg.TLS.CertSAN = constants.DefaultTaTlsSan
 	}
 
+	//---------------------------------------------------------------------------------------------
+	// TPM_QUOTE_IPV4
+	//---------------------------------------------------------------------------------------------
+	cfg.TpmQuoteIPv4 = true
+	environmentVariable, err = context.GetenvString("TPM_QUOTE_IPV4", "TPM Quote IPv4 Nonce")
+	if err == nil && environmentVariable != "" {
+		cfg.TpmQuoteIPv4, err = strconv.ParseBool(environmentVariable)
+		if err != nil {
+			log.Info("config/config:LoadEnvironmentVariables() TPM_QUOTE_IPV4 not valid, setting default value true")
+			cfg.TpmQuoteIPv4 = true
+                }
+	}
+
+	//---------------------------------------------------------------------------------------------
+        // TA_ENABLE_CONSOLE_LOG
+        //---------------------------------------------------------------------------------------------
+
+	cfg.LogEnableStdout = false
+	logEnableStdout, err := context.GetenvString("TA_ENABLE_CONSOLE_LOG", "Trustagent Enable standard output")
+	if err == nil  && logEnableStdout != "" {
+		cfg.LogEnableStdout, err = strconv.ParseBool(logEnableStdout)
+		if err != nil{
+			log.Info("Error while parsing the variable TA_ENABLE_CONSOLE_LOG, setting to default value false")
+		}
+	}
 
 	//---------------------------------------------------------------------------------------------
 	// Save config if 'dirty'

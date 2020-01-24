@@ -7,6 +7,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
@@ -27,6 +28,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 )
 
@@ -406,13 +408,20 @@ func main() {
 		}
 
 		var setupCommand string
+		var flags []string
 		if len(os.Args) > 2 {
-			setupCommand = os.Args[2]
+			if strings.Contains(os.Args[2], "trustagent.env"){
+				sourceEnvFile(os.Args[2])
+				setupCommand = tasks.DefaultSetupCommand
+			} else{
+				setupCommand = os.Args[2]
+				flags = os.Args[2:]
+			}
 		} else {
 			setupCommand = tasks.DefaultSetupCommand
 		}
 
-		registry, err := tasks.CreateTaskRegistry(cfg, os.Args)
+		registry, err := tasks.CreateTaskRegistry(cfg, flags)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error while creating task registry")
 			log.Errorf("main:main() Error while creating task registry %+v", err)
@@ -450,6 +459,22 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Invalid option: '%s'\n\n", cmd)
 		printUsage()
 	}
+}
+
+func sourceEnvFile(trustagentEnvFile string){
+    file, err := os.Open(trustagentEnvFile)
+    if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to open env file: %s", trustagentEnvFile)
+		os.Exit(1)
+    }
+    defer file.Close()
+
+    scanner := bufio.NewScanner(file)
+    var envKeyPair []string
+    for scanner.Scan() {
+		envKeyPair = strings.Split(scanner.Text(), "=")
+		os.Setenv(envKeyPair[0], envKeyPair[1]) 
+    }
 }
 
 func run_systemctl(systemCtlCmd string) (string, error) {
