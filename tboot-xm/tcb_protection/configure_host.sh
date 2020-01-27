@@ -203,6 +203,51 @@ detect_tpm_version() {
   fi
 }
 
+function isRhel8WithoutTboot()
+{
+        uname -r | grep "\.el8" > /dev/null 2>&1
+        isRhel8 = $? 
+
+        which txt-stat > /dev/null 2>&1
+        tbootInstalled = $?
+
+        if isRhel8 -eq 0; then
+                if tbootInstalled -ne 0; then
+                        return 0
+                fi
+        fi
+
+        return 1
+}
+
+function generate_rhel8_menuentry()
+{
+
+	# use the default initramfs (ex. initramfs-4.18.0-147.el8.x86_64.img) to 
+	# find the right file in /boot/loaders/entries
+	DEFAULT_INITRAMFS="initramfs-`uname -r`.img"
+	echo "Default initframs is $DEFAULT_INITRAMFS"
+
+	RHEL8_DEFAULT_MENUENTRY=`grep -l "initrd \/$DEFAULT_INITRAMFS" /boot/loader/entries/*conf | xargs -L 1 basename | tail -1`
+        echo "Found default menu entry file $RHEL8_DEFAULT_MENUENTRY in /boot/loader/entries"
+
+	# create a copy of the default boot entry in /opt/tbootxm that will be updated.
+	# name it the same as the found/default file, plus "-measurement.conf".	
+	MENUENTRY_FILE="/opt/tbootxm/${RHEL8_DEFAULT_MENUENTRY%%.conf*}-measurement.conf"
+        cp /boot/loader/entries/$RHEL8_DEFAULT_MENUENTRY $MENUENTRY_FILE
+
+	# change the 'title' from...
+	#     title Red Hat Enterprise Linux (4.18.0-147.el8.x86_64) 8.1 (Ootpa)
+	# to... 
+	#     title TCB-Protection Red Hat Enterprise Linux (4.18.0-147.el8.x86_64) 8.1 (Ootpa)
+	sed -i "s/title*/title TCB-Protection/g" $MENUENTRY_FILE 
+
+	# update the 'initrd' value to the application-agent image
+ 	sed -i "s/initrd \/$DEFAULT_INITRAMFS*/initrd \/$INITRD_NAME/g" $MENUENTRY_FILE 
+
+        return
+}
+
 function generate_grub_entry()
 {
 	echo "Generate grub entry for TCB-protection"
@@ -210,73 +255,90 @@ function generate_grub_entry()
 	which_grub
 	get_grub_file_location
 	detect_tpm_version
-	perl $CREATE_MENU_ENTRY_SCRIPT $MENUENTRY_FILE $(uname -r) "$INITRD_NAME" "CONFIG_FILE_PATH=\"$CONFIG_FILE_NAME\"" "$MENUENTRY_PREFIX" "$GRUB_FILE" $GRUB_VERSION "$TPM_VERSION"
-	if [ $? -ne 0 ]; then
-		echo "ERROR: Not able to get appropriate grub entry from $GRUB_FILE file for kernel version $KERNEL_VERSION ."
-		exit 1
-	fi
+
+        if isRhel8WithoutTboot; then
+                generate_rhel8_menuentry
+        else
+                perl $CREATE_MENU_ENTRY_SCRIPT $MENUENTRY_FILE $(uname -r) "$INITRD_NAME" "CONFIG_FILE_PATH=\"$CONFIG_FILE_NAME\"" "$MENUENTRY_PREFIX" "$GRUB_FILE" $GRUB_VERSION "$TPM_VERSION"
+                if [ $? -ne 0 ]; then
+                        echo "ERROR: Not able to get appropriate grub entry from $GRUB_FILE file for kernel version $KERNEL_VERSION ."
+                        exit 1
+                fi
+        fi
 	echo "Generated grub entry in $MENUENTRY_FILE file"
 }
 
 function update_grub()
 {
-	if [ "$GRUB_VERSION" == "0" ]; then
-		echo "Updating the $GRUB_FILE with newly generated entry"
-		perl $UPDATE_MENU_ENTRY_SCRIPT $MENUENTRY_FILE $GRUB_FILE $GRUB_VERSION $MENUENTRY_PREFIX
-		if [ $? -ne 0 ]
-		then
-			echo "Couldn't update the grub entry"
-			echo "Exiting ..."
-			exit
-		fi
-                #echo "WARNING: Not updating grub file"
-                #echo "          Follow below mentioned steps to update grub manually:"
-                #echo "          - Verify grub entry available in $MENUENTRY_FILE file and append it in $GRUB_FILE file manually."
-                #echo ""
-		exit
-	fi
+        if isRhel8WithoutTboot; then
+                # copy the generated menu enrty in /opt/tbootxm to /boot/loaders/entries
+                cp $MENUENTRY_FILE /boot/loader/entries
+		echo "Deployed $MENUENTRY_FILE to /boot/loader/entries"
+		
+                # set the menu entry name so that default can be set below
+                TCB_ENTRY_NAME=`sed -n "s/title *//p" $MENUENTRY_FILE`
+        	TCB_ENTRY_NAME="'$TCB_ENTRY_NAME'"
+        else 
+                if [ "$GRUB_VERSION" == "0" ]; then
+                        echo "Updating the $GRUB_FILE with newly generated entry"
+                        perl $UPDATE_MENU_ENTRY_SCRIPT $MENUENTRY_FILE $GRUB_FILE $GRUB_VERSION $MENUENTRY_PREFIX
+                        if [ $? -ne 0 ]
+                        then
+                                echo "Couldn't update the grub entry"
+                                echo "Exiting ..."
+                                exit
+                        fi
+                        #echo "WARNING: Not updating grub file"
+                        #echo "          Follow below mentioned steps to update grub manually:"
+                        #echo "          - Verify grub entry available in $MENUENTRY_FILE file and append it in $GRUB_FILE file manually."
+                        #echo ""
+                        exit
+                fi
 
-	echo "Check for existing menuentry in /etc/grub.d/40_custom file"
+                echo "Check for existing menuentry in /etc/grub.d/40_custom file"
 
-	grep -c "menuentry '$MENUENTRY_PREFIX" /etc/grub.d/40_custom > /dev/null
-	if [ $? -eq 0 ]; then
-		# update the existing grub entry
-		echo "/etc/grub.d/40_custom already contains an entry for TCB-Protection"
-		echo "updating the /etc/grub.d/40_custom with new entry"
-		perl $UPDATE_MENU_ENTRY_SCRIPT $MENUENTRY_FILE /etc/grub.d/40_custom $GRUB_VERSION $MENUENTRY_PREFIX
-		if [ $? -ne 0 ]
-		then
-			echo "Couldn't update the entry in /etc/grub.d/40_custom"
-			echo "Exiting ..."
-			exit
-		fi
-		#echo "WARNING: Aborting update grub operation as /etc/grub.d/40_custom already contains grub entry for TCB-Protection"
-		#echo "		Follow below mentioned steps to update grub manually:"
-		#echo "		- Update menuenry in /etc/grub.d/40_custom file manually using grub entry available in $MENUENTRY_FILE file"
-		#echo "		- After updating /etc/grub.d/40_custom execute 'update-grub' or 'grub2-mkconfig -o $GRUB_FILE' command."
-		#echo ""
-		#exit
-	else
-		cat $MENUENTRY_FILE >> /etc/grub.d/40_custom
-		echo "Menuentry has been appended in /etc/grub.d/40_custom"
-	fi
+                grep -c "menuentry '$MENUENTRY_PREFIX" /etc/grub.d/40_custom > /dev/null
+                if [ $? -eq 0 ]; then
+                        # update the existing grub entry
+                        echo "/etc/grub.d/40_custom already contains an entry for TCB-Protection"
+                        echo "updating the /etc/grub.d/40_custom with new entry"
+                        perl $UPDATE_MENU_ENTRY_SCRIPT $MENUENTRY_FILE /etc/grub.d/40_custom $GRUB_VERSION $MENUENTRY_PREFIX
+                        if [ $? -ne 0 ]
+                        then
+                                echo "Couldn't update the entry in /etc/grub.d/40_custom"
+                                echo "Exiting ..."
+                                exit
+                        fi
+                        #echo "WARNING: Aborting update grub operation as /etc/grub.d/40_custom already contains grub entry for TCB-Protection"
+                        #echo "		Follow below mentioned steps to update grub manually:"
+                        #echo "		- Update menuenry in /etc/grub.d/40_custom file manually using grub entry available in $MENUENTRY_FILE file"
+                        #echo "		- After updating /etc/grub.d/40_custom execute 'update-grub' or 'grub2-mkconfig -o $GRUB_FILE' command."
+                        #echo ""
+                        #exit
+                else
+                        cat $MENUENTRY_FILE >> /etc/grub.d/40_custom
+                        echo "Menuentry has been appended in /etc/grub.d/40_custom"
+                fi
 
-    if [ $os_version == "fedora" ] || [ $os_version == "rhel" ]; then
-        grub2-mkconfig -o $GRUB_FILE
-    else
-        update-grub
-    fi
-        
-    if [ $? -ne 0 ]; then
-        echo_failure "Grub file could not be updated with TCB-protection menu entry"
-        exit 2
-    fi
-	
-    TCB_MENU_ENTRY=`grep "TCB-Protection" /var/tbootxm/sample_menuentry`
-    IFS="'" read _ TCB_ENTRY_NAME _ <<< "$TCB_MENU_ENTRY"
-    TCB_ENTRY_NAME="'$TCB_ENTRY_NAME'"
+        	TCB_MENU_ENTRY=`grep "TCB-Protection" $MENUENTRY_FILE`
+        	IFS="'" read _ TCB_ENTRY_NAME _ <<< "$TCB_MENU_ENTRY"
+        	TCB_ENTRY_NAME="'$TCB_ENTRY_NAME'"
+        fi
 
-    update_property_in_file GRUB_DEFAULT /etc/default/grub "$TCB_ENTRY_NAME"
+        if [ $os_version == "fedora" ] || [ $os_version == "rhel" ]; then
+                grub2-mkconfig -o $GRUB_FILE
+        else
+                update-grub
+        fi
+
+        if [ $? -ne 0 ]; then
+                echo_failure "Grub file could not be updated with TCB-protection menu entry"
+                exit 2
+        fi
+
+	echo "Setting default menuentry to $TCB_ENTRY_NAME"
+
+        update_property_in_file GRUB_DEFAULT /etc/default/grub "$TCB_ENTRY_NAME"
 
 	if [ $os_version == "fedora" ] || [ $os_version == "rhel" ]; then
 		grub2-mkconfig -o $GRUB_FILE	
@@ -284,9 +346,9 @@ function update_grub()
 		update-grub
 	fi
         
-    if [ $? -ne 0 ]; then
-        echo_warning "Unable to set TCB-protection as default grub entry."
-    fi
+        if [ $? -ne 0 ]; then
+                echo_warning "Unable to set TCB-protection as default grub entry."
+        fi
 
 	echo "Grub entry updated... New grub option will be available in $GRUB_FILE file"
 	echo "Reboot host and select appropriate grub option to boot host with TCB protection"
