@@ -206,13 +206,15 @@ detect_tpm_version() {
 function isRhel8WithoutTboot()
 {
         uname -r | grep "\.el8" > /dev/null 2>&1
-        isRhel8 = $? 
+	local isRhel8=$?
 
         which txt-stat > /dev/null 2>&1
-        tbootInstalled = $?
+        local tbootInstalled=$?
 
-        if isRhel8 -eq 0; then
-                if tbootInstalled -ne 0; then
+        if [[ $isRhel8 -eq 0 ]]
+	then
+                if [[ $tbootInstalled -ne 0 ]] 
+		then
                         return 0
                 fi
         fi
