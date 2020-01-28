@@ -33,7 +33,8 @@ func (task GetConfiguredManifest) saveManifest(manifestXml []byte) error {
 	manifest := vsclient.Manifest{}
 	err := xml.Unmarshal(manifestXml, &manifest)
 	if err != nil {
-		return errors.Wrap(err, "tasks/get-configured-manifest:saveManifest() Error while unmarshalling the manifest xml")
+		log.WithError(err).Error("tasks/get-configured-manifest:saveManifest() Error while unmarshalling the manifest xml")
+		return errors.New("Error while unmarshalling the manifest xml")
 	}
 
 	if strings.Contains(manifest.Label, vsclient.DEFAULT_APPLICATION_FLAVOR_PREFIX) ||
@@ -45,7 +46,8 @@ func (task GetConfiguredManifest) saveManifest(manifestXml []byte) error {
 	manifestFile := fmt.Sprintf("%s/manifest_%s.xml", constants.VarDir, manifest.UUID)
 	err = ioutil.WriteFile(manifestFile, manifestXml, 0600)
 	if err != nil {
-		return errors.Wrapf(err, "tasks/get-configured-manifest:saveManifest() Error while writing %s/manifest_%s.xml file", constants.VarDir, manifest.UUID)
+		log.WithError(err).Errorf("tasks/get-configured-manifest:saveManifest() Error while writing %s/manifest_%s.xml file", constants.VarDir, manifest.UUID)
+		return errors.Errorf("Error while writing %s/manifest_%s.xml file", constants.VarDir, manifest.UUID)
 	}
 
 	// keep track of which manifests were saved so they can be validated in 'Validate()'
@@ -69,7 +71,7 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 	err = fs.Parse(task.Flags)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "setup create-host-unique-flavor: Unable to parse flags")
-		return errors.New("tasks/get-configured-manifest:Run() Unable to parse flags")
+		return errors.New("Unable to parse flags")
 	}
 
 	if task.Validate(c) == nil && !*force {
@@ -91,7 +93,7 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 			err = validation.ValidateUUIDv4(uuid)
 			if err != nil {
 				secLog.Errorf("%s tasks/get-configured-manifest:Run() Flavor UUID:'%s' is not a valid uuid", message.InvalidInputBadParam, uuid)
-				return errors.Errorf("tasks/get-configured-manifest:Run() Flavor UUID:'%s' is not a valid uuid", uuid)
+				return errors.Errorf("Flavor UUID:'%s' is not a valid uuid", uuid)
 			}
 
 			flavorUUIDs = append(flavorUUIDs, uuid)
@@ -105,7 +107,7 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 	err = validation.ValidateStrings(flavorLabels)
         if err != nil {
                 secLog.Errorf("%s tasks/get-configured-manifest:Run() Flavor Labels:'%s' are not valid labels", message.InvalidInputBadParam, constants.FlavorLabels)
-                return errors.Errorf("tasks/get-configured-manifest:Run()  Flavor Labels:'%s' are not valid labels", constants.FlavorLabels)
+                return errors.Errorf("Flavor Labels:'%s' are not valid labels", constants.FlavorLabels)
         }
 
 	if len(flavorUUIDs) == 0 && len(flavorLabels) == 0 {
@@ -156,7 +158,8 @@ func (task *GetConfiguredManifest) Validate(c setup.Context) error {
 	}
 
 	if missing {
-		return errors.New("tasks/get-configured-manifest:Validate() One or manifest files were not created.")
+		log.Errorf("tasks/get-configured-manifest:Validate() One or more manifest files were not created")
+		return errors.New("One or more manifest files were not created.")
 	}
 
 	log.Info("tasks/get-configured-manifest:Validate() Get configured manifest was successful.")

@@ -48,25 +48,29 @@ func (task *ProvisionEndorsementKey) Run(c setup.Context) error {
 	fmt.Println("Running setup task: provision-ek")
 	tpmProvider, err := task.tpmFactory.NewTpmProvider()
 	if err != nil {
-		return errors.Wrap(err, "tasks/provision_ek:Run() Error while creating NewTpmProvider")
+		log.WithError(err).Error("tasks/provision_ek:Run() Error while creating NewTpmProvider")
+		return errors.New("Error while creating NewTpmProvider")
 	}
 
 	defer tpmProvider.Close()
 
 	// read the manufacture's endorsement key from the TPM
 	if err = task.readEndorsementKeyCertificate(tpmProvider); err != nil {
-		return errors.Wrap(err, "tasks/provision_ek:Run() Error while reading tpm endorsement certificate")
+		log.WithError(err).Error("tasks/provision_ek:Run() Error while creating NewTpmProvider")
+		return errors.New("Error while reading tpm endorsement certificate")
 	}
 
 	// download the list of public endorsement authority certs from VS
 	if err := task.downloadEndorsementAuthorities(); err != nil {
-		return errors.Wrap(err, "tasks/provision_ek:Run() Error while downloading endorsement authorities")
+		log.WithError(err).Error("tasks/provision_ek:Run() Error while downloading endorsement authorities")
+		return errors.New("Error while downloading endorsement authorities")
 	}
 
 	// make sure manufacture's endorsement key is signed by one of the ea certs
 	// provided by VS.
 	if isEkSigned, err = task.isEkSignedByEndorsementAuthority(); err != nil {
-		return errors.Wrap(err, "tasks/provision_ek:Run() Error while verifying endorsement certificate is signed by endorsement authorities")
+		log.WithError(err).Error("tasks/provision_ek:Run() Error while verifying endorsement certificate is signed by endorsement authorities")
+		return errors.New("Error while verifying endorsement certificate is signed by endorsement authorities")
 	}
 
 	// if the ek verifies, we're done/ok

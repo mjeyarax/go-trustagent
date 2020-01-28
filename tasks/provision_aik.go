@@ -81,25 +81,29 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	identityChallengeRequest := vsclient.IdentityChallengeRequest{}
 	err = task.populateIdentityRequest(&identityChallengeRequest.IdentityRequest)
 	if err != nil {
-		return errors.Wrap(err, "tasks/provision_aik:Run() Error while populating identity request")
+		log.WithError(err).Error("tasks/provision_aik:Run() Error while populating identity request")
+		return errors.New("Error while populating identity request")
 	}
 
 	// get the EK cert from the tpm
 	ekCertBytes, err := task.getEndorsementKeyBytes()
 	if err != nil {
-		return errors.Wrap(err, "tasks/provision_aik:Run() Error while getting endorsement certificate in bytes from tpm")
+		log.WithError(err).Error("tasks/provision_aik:Run() Error while getting endorsement certificate in bytes from tpm")
+		return errors.New("Error while getting endorsement certificate in bytes from tpm")
 	}
 
 	// encrypt the EK cert into binary that is acceptable to HVS/NAIRL
 	identityChallengeRequest.EndorsementCertificate, err = task.getEncryptedBytes(ekCertBytes)
 	if err != nil {
-		return errors.Wrap(err, "tasks/provision_aik:Run() Error while encrypting the endorsement certificate bytes")
+		log.WithError(err).Error("tasks/provision_aik:Run() Error while encrypting the endorsement certificate bytes")
+		return errors.New("Error while encrypting the endorsement certificate bytes")
 	}
 
 	// send the 'challenge request' to HVS and get an 'proof request' back
 	identityProofRequest, err := task.privacyCAClient.GetIdentityProofRequest(&identityChallengeRequest)
 	if err != nil {
-		return errors.Wrap(err, "tasks/provision_aik:Run() Error while getting identity proof request from VS for a given challenge request with ek")
+		log.WithError(err).Error("tasks/provision_aik:Run() Error while getting identity proof request from VS for a given challenge request with ek")
+		return errors.New("Error while getting identity proof request from VS for a given challenge request with ek")
 	}
 
 	// pass the HVS response to the TPM to 'activate' the 'credential' and decrypt
@@ -113,48 +117,56 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	identityChallengeResponse := vsclient.IdentityChallengeResponse{}
 	identityChallengeResponse.ResponseToChallenge, err = task.getEncryptedBytes(decrypted1)
 	if err != nil {
-		return errors.Wrap(err, "tasks/provision_aik:Run() Error while encrypting nonce")
+		log.WithError(err).Error("tasks/provision_aik:Run() Error while encrypting nonce")
+		return errors.New("Error while encrypting nonce")
 	}
 
 	// KWT: refactor so that the call to get AIK info is done once
 	err = task.populateIdentityRequest(&identityChallengeResponse.IdentityRequest)
 	if err != nil {
-		return errors.Wrap(err, "tasks/provision_aik:Run() Error while populating identity request with identity challenge response")
+		log.WithError(err).Error("tasks/provision_aik:Run() Error while populating identity request with identity challenge response")
+		return errors.New("Error while populating identity request with identity challenge response")
 	}
 
 	// send the decrypted nonce data back to HVS and get a 'proof request' back
 	identityProofRequest2, err := task.privacyCAClient.GetIdentityProofResponse(&identityChallengeResponse)
 	if err != nil {
-		return errors.Wrap(err, "tasks/provision_aik:Run() Error while retrieving identity proof response from HVS")
+		log.WithError(err).Error("tasks/provision_aik:Run() Error while retrieving identity proof response from HVS")
+		return errors.New("Error while retrieving identity proof response from HVS")
 	}
 
 	// decrypt the 'proof request' from HVS into the 'aik' cert
 	decrypted2, err := task.activateCredential(identityProofRequest2)
 	if err != nil {
-		return errors.Wrap(err, "tasks/provision_aik:Run() Error while retrieving aik certificate bytes from identity proof request from HVS")
+		log.WithError(err).Error("tasks/provision_aik:Run() Error while retrieving aik certificate bytes from identity proof request from HVS")
+		return errors.New("Error while retrieving aik certificate bytes from identity proof request from HVS")
 	}
 
 	// make sure the decrypted bytes are a valid certificates...
 	_, err = x509.ParseCertificate(decrypted2)
 	if err != nil {
-		return errors.Wrap(err, "tasks/provision_aik:Run() Error while parsing the aik certificate")
+		log.WithError(err).Error("tasks/provision_aik:Run() Error while parsing the aik certificate")
+		return errors.New("Error while parsing the aik certificate")
 	}
 
 	// save the aik pem cert to disk
 	err = ioutil.WriteFile(constants.AikCert, decrypted2, 0600)
 	if err != nil {
-		return errors.Wrapf(err, "tasks/provision_aik:Run() Error while writing aik certificate file %s", constants.AikCert)
+		log.WithError(err).Errorf("tasks/provision_aik:Run() Error while writing aik certificate file %s", constants.AikCert)
+		return errors.Errorf("Error while writing aik certificate file %s", constants.AikCert)
 	}
 
 	certOut, err := os.OpenFile(constants.AikCert, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0)
 	if err != nil {
-		return errors.Wrapf(err, "tasks/provision_aik:Run() Error: Could not open file for writing: %v", err)
+		log.WithError(err).Error("tasks/provision_aik:Run() Error Could not open file for writing")
+		return errors.New("Error: Could not open file for writing")
 	}
 	defer certOut.Close()
 
 	os.Chmod(constants.AikCert, 0640)
 	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: decrypted2}); err != nil {
-		return errors.Wrapf(err, "tasks/provision_aik:Run() Error: Could not pem encode cert: %v", err)
+		log.WithError(err).Error("tasks/provision_aik:Run() Error Could not pem encode cert: ")
+		return errors.New("Error: Could not pem encode cert")
 	}
 
 	return nil
@@ -165,7 +177,8 @@ func (task *ProvisionAttestationIdentityKey) Validate(c setup.Context) error {
 	defer log.Trace("tasks/provision_aik:Validate() Leaving")
 
 	if _, err := os.Stat(constants.AikCert); os.IsNotExist(err) {
-		return errors.Wrap(err, "tasks/provision_aik:Run() The aik certificate was not created")
+		log.WithError(err).Error("tasks/provision_aik:Validate() The aik certificate was not created ")
+		return errors.New("The aik certificate was not created")
 	}
 
 	log.Info("tasks/provision_aik:Validate() Provisioning the AIK was successful.")

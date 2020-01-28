@@ -34,12 +34,14 @@ func (task *CreateHostUniqueFlavor) Run(c setup.Context) error {
 
 	task.ip, err = util.GetLocalIpAsString()
 	if err != nil {
-		return errors.Wrap(err, "tasks/create_host_unique_flavor:Run() Error while retrieving local IP")
+		log.WithError(err).Error("tasks/create_host_unique_flavor:Run() Error while retrieving local IP")
+		return errors.New("Error while retrieving local IP")
 	}
 
 	connectionString, err := util.GetConnectionString(task.cfg)
 	if err != nil {
-		return errors.Wrap(err, "tasks/create_host_unique_flavor:Run() Error while getting connection string")
+		log.WithError(err).Error("tasks/create_host_unique_flavor:Run() Error while getting connection string")
+		return errors.New("Error while getting connection string")
 	}
 
 	flavorCreateCriteria := vsclient.FlavorCreateCriteria{
@@ -51,7 +53,8 @@ func (task *CreateHostUniqueFlavor) Run(c setup.Context) error {
 
 	_, err = task.flavorsClient.CreateFlavor(&flavorCreateCriteria)
 	if err != nil {
-		return errors.Wrap(err, "tasks/create_host_unique_flavor:Run() Error while creating host unique flavor")
+		log.WithError(err).Error("tasks/create_host_unique_flavor:Run() Error while creating host unique flavor")
+		return errors.New("Error while creating host unique flavor")
 	}
 
 	return nil

@@ -43,18 +43,21 @@ func (task *CreateHost) Run(c setup.Context) error {
 
 	task.ip, err = util.GetLocalIpAsString()
 	if err != nil {
-		return errors.Wrap(err, "tasks/create_host:Run() Error while getting Local IP address")
+		log.WithError(err).Error("tasks/create_host:Run() Error while getting Local IP address")
+		return errors.New("Error while getting Local IP address")
 	}
 
 	connectionString, err := util.GetConnectionString(task.cfg)
 	if err != nil {
-		return errors.Wrap(err, "tasks/create_host:Run() Error while getting Connection string")
+		log.WithError(err).Error("tasks/create_host:Run() Error while getting Connection string")
+		return errors.New("Error while getting Connection string")
 	}
 
 	hostFilterCriteria := vsclient.HostFilterCriteria{NameEqualTo: task.ip}
 	hostCollection, err := task.hostsClient.SearchHosts(&hostFilterCriteria)
 	if err != nil {
-		return errors.Wrap(err, "tasks/create_host:Run() Error while retrieving host collection")
+		log.WithError(err).Error("tasks/create_host:Run() Error while retrieving host collection")
+		return errors.New("Error while retrieving host collection")
 	}
 
 	if len(hostCollection.Hosts) == 0 {
@@ -71,7 +74,8 @@ func (task *CreateHost) Run(c setup.Context) error {
 
 		log.Debugf("tasks/create_host:Run() Successfully created host, host id %s", host.Id)
 	} else {
-		return errors.Errorf("tasks/create_host:Run() Host with IP address %s already exists", task.ip)
+		log.WithError(err).Errorf("tasks/create_host:Run() Host with IP address %s already exists", task.ip)
+		return errors.Errorf("Host with IP address %s already exists", task.ip)
 	}
 
 	return nil
@@ -95,7 +99,8 @@ func (task *CreateHost) Validate(c setup.Context) error {
 	}
 
 	if len(hostCollection.Hosts) == 0 {
-		return errors.Errorf("tasks/create_host:Validate() host with ip '%s' was not create", task.ip)
+		log.WithError(err).Errorf("tasks/create_host:Run() host with ip '%s' was not create", task.ip)
+		return errors.Errorf("Host with ip '%s' was not created", task.ip)
 	}
 
 	log.Info("tasks/create_host:Validate() Create host setup task was successful.")

@@ -39,12 +39,14 @@ func (task *DownloadPrivacyCA) Run(c setup.Context) error {
 
 	ca, err := task.privacyCAClient.DownloadPrivacyCa()
 	if err != nil {
-		return errors.Wrap(err,"tasks/download_privacy_ca:Run() Error while downloading privacyCA file")
+		log.WithError(err).Error("tasks/download_privacy_ca:Run() Error while downloading privacyCA file")
+		return errors.New("Error while downloading privacyCA file")
 	}
 
 	err = ioutil.WriteFile(constants.PrivacyCA, ca, 0644)
 	if err != nil {
-		return errors.Wrapf(err, "tasks/download_privacy_ca:Run() Error while writing privacy ca file '%s'", constants.PrivacyCA)
+		log.WithError(err).Errorf("tasks/download_privacy_ca:Run() Error while writing privacy ca file '%s'", constants.PrivacyCA)
+		return errors.Errorf("Error while writing privacy ca file '%s'", constants.PrivacyCA)
 	}
 
 	return nil

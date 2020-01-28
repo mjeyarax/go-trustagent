@@ -54,7 +54,6 @@ func printUsage() {
 	fmt.Println("    version          Print build version info")
 	fmt.Println("    start            Start the trustagent service")
 	fmt.Println("    stop             Stop the trustagent service")
-	fmt.Println("    restart          Restart the trustagent service")
 	fmt.Println("    status           Get the status of the trustagent service")
 	fmt.Println("")
 	fmt.Println("Available Tasks for setup:")
@@ -371,18 +370,6 @@ func main() {
 		// don't report an error, just show the results to the console in either case
 		output, _ := run_systemctl(SYSTEMCTL_STATUS)
 		fmt.Fprintln(os.Stdout, output)
-	
-	case "restart":
-		cfg.LogConfiguration(cfg.LogEnableStdout)
-
-		output, err := run_systemctl(SYSTEMCTL_RESTART)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "An error occurred attempting to restart the Trust Agent Service...")
-			fmt.Fprintln(os.Stderr, output)
-			os.Exit(1)
-		}
-
-		fmt.Println("Successfully restarted the Trust Agent Service")
 
 	case "stop":
 		cfg.LogConfiguration(cfg.LogEnableStdout)
