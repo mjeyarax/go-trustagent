@@ -427,9 +427,8 @@ if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PR
     fi
 else
     echo ""
-    echo "Automatic provisioning is disabled. You must use 'tagent setup' command to complete"
-    echo "provisioning (see tagent --help). The tagent service must also be started using 'systemctl"
-    echo "start tagent.service'"
+    echo "Automatic provisioning is disabled. You must use 'tagent setup trustagent.env' command to complete (see tagent --help)"
+    echo "The tagent service must also be started using command 'tagent start'"
 fi
 
 echo_success "Installation succeeded"

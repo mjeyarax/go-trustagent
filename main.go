@@ -59,6 +59,8 @@ func printUsage() {
 	fmt.Println("Available Tasks for setup:")
 	fmt.Println("    tagent setup all (or with empty 3rd argument)")
 	fmt.Println("        - Runs all setup tasks to provision the trustagent.")
+	fmt.Println("    tagent setup trustagent.env")
+	fmt.Println("        - Runs all setup tasks to provision the trustagent using the env file path provided as 3rd argument.")
 	fmt.Println("    tagent setup download-ca-cert [--force]")
 	fmt.Println("        - Fetches the latest CMS Root CA Certificates.")
 	fmt.Println("        --force option overwrites existing root CA certificates.")
@@ -230,7 +232,7 @@ func main() {
 
 	cfg, err := config.NewConfigFromYaml(constants.ConfigFilePath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "main:main() Error while parsing configuration file %v \n", err)
+		fmt.Fprintf(os.Stderr, "Error while parsing configuration file %v \n", err)
 		os.Exit(1)
 	}
 
@@ -387,7 +389,6 @@ func main() {
 
 		cfg.LogConfiguration(cfg.LogEnableStdout)
 		// only apply env vars to config before starting 'setup' tasks
-		cfg.LoadEnvironmentVariables()
 
 		if currentUser.Username != constants.RootUserName {
 			log.Errorf("main:main() 'tagent setup' must be run as root, not  user '%s'\n", currentUser.Username)
@@ -408,6 +409,11 @@ func main() {
 			setupCommand = tasks.DefaultSetupCommand
 		}
 
+		err = cfg.LoadEnvironmentVariables()
+		if err != nil{
+			log.WithError(err).Error("Error loading environment variables")
+			fmt.Fprintf(os.Stderr, "Error loading environment variables\n %v \n\n", err)
+		}
 		registry, err := tasks.CreateTaskRegistry(cfg, flags)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error while creating task registry")
@@ -417,7 +423,7 @@ func main() {
 
 		err = registry.RunCommand(setupCommand)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error while running setup Command %s\n", setupCommand)
+			fmt.Fprintf(os.Stderr, "Error while running setup Command %s\n ", setupCommand)
 			log.Errorf("main:main() Error while running setup Command %s, %+v", setupCommand, err)
 			os.Exit(1)
 		}

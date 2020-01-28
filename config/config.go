@@ -117,7 +117,10 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if environmentVariable != "" && cfg.Tpm.OwnerSecretKey != environmentVariable {
 		cfg.Tpm.OwnerSecretKey = environmentVariable
 		dirty = true
-	} 
+	} else if strings.TrimSpace(cfg.Tpm.OwnerSecretKey) == "" {
+		return errors.Errorf("TPM_OWNER_SECRET is not defined in environment or configuration file")
+	}
+
 
 	//---------------------------------------------------------------------------------------------
 	// MTWILSON_API_URL
@@ -126,6 +129,8 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if environmentVariable != "" && cfg.HVS.Url != environmentVariable {
 		cfg.HVS.Url = environmentVariable
 		dirty = true
+	}  else if strings.TrimSpace(cfg.HVS.Url) == "" {
+		return errors.Errorf("MTWILSON_API_URL is not defined in environment or configuration file")
 	}
 
 	//---------------------------------------------------------------------------------------------
@@ -157,6 +162,8 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if environmentVariable != "" && cfg.AAS.BaseURL != environmentVariable {
 		cfg.AAS.BaseURL = environmentVariable
 		dirty = true
+	} else if strings.TrimSpace(cfg.AAS.BaseURL) == "" {
+		return errors.Errorf("AAS_API_URL is not defined in environment or configuration file")
 	}
 
 	//---------------------------------------------------------------------------------------------
@@ -166,6 +173,8 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if environmentVariable != "" && cfg.CMS.BaseURL != environmentVariable {
 		cfg.CMS.BaseURL = environmentVariable
 		dirty = true
+	}else if strings.TrimSpace(cfg.CMS.BaseURL) == "" {
+		return errors.Errorf("CMS_BASE_URL is not defined in environment or configuration file")
 	}
 
 	//---------------------------------------------------------------------------------------------
@@ -175,7 +184,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if err == nil && logEntryMaxLength >= 300 {
 		cfg.LogEntryMaxLength = logEntryMaxLength
 	} else {
-		log.Info("config/config:LoadEnvironmentVariables() Invalid Log Entry Max Length defined (should be >= ", constants.DefaultLogEntryMaxlength, "), using default value:", constants.DefaultLogEntryMaxlength)
+		fmt.Println("Invalid Log Entry Max Length defined (should be >= ", constants.DefaultLogEntryMaxlength, "), using default value:", constants.DefaultLogEntryMaxlength)
 		cfg.LogEntryMaxLength = constants.DefaultLogEntryMaxlength
 	}
 
@@ -185,17 +194,17 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	ll, err := context.GetenvString("TRUSTAGENT_LOG_LEVEL", "Logging Level")
 	if err != nil {
 		if cfg.LogLevel == "" {
-			log.Infof("config/config:LoadEnvironmentVariables() LOG_LEVEL not defined, using default log level: Info")
+			fmt.Println("TRUSTAGENT_LOG_LEVEL not defined, using default log level: Info")
 			cfg.LogLevel = logrus.InfoLevel.String()
 		}
 	} else {
 		llp, err := logrus.ParseLevel(ll)
 		if err != nil {
-			log.Info("config/config:LoadEnvironmentVariables() Invalid log level specified in env, using default log level: Info")
+			fmt.Println("Invalid log level specified in env, using default log level: Info")
 			cfg.LogLevel = logrus.InfoLevel.String()
 		} else {
 			cfg.LogLevel = llp.String()
-			log.Infof("config/config:LoadEnvironmentVariables() Log level set %s\n", ll)
+			fmt.Printf("Log level set %s\n", ll)
 		}
 	}
 
@@ -225,7 +234,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if err == nil && environmentVariable != "" {
 		cfg.TLS.CertCN = environmentVariable
 	} else if strings.TrimSpace(cfg.TLS.CertCN) == "" {
-		log.Info("config/config:LoadEnvironmentVariables() TA_TLS_CERT_CN not defined, using default value")
+		fmt.Printf("TA_TLS_CERT_CN not defined, using default value %s\n", constants.DefaultTaTlsCn)
 		cfg.TLS.CertCN = constants.DefaultTaTlsCn
 	}
 
@@ -236,7 +245,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if err == nil && environmentVariable != "" {
 		cfg.TLS.CertSAN = environmentVariable
 	} else if strings.TrimSpace(cfg.TLS.CertSAN) == "" {
-		log.Info("config/config:LoadEnvironmentVariables() SAN_LIST not defined, using default value")
+		fmt.Printf("SAN_LIST not defined, using default value %s\n", constants.DefaultTaTlsSan)
 		cfg.TLS.CertSAN = constants.DefaultTaTlsSan
 	}
 
@@ -250,7 +259,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 		if err != nil {
 			log.Info("config/config:LoadEnvironmentVariables() TPM_QUOTE_IPV4 not valid, setting default value true")
 			cfg.TpmQuoteIPv4 = true
-                }
+			}
 	}
 
 	//---------------------------------------------------------------------------------------------
@@ -262,7 +271,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if err == nil  && logEnableStdout != "" {
 		cfg.LogEnableStdout, err = strconv.ParseBool(logEnableStdout)
 		if err != nil{
-			log.Info("Error while parsing the variable TA_ENABLE_CONSOLE_LOG, setting to default value false")
+			fmt.Println("Error while parsing the variable TA_ENABLE_CONSOLE_LOG, setting to default value false")
 		}
 	}
 
@@ -272,7 +281,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if dirty {
 		err = cfg.Save()
 		if err != nil {
-			return errors.Wrap(err, "config/config:LoadEnvironmentVariables:  Error saving configuration")
+			return errors.Wrap(err, "Error saving configuration")
 		}
 	}
 
