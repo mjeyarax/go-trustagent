@@ -34,6 +34,7 @@ func getBindingKeyCertificate() endpointHandler {
 
 		}
 
+		httpWriter.Header().Set("Content-Type", "application/x-pem-file")
 		httpWriter.WriteHeader(http.StatusOK)
 		_, _ = bytes.NewBuffer(bindingKeyBytes).WriteTo(httpWriter)
 		return nil
