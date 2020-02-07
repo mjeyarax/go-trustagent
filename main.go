@@ -416,14 +416,14 @@ func main() {
 		}
 		registry, err := tasks.CreateTaskRegistry(cfg, flags)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error while creating task registry")
+			fmt.Fprintf(os.Stderr, "Error while creating task registry \n Error: %s\n", err.Error())
 			log.Errorf("main:main() Error while creating task registry %+v", err)
 			os.Exit(1)
 		}
 
 		err = registry.RunCommand(setupCommand)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error while running setup Command %s\n ", setupCommand)
+			fmt.Fprintf(os.Stderr, "Error while running setup Command %s, \n Error: %s\n ", setupCommand, err.Error())
 			log.Errorf("main:main() Error while running setup Command %s, %+v", setupCommand, err)
 			os.Exit(1)
 		}
@@ -455,9 +455,21 @@ func main() {
 }
 
 func sourceEnvFile(trustagentEnvFile string){
+	fi, err := os.Stat(trustagentEnvFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s file does not exist", trustagentEnvFile)
+		os.Exit(1)
+	}
+
+	fileSz := fi.Size()
+	if fileSz == 0 || fileSz > constants.TrustAgentEnvMaxLength{
+		fmt.Fprintf(os.Stderr, "%s file size exceeds maximum length: %d", trustagentEnvFile, constants.TrustAgentEnvMaxLength)
+		os.Exit(1)
+	}
+
     file, err := os.Open(trustagentEnvFile)
     if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to open env file: %s", trustagentEnvFile)
+		fmt.Fprintf(os.Stderr, "Unable to open file: %s", trustagentEnvFile)
 		os.Exit(1)
     }
     defer file.Close()

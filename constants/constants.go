@@ -4,6 +4,8 @@
  */
 package constants
 
+import "time"
+
 const (
 	InstallationDir            = "/opt/trustagent/"
 	ConfigDir                  = InstallationDir + "configuration/"
@@ -59,4 +61,12 @@ const (
 	EnvCertSanList             = "SAN_LIST"
 	DefaultTaTlsCn             = "Trust Agent TLS Certificate"
 	DefaultTaTlsSan            = "127.0.0.1,localhost"
+	TrustAgentEnvMaxLength     = 10000
+	FlavorUUIDMaxLength        = 500
+	FlavorLabelsMaxLength      = 500
+	DefaultReadTimeout         = 30 * time.Second
+	DefaultReadHeaderTimeout   = 10 * time.Second
+	DefaultWriteTimeout        = 10 * time.Second
+	DefaultIdleTimeout         = 10 * time.Second
+	DefaultMaxHeaderBytes      = 1 << 20
 )

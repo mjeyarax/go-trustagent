@@ -50,6 +50,14 @@ func deployManifest() endpointHandler {
 			return &endpointError{Message: "Error: The manifest did not contain a label", StatusCode: http.StatusBadRequest}
 		}
 
+		var manifestlabels []string
+		manifestlabels = append(manifestlabels, manifest.Label)
+		err = validation.ValidateStrings(manifestlabels)
+		if err != nil {
+			secLog.Errorf("%s resource/deploy_manifest:deployManifest() Invalid manifest labels %s", message.InvalidInputBadParam, err.Error())
+			return &endpointError{Message: "Error: Invalid manifest labels", StatusCode: http.StatusBadRequest}
+		}
+
 		if strings.Contains(manifest.Label, vsclient.DEFAULT_APPLICATION_FLAVOR_PREFIX) ||
 			strings.Contains(manifest.Label, vsclient.DEFAULT_WORKLOAD_FLAVOR_PREFIX) {
 			log.Infof("%s: Default flavor's manifest (%s) is part of installation, no need to deploy default flavor's manifest", httpRequest.URL.Path, manifest.Label)

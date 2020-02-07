@@ -337,8 +337,12 @@ If the GTA installer is run with a valid 'trustagent.env' file, it will parse th
 |SAN_LIST|CSV list that sets the value for SAN list in the TA TLS certificate.  Defaults to 127.0.0.1.|SAN_LIST=10.123.100.1,201.102.10.22,mya.example.com|No|"127.0.0.1,localhost"|
 |TPM_OWNER_SECRET|20 byte hex value to be used as the secret key when taking ownership of the tpm.  *Note: If this field is not specified, GTA will generate a random secret key.*|TPM_OWNER_SECRET=625d6...|No|""|
 |TPM_QUOTE_IPV4|When enabled (`=y`), uses the local system's ip address as a salt when processing a quote nonce.  This field must align with the configuration of HVS.|TPM_QUOTE_IPV4=no|No|N|
-|TPM_SRK_SECRET|When provided, sets the TPM's SRK secret key.  The value must be a 20 byte hex value simlar to TPM_OWNER_SECRET.  If not set, the SRK is set to all zeros.|TPM_SRK_SECRET=0fd392b8...|No|"0000000000000000000000000"|
-|TRUSTAGENT_PORT|Port to run `tagent` service.  Defaults to 1443.|TRUSTAGENT_PORT=8443|No|1443|
+|TA_SERVER_READ_TIMEOUT|sets tagent server ReadTimeout.  Defaults to 30 seconds.|TA_SERVER_READ_TIMEOUT=30|No|30|
+|TA_SERVER_READ_HEADER_TIMEOUT|sets `tagent` server ReadHeaderTimeout .  Defaults to 30 seconds. |TA_SERVER_READ_HEADER_TIMEOUT=10|No|10|
+|TA_SERVER_WRITE_TIMEOUT|sets `tagent` server WriteTimeout.  Defaults to 10 seconds.|TA_SERVER_WRITE_TIMEOUT=10|No|10|
+|TA_SERVER_IDLE_TIMEOUT|sets `tagent` server IdleTimeout.  Defaults to 10 seconds.|TA_SERVER_IDLE_TIMEOUT=10|No|10|
+|TA_SERVER_MAX_HEADER_BYTES|sets `tagent` server MaxHeaderBytes.  Defaults to 1MB(1048576)|TA_SERVER_MAX_HEADER_BYTES=1048576|No|1 << 20|
+|TA_ENABLE_CONSOLE_LOG|when set true, `tagent` logs are redirected to stdout. Defaults to false|TA_ENABLE_CONSOLE_LOG=true|No|false|
 
 ## Installed Files
 The following files are present after installation, setup and measured launch.

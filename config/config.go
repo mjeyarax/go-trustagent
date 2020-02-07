@@ -21,6 +21,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 	"github.com/pkg/errors"
+	"time"
 )
 
 const (
@@ -57,6 +58,13 @@ type TrustAgentConfiguration struct {
 	TLS struct {
 		CertSAN  string
 		CertCN string
+	}
+	HTTP_HEADERS struct {
+		ReadTimeout       time.Duration
+		ReadHeaderTimeout time.Duration
+		WriteTimeout      time.Duration
+		IdleTimeout       time.Duration
+		MaxHeaderBytes    int
 	}
 }
 
@@ -277,6 +285,49 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 		if err != nil{
 			fmt.Println("Error while parsing the variable TA_ENABLE_CONSOLE_LOG, setting to default value false")
 		}
+	}
+
+	//---------------------------------------------------------------------------------------------
+	// HTTP Server Settings
+	//---------------------------------------------------------------------------------------------
+	readTimeout, err := context.GetenvInt("TA_SERVER_READ_TIMEOUT", "Trustagent Read Timeout")
+	if err != nil {
+		log.Info("config/config:LoadEnvironmentVariables() could not parse the variable TA_SERVER_READ_TIMEOUT, setting default value 30s")
+		cfg.HTTP_HEADERS.ReadTimeout = constants.DefaultReadTimeout
+	} else {
+		cfg.HTTP_HEADERS.ReadTimeout = time.Duration(readTimeout) * time.Second
+	}
+
+	readHeaderTimeout, err := context.GetenvInt("TA_SERVER_READ_HEADER_TIMEOUT", "Trustagent Read Header Timeout")
+	if err != nil {
+		log.Info("config/config:LoadEnvironmentVariables() could not parse the variable TA_SERVER_READ_HEADER_TIMEOUT, setting default value 10s")
+		cfg.HTTP_HEADERS.ReadHeaderTimeout = constants.DefaultReadHeaderTimeout
+	} else {
+		cfg.HTTP_HEADERS.ReadHeaderTimeout = time.Duration(readHeaderTimeout) * time.Second
+	}
+
+	writeTimeout, err := context.GetenvInt("TA_SERVER_WRITE_TIMEOUT", "Trustagent Write Timeout")
+	if err != nil {
+		log.Info("config/config:LoadEnvironmentVariables() could not parse the variable TA_SERVER_WRITE_TIMEOUT, setting default value 10s")
+		cfg.HTTP_HEADERS.WriteTimeout = constants.DefaultWriteTimeout
+	} else {
+		cfg.HTTP_HEADERS.WriteTimeout = time.Duration(writeTimeout) * time.Second
+	}
+
+	idleTimeout, err := context.GetenvInt("TA_SERVER_IDLE_TIMEOUT", "Trustagent Idle Timeout")
+	if err != nil {
+		log.Info("config/config:LoadEnvironmentVariables() could not parse the variable TA_SERVER_IDLE_TIMEOUT, setting default value 10s")
+		cfg.HTTP_HEADERS.IdleTimeout = constants.DefaultIdleTimeout
+	} else {
+		cfg.HTTP_HEADERS.IdleTimeout = time.Duration(idleTimeout) * time.Second
+	}
+
+	maxHeaderBytes, err := context.GetenvInt("TA_SERVER_MAX_HEADER_BYTES", "Trustagent Max Header Bytes Timeout")
+	if err != nil {
+		log.Info("config/config:LoadEnvironmentVariables() could not parse the variable TA_SERVER_MAX_HEADER_BYTES, setting default value 10s")
+		cfg.HTTP_HEADERS.MaxHeaderBytes = constants.DefaultMaxHeaderBytes
+	} else {
+		cfg.HTTP_HEADERS.MaxHeaderBytes = maxHeaderBytes
 	}
 
 	//---------------------------------------------------------------------------------------------

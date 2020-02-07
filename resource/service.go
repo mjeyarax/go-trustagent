@@ -140,12 +140,23 @@ func (service *TrustAgentService) Start() error {
 		httpWriter = httpLogFile
 	}
 
+	cfg, err := config.NewConfigFromYaml(constants.ConfigFilePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error while parsing configuration file %v \n", err)
+		os.Exit(1)
+	}
+
 	httpLog := stdlog.New(httpWriter, "", 0)
 	h := &http.Server{
 		Addr:      fmt.Sprintf(":%d", service.port),
 		Handler:   handlers.RecoveryHandler(handlers.RecoveryLogger(httpLog), handlers.PrintRecoveryStack(true))(handlers.CombinedLoggingHandler(os.Stderr, service.router)),
 		ErrorLog:  httpLog,
 		TLSConfig: tlsconfig,
+		ReadTimeout:       cfg.HTTP_HEADERS.ReadTimeout,
+		ReadHeaderTimeout: cfg.HTTP_HEADERS.ReadHeaderTimeout,
+		WriteTimeout:      cfg.HTTP_HEADERS.WriteTimeout,
+		IdleTimeout:       cfg.HTTP_HEADERS.IdleTimeout,
+		MaxHeaderBytes:    cfg.HTTP_HEADERS.MaxHeaderBytes,
 	}
 
 	// dispatch web server go routine
@@ -177,6 +188,7 @@ func requiresPermission(eh endpointHandler, permissionNames []string) endpointHa
 		privileges, err := commContext.GetUserPermissions(r)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 			w.Write([]byte("Could not get user roles from http context"))
 			seclog.Errorf("resource/resource:requiresPermission() %s Roles: %v | Context: %v", message.AuthenticationFailed, permissionNames, r.Context())
 			return errors.Wrap(err, "resource/resource:requiresPermission() Could not get user roles from http context")
@@ -190,7 +202,8 @@ func requiresPermission(eh endpointHandler, permissionNames []string) endpointHa
 			secLog.Errorf("resource/service:requiresPermission() %s Insufficient privileges to access %s", message.UnauthorizedAccess, r.RequestURI)
 			return &privilegeError{Message: "Insufficient privileges to access " + r.RequestURI, StatusCode: http.StatusUnauthorized}
 		}
-		seclog.Infof("resource/resource:requiresPermission() %s - %s", message.AuthorizedAccess, r.RequestURI)
+		w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		secLog.Infof("resource/service:requiresPermission() %s - %s", message.AuthorizedAccess, r.RequestURI)
 		return eh(w, r)
 	}
 }
