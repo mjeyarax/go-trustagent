@@ -160,7 +160,11 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	//---------------------------------------------------------------------------------------------
 	environmentVariable, err = context.GetenvString(constants.EnvAASBaseURL, "AAS API Base URL")
 	if environmentVariable != "" && cfg.AAS.BaseURL != environmentVariable {
-		cfg.AAS.BaseURL = environmentVariable
+		if strings.HasSuffix(environmentVariable, "/") {
+			cfg.AAS.BaseURL = environmentVariable
+		} else {
+			cfg.AAS.BaseURL = environmentVariable + "/"
+		}
 		dirty = true
 	} else if strings.TrimSpace(cfg.AAS.BaseURL) == "" {
 		return errors.Errorf("AAS_API_URL is not defined in environment or configuration file")

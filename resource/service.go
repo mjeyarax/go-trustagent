@@ -10,12 +10,15 @@ import (
 	"fmt"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
+	"intel/isecl/lib/clients"
+	"intel/isecl/lib/common/crypt"
 	"intel/isecl/lib/common/auth"
 	commContext "intel/isecl/lib/common/context"
 	"intel/isecl/lib/common/log/message"
 	"intel/isecl/lib/common/middleware"
 	ct "intel/isecl/lib/common/types/aas"
 	"intel/isecl/lib/tpmprovider"
+	"io/ioutil"
 	stdlog "log"
 	"net/http"
 	"os"
@@ -215,4 +218,45 @@ func errorHandler(eh endpointHandler) http.HandlerFunc {
 			}
 		}
 	}
+}
+
+func fnGetJwtCerts() error {
+	log.Trace("resource/service:fnGetJwtCerts() Entering")
+	defer log.Trace("resource/service:fnGetJwtCerts() Leaving")
+
+	cfg, err := config.NewConfigFromYaml(constants.ConfigFilePath)
+	if err != nil {
+        fmt.Printf("ERROR: %+v\n", err)
+        return nil
+    }
+
+	aasURL := cfg.AAS.BaseURL
+	
+	url := aasURL + "noauth/jwt-certificates"
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Add("accept", "application/x-pem-file")
+	secLog.Debugf("resource/service::fnGetJwtCerts() Connecting to AAS Endpoint %s", url)
+
+	hc, err := clients.HTTPClientWithCADir(constants.TrustedCaCertsDir)
+	if err != nil {
+		return errors.Wrap(err, "resource/service:fnGetJwtCerts() Error setting up HTTP client")
+	}
+
+	res, err := hc.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "resource/service:fnGetJwtCerts() Could not retrieve jwt certificate")
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return errors.Wrap(err, "resource/service:fnGetJwtCerts() Error while reading response body")
+	}
+
+	err = crypt.SavePemCertWithShortSha1FileName(body, constants.TrustedJWTSigningCertsDir)
+	if err != nil {
+		return errors.Wrap(err, "resource/service:fnGetJwtCerts() Error while saving certificate")
+	}
+
+	return nil
 }

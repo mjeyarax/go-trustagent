@@ -31,7 +31,6 @@ const (
 	ProvisionEndorsementKeyCommand         = "provision-ek"
 	ProvisionAttestationIdentityKeyCommand = "provision-aik"
 	DownloadPrivacyCACommand               = "download-privacy-ca"
-	DownloadAASJWTCertCommand              = "download-aas-jwt-cert"
 	ProvisionPrimaryKeyCommand             = "provision-primary-key"
 	CreateHostCommand                      = "create-host"
 	CreateHostUniqueFlavorCommand          = "create-host-unique-flavor"
@@ -104,10 +103,6 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 		ConsoleWriter: os.Stdout,
 	}
 
-	downloadAASJWTCert := DownloadAASJWTCert{
-		Flags: flags,
-	}
-
 	provisionEndorsementKey := ProvisionEndorsementKey{
 		clientFactory: vsClientFactory,
 		tpmFactory:    tpmFactory,
@@ -129,7 +124,6 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 
 	registry.taskMap[TakeOwnershipCommand] = []setup.Task{&takeOwnership}
 	registry.taskMap[DownloadRootCACertCommand] = []setup.Task{&downloadRootCACert}
-	registry.taskMap[DownloadAASJWTCertCommand] = []setup.Task{&downloadAASJWTCert}
 	registry.taskMap[DownloadCertCommand] = []setup.Task{&downloadTLSCert}
 	registry.taskMap[ProvisionEndorsementKeyCommand] = []setup.Task{&provisionEndorsementKey}
 	registry.taskMap[ProvisionAttestationIdentityKeyCommand] = []setup.Task{&provisionAttestationIdentityKey}
@@ -139,7 +133,6 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 	registry.taskMap[DefaultSetupCommand] = []setup.Task{
 		&downloadRootCACert,
 		&downloadTLSCert,
-		&downloadAASJWTCert,
 		&downloadPrivacyCA,
 		&takeOwnership,
 		&provisionEndorsementKey,
