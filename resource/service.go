@@ -97,7 +97,7 @@ func CreateTrustAgentService(config *config.TrustAgentConfiguration, tpmFactory 
 	trustAgentService.router = mux.NewRouter()
 	noAuthRouter := trustAgentService.router.PathPrefix("").Subrouter()
 	authRouter := trustAgentService.router.PathPrefix("/v2/").Subrouter()
-	noAuthRouter.HandleFunc("/version", getVersion).Methods("GET")
+	noAuthRouter.HandleFunc("/version", errorHandler(getVersion())).Methods("GET")
 	authRouter.Use(middleware.NewTokenAuth(constants.TrustedJWTSigningCertsDir, constants.TrustedCaCertsDir, fnGetJwtCerts, cacheTime))
 
 	// use permission-based access control for webservices
@@ -130,7 +130,7 @@ func (service *TrustAgentService) Start() error {
 
 	httpWriter := os.Stderr
 	if httpLogFile, err := os.OpenFile(constants.HttpLogFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666); err != nil {
-		secLog.WithError(err).Errorf("resource/service:Start() Failed to open http log file: %s\n", err.Error())
+		secLog.WithError(err).Errorf("resource/service:Start() %s Failed to open http log file: %s\n", message.AppRuntimeErr, err.Error())
 		log.Tracef("resource/service:Start() %+v", err)
 	} else {
 		defer httpLogFile.Close()
@@ -184,8 +184,7 @@ func requiresPermission(eh endpointHandler, permissionNames []string) endpointHa
 			true)
 		if !foundMatchingPermission {
 			w.WriteHeader(http.StatusUnauthorized)
-			seclog.Error(message.UnauthorizedAccess)
-			seclog.Errorf("resource/resource:requiresPermission() %s Insufficient privileges to access %s", message.UnauthorizedAccess, r.RequestURI)
+			secLog.Errorf("resource/service:requiresPermission() %s Insufficient privileges to access %s", message.UnauthorizedAccess, r.RequestURI)
 			return &privilegeError{Message: "Insufficient privileges to access " + r.RequestURI, StatusCode: http.StatusUnauthorized}
 		}
 		seclog.Infof("resource/resource:requiresPermission() %s - %s", message.AuthorizedAccess, r.RequestURI)

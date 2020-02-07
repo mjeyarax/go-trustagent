@@ -7,6 +7,7 @@ package resource
 import (
 	"bytes"
 	"intel/isecl/go-trust-agent/constants"
+	"intel/isecl/lib/common/log/message"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -66,13 +67,13 @@ func getPlatformInfo() endpointHandler {
 		log.Debugf("resource/host:getPlatformInfo() Request: %s", httpRequest.URL.Path)
 
 		if _, err := os.Stat(constants.PlatformInfoFilePath); os.IsNotExist(err) {
-			log.WithError(err).Errorf("resource/host:getPlatformInfo() %s does not exist", constants.PlatformInfoFilePath)
+			log.WithError(err).Errorf("resource/host:getPlatformInfo() %s - %s does not exist", message.AppRuntimeErr, constants.PlatformInfoFilePath)
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 		}
 
 		b, err := ioutil.ReadFile(constants.PlatformInfoFilePath)
 		if err != nil {
-			log.Errorf("resource/host:getPlatformInfo() Error reading %s", constants.PlatformInfoFilePath)
+			log.Errorf("resource/host:getPlatformInfo() %s - There was an error reading %s", message.AppRuntimeErr, constants.PlatformInfoFilePath)
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 		}
 

@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"intel/isecl/go-trust-agent/constants"
+	"intel/isecl/lib/common/log/message"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -27,7 +28,7 @@ func getApplicationMeasurement() endpointHandler {
 		// receive a manifest from hvs in the request body
 		manifestXml, err := ioutil.ReadAll(httpRequest.Body)
 		if err != nil {
-			log.WithError(err).Errorf("resource/measure:getApplicationMeasurement() Error reading manifest xml",)
+			seclog.WithError(err).Errorf("resource/measure:getApplicationMeasurement() %s - Error reading manifest xml", message.InvalidInputBadParam)
 			return &endpointError{Message: "Error reading manifest xml", StatusCode: http.StatusBadRequest}
 
 		}
@@ -36,7 +37,7 @@ func getApplicationMeasurement() endpointHandler {
 		// peformed by 'measure' cmd line below
 		err = xml.Unmarshal(manifestXml, new(interface{}))
 		if err != nil {
-			log.WithError(err).Errorf("resource/measure:getApplicationMeasurement() Invalid xml format")
+			secLog.WithError(err).Errorf("resource/measure:getApplicationMeasurement() %s - Invalid xml format", message.InvalidInputBadParam)
 			return &endpointError{Message: "Error: Invalid XML format", StatusCode: http.StatusBadRequest}
 		}
 
@@ -53,13 +54,13 @@ func getApplicationMeasurement() endpointHandler {
 
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
-			log.WithError(err).Error("resource/measure:getApplicationMeasurement() Error getting measure output",)
+			log.WithError(err).Errorf("resource/measure:getApplicationMeasurement() %s - Error getting measure output", message.AppRuntimeErr)
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 		}
 
 		err = cmd.Start()
 		if err != nil {
-			log.WithError(err).Errorf("resource/measure:getApplicationMeasurement() Failed to run: %s", constants.TBootXmMeasurePath)
+			log.WithError(err).Errorf("resource/measure:getApplicationMeasurement() %s - Failed to run: %s", message.AppRuntimeErr, constants.TBootXmMeasurePath)
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 
 		}
@@ -67,14 +68,14 @@ func getApplicationMeasurement() endpointHandler {
 		measureBytes, _ := ioutil.ReadAll(stdout)
 		err = cmd.Wait()
 		if err != nil {
-			log.WithError(err).Errorf("resource/measure:getApplicationMeasurement() %s returned '%s'", constants.TBootXmMeasurePath, string(measureBytes))
+			log.WithError(err).Errorf("resource/measure:getApplicationMeasurement() %s - %s returned '%s'", message.AppRuntimeErr, constants.TBootXmMeasurePath, string(measureBytes))
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 		}
 
 		// make sure we got valid xml from measure
 		err = xml.Unmarshal(measureBytes, new(interface{}))
 		if err != nil {
-			log.WithError(err).Errorf("resource/measure:getApplicationMeasurement() Invalid measurement xml")
+			seclog.WithError(err).Errorf("resource/measure:getApplicationMeasurement() %s - Invalid measurement xml %s: %s", message.AppRuntimeErr, httpRequest.URL.Path, string(measureBytes))
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 		}
 

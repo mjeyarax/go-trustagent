@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"intel/isecl/go-trust-agent/constants"
 	commLog "intel/isecl/lib/common/log"
+	"intel/isecl/lib/common/log/message"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -31,13 +32,13 @@ func getAik() endpointHandler {
 		log.Debugf("resource/aik:getAik() Request: %s", httpRequest.URL.Path)
 
 		if _, err := os.Stat(constants.AikCert); os.IsNotExist(err) {
-			log.Errorf("resource/aik:getAik() %s does not exist", constants.AikCert)
+			log.Errorf("resource/aik:getAik() %s - %s does not exist", message.AppRuntimeErr, constants.AikCert)
 			return &endpointError{Message: "AIK certificate does not exist", StatusCode: http.StatusNotFound}
 		}
 
 		aikBytes, err := ioutil.ReadFile(constants.AikCert)
 		if err != nil {
-			log.Errorf("resource/aik:getAik() There was an error reading %s", constants.AikCert)
+			log.Errorf("resource/aik:getAik() %s - There was an error reading %s", message.AppRuntimeErr, constants.AikCert)
 			return &endpointError{Message: "Unable to fetch AIK certificate", StatusCode: http.StatusInternalServerError}
 		}
 

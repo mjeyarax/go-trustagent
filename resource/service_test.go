@@ -243,6 +243,35 @@ func TestEmptyToken(t *testing.T) {
 	assert.Equal(http.StatusUnauthorized, response.StatusCode)
 }
 
+// TestGetVersion - fetch version information from endpoint
+func TestGetVersion(t *testing.T) {
+	assert := assert.New(t)
+
+	mockedTpmProvider := new(tpmprovider.MockedTpmProvider)
+	mockedTpmProvider.On("Close").Return(nil)
+	mockedTpmProvider.On("NvIndexExists", mock.Anything).Return(false, nil)
+	mockedTpmProvider.On("NvRelease", mock.Anything, mock.Anything).Return(nil)
+	mockedTpmProvider.On("NvDefine", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	mockedTpmProvider.On("NvWrite", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+	mockedTpmFactory := tpmprovider.MockedTpmFactory{TpmProvider: mockedTpmProvider}
+
+	trustAgentService, err := CreateTrustAgentService(CreateTestConfig(), mockedTpmFactory)
+
+	trustAgentService.router.HandleFunc("/version", errorHandler(getVersion())).Methods("GET")
+
+	// test request
+	request, err := http.NewRequest("GET", "/version", nil)
+	assert.NoError(err)
+
+	recorder := httptest.NewRecorder()
+	response := recorder.Result()
+	trustAgentService.router.ServeHTTP(recorder, request)
+	assert.Equal(http.StatusOK, response.StatusCode)
+	fmt.Printf("Version: %s\n", recorder.Body.String())
+	assert.NotEmpty(recorder.Body.String())
+}
+
 // func TestLocalIpAddress(t *testing.T) {
 // 	assert := assert.New(t)
 

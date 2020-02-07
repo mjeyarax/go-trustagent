@@ -7,6 +7,7 @@ package resource
 import (
 	"bytes"
 	"intel/isecl/go-trust-agent/constants"
+	"intel/isecl/lib/common/log/message"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -23,13 +24,13 @@ func getBindingKeyCertificate() endpointHandler {
 		log.Debugf("resource/binding_key_certificate:getBindingKeyCertificate() Request: %s", httpRequest.URL.Path)
 
 		if _, err := os.Stat(constants.BindingKeyCertificatePath); os.IsNotExist(err) {
-			log.WithError(err).Errorf("resource/binding_key_certificate:getBindingKeyCertificate() %s does not exist", constants.BindingKeyCertificatePath)
+			log.WithError(err).Errorf("resource/binding_key_certificate:getBindingKeyCertificate() %s - %s does not exist", message.AppRuntimeErr, constants.BindingKeyCertificatePath)
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 		}
 
 		bindingKeyBytes, err := ioutil.ReadFile(constants.BindingKeyCertificatePath)
 		if err != nil {
-			log.Errorf("resource/binding_key_certificate:getBindingKeyCertificate() Error reading %s", constants.BindingKeyCertificatePath)
+			log.Errorf("resource/binding_key_certificate:getBindingKeyCertificate() %s - Error reading %s", message.AppRuntimeErr, constants.BindingKeyCertificatePath)
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}
 
 		}
