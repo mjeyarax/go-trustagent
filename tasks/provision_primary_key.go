@@ -6,11 +6,13 @@ package tasks
 
 import (
 	"encoding/hex"
-	"github.com/pkg/errors"
+	"fmt"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/lib/common/setup"
 	"intel/isecl/lib/tpmprovider"
-	)
+	
+	"github.com/pkg/errors"
+)
 
 type ProvisionPrimaryKey struct {
 	tpmFactory tpmprovider.TpmFactory

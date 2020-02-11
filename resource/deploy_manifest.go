@@ -5,7 +5,6 @@
 package resource
 
 import (
-
 	"encoding/xml"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/vsclient"
@@ -14,7 +13,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-	)
+)
 
 // Writes the manifest xml received to /opt/trustagent/var/manifest_{UUID}.xml.
 func deployManifest() endpointHandler {

@@ -12,8 +12,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/pkg/errors"
 )
 
@@ -146,8 +144,8 @@ func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteri
 	log.Debugf("SearchHosts: %s", request.URL.RawQuery)
 
 	response, err := client.httpClient.Do(request)
-    if err != nil {
-        return nil, errors.Wrapf(err, "vsclient/hosts_client:SearchHosts() Error making request to %s", url)
+        if err != nil {
+        	return nil, errors.Wrapf(err, "vsclient/hosts_client:SearchHosts() Error making request to %s", url)
 	}
 
 	defer response.Body.Close()
@@ -223,9 +221,9 @@ func (client *hostsClientImpl) CreateHost(hostCreateCriteria *HostCreateCriteria
 	log.Debugf("vsclient/hosts_client:CreateHost() Sending Post request to url %s with json body: %s ", url, string(jsonData))
 
 	response, err := client.httpClient.Do(request)
-    if err != nil {
-        return nil, errors.Wrapf(err, "vsclient/hosts_client:CreateHost() Error while making request to %s ", url)
-    }
+        if err != nil {
+    		return nil, errors.Wrapf(err, "vsclient/hosts_client:CreateHost() Error while making request to %s ", url)
+        }
 
 	defer response.Body.Close()
 
@@ -272,9 +270,9 @@ func (client *hostsClientImpl) UpdateHost(host *Host) (*Host, error) {
 	log.Debugf("vsclient/hosts_client:UpdateHost() Sending PUT request to url %s, json: %s ", url, string(jsonData))
 
 	response, err := client.httpClient.Do(request)
-    if err != nil {
-        return nil, errors.Wrapf(err,"vsclient/hosts_client:UpdateHost() Error while sending request to %s", url)
-    }
+	if err != nil {
+        	return nil, errors.Wrapf(err,"vsclient/hosts_client:UpdateHost() Error while sending request to %s", url)
+	}
 
 	defer response.Body.Close()
 

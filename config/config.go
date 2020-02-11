@@ -5,22 +5,22 @@
 package config
 
 import (
-	commLog "intel/isecl/lib/common/log"
-	"intel/isecl/lib/common/log/message"
-	commLogInt "intel/isecl/lib/common/log/setup"
 	"fmt"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/lib/common/setup"
 	"intel/isecl/lib/common/validation"
+	commLog "intel/isecl/lib/common/log"
+        "intel/isecl/lib/common/log/message"
+        commLogInt "intel/isecl/lib/common/log/setup"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 	"time"
 )
 
@@ -69,6 +69,8 @@ type TrustAgentConfiguration struct {
 }
 
 var mu sync.Mutex
+var log = commLog.GetDefaultLogger()
+var secLog = commLog.GetSecurityLogger()
 
 func NewConfigFromYaml(pathToYaml string) (*TrustAgentConfiguration, error) {
 

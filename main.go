@@ -10,8 +10,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
-	commLog "intel/isecl/lib/common/log"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/resource"
@@ -30,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"github.com/pkg/errors"
 )
 
 var log = commLog.GetDefaultLogger()

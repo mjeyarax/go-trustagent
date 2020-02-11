@@ -11,8 +11,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // Assuming that the /opt/trustagent/var/system-info/platform-info file has been create

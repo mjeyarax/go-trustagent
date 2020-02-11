@@ -8,7 +8,6 @@ import (
 	"crypto/x509/pkix"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/vsclient"

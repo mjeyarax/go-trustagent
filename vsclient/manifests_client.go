@@ -5,12 +5,11 @@
  package vsclient
 
  import (
-	 "common/log/message"
 	 "fmt"
 	 "io/ioutil"
 	 "net/http"
+
 	 "github.com/pkg/errors"
-	 log "github.com/sirupsen/logrus"
  )
 
 //-------------------------------------------------------------------------------------------------
@@ -74,8 +73,8 @@ func (client * manifestsClientImpl) getManifestXml(params map[string]string) ([]
 	log.Debugf("vsclient/manifests_client:getManifestXml() Request URL raw query %s", request.URL.RawQuery)
 
 	response, err := client.httpClient.Do(request)
-    if err != nil {
-        return nil, errors.Wrapf(err,"vsclient/manifests_client:getManifestXml() Error while sending request to %s", url)
+        if err != nil {
+    		return nil, errors.Wrapf(err,"vsclient/manifests_client:getManifestXml() Error while sending request to %s", url)
 	}
 	
 	defer response.Body.Close()

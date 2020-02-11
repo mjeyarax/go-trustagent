@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	log "github.com/sirupsen/logrus"
 	"github.com/pkg/errors"
 )
 //-------------------------------------------------------------------------------------------------

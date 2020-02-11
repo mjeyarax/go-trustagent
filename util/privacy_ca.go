@@ -7,10 +7,11 @@ package util
 import (
 	"crypto/rsa"
 	"crypto/x509"
-	"github.com/pkg/errors"
 	"intel/isecl/go-trust-agent/constants"
 	"io/ioutil"
 	"os"
+	
+	"github.com/pkg/errors"
 )
 
 var privacyCAInstance *rsa.PublicKey

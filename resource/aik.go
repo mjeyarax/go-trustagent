@@ -14,7 +14,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	)
+)
 
 var log = commLog.GetDefaultLogger()
 var secLog = commLog.GetSecurityLogger()
