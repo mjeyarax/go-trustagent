@@ -37,8 +37,8 @@ const (
 func CreateTestConfig() *config.TrustAgentConfiguration {
 
 	cfg := config.TrustAgentConfiguration{}
-	cfg.LogLevel = "trace"
-	cfg.TrustAgentService.Port = TestPort
+	cfg.Logging.LogLevel = "trace"
+	cfg.WebService.Port = TestPort
 	cfg.Tpm.OwnerSecretKey = TpmSecretKey
 
 	return &cfg

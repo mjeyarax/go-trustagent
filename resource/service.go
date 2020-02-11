@@ -80,12 +80,12 @@ func CreateTrustAgentService(config *config.TrustAgentConfiguration, tpmFactory 
 	log.Trace("resource/service:CreateTrustAgentService() Entering")
 	defer log.Trace("resource/service:CreateTrustAgentService() Leaving")
 
-	if config.TrustAgentService.Port == 0 {
+	if config.WebService.Port == 0 {
 		return nil, errors.New("Port cannot be zero")
 	}
 
 	trustAgentService := TrustAgentService{
-		port: config.TrustAgentService.Port,
+		port: config.WebService.Port,
 	}
 
 	// Register routes...
@@ -144,11 +144,11 @@ func (service *TrustAgentService) Start() error {
 		Handler:   handlers.RecoveryHandler(handlers.RecoveryLogger(httpLog), handlers.PrintRecoveryStack(true))(handlers.CombinedLoggingHandler(os.Stderr, service.router)),
 		ErrorLog:  httpLog,
 		TLSConfig: tlsconfig,
-		ReadTimeout:       cfg.HTTP_HEADERS.ReadTimeout,
-		ReadHeaderTimeout: cfg.HTTP_HEADERS.ReadHeaderTimeout,
-		WriteTimeout:      cfg.HTTP_HEADERS.WriteTimeout,
-		IdleTimeout:       cfg.HTTP_HEADERS.IdleTimeout,
-		MaxHeaderBytes:    cfg.HTTP_HEADERS.MaxHeaderBytes,
+		ReadTimeout:       cfg.WebService.ReadTimeout,
+		ReadHeaderTimeout: cfg.WebService.ReadHeaderTimeout,
+		WriteTimeout:      cfg.WebService.WriteTimeout,
+		IdleTimeout:       cfg.WebService.IdleTimeout,
+		MaxHeaderBytes:    cfg.WebService.MaxHeaderBytes,
 	}
 
 	// dispatch web server go routine

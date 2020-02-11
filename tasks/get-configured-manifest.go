@@ -6,7 +6,6 @@ package tasks
 
 import (
 	"encoding/xml"
-	"flag"
 	"fmt"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/vsclient"
@@ -21,15 +20,14 @@ import (
 )
 
 type GetConfiguredManifest struct {
-	Flags []string
 	clientFactory      vsclient.VSClientFactory
-	manifestsClient    vsclient.ManifestsClient
-	savedManifestFiles []string
+	savedManifestFiles []string		// internal task variable that tracks saved manifests (used in Validate())
 }
 
 func (task GetConfiguredManifest) saveManifest(manifestXml []byte) error {
 	log.Trace("tasks/get-configured-manifest:saveManifest() Entering")
 	defer log.Trace("tasks/get-configured-manifest:saveManifest() Leaving")
+	
 	manifest := vsclient.Manifest{}
 	err := xml.Unmarshal(manifestXml, &manifest)
 	if err != nil {
@@ -61,28 +59,15 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 	log.Trace("tasks/get-configured-manifest:Run() Entering")
 	defer log.Trace("tasks/get-configured-manifest:Run() Leaving")
 	fmt.Println("Running setup task: get-configured-manifest")
+
 	var err error
 	var flavorUUIDs []string
 	var flavorLabels []string
 
-	fs := flag.NewFlagSet("get-configured-manifest", flag.ExitOnError)
-	force := fs.Bool("force", false, "force creation of host unique flavor")
-
-	err = fs.Parse(task.Flags)
+	manifestsClient, err := task.clientFactory.ManifestsClient()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "setup create-host-unique-flavor: Unable to parse flags")
-		return errors.New("Unable to parse flags")
-	}
-
-	if task.Validate(c) == nil && !*force {
-		fmt.Println("setup get-configured-manifest: setup task already complete. Skipping...")
-		log.Info("tasks/get-configured-manifest:Run() Host, skipping ...")
-		return nil
-	}
-
-	// initialize if nil
-	if task.manifestsClient == nil {
-		task.manifestsClient = task.clientFactory.ManifestsClient()
+		log.WithError(err).Error("tasks/get-configured-manifest:Run() Could not create manifests client")
+		return err
 	}
 
 	envVar := os.Getenv(constants.FlavorUUIDs)
@@ -109,21 +94,23 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 		secLog.Errorf("%s tasks/get-configured-manifest:Run() values given in %s exceeds maximum length limit", message.InvalidInputBadParam, constants.FlavorLabels)
 		return errors.New("Flavor labels exceeds maximum length limit")
 	}
+
 	if envVar != "" {
 		flavorLabels = strings.Split(envVar, ",")
 	}
+
 	err = validation.ValidateStrings(flavorLabels)
-        if err != nil {
-                secLog.Errorf("%s tasks/get-configured-manifest:Run() Flavor Labels:'%s' are not valid labels", message.InvalidInputBadParam, constants.FlavorLabels)
-                return errors.Errorf("Flavor Labels:'%s' are not valid labels", constants.FlavorLabels)
-        }
+	if err != nil {
+		secLog.Errorf("%s tasks/get-configured-manifest:Run() Flavor Labels:'%s' are not valid labels", message.InvalidInputBadParam, constants.FlavorLabels)
+		return errors.Errorf("Flavor Labels:'%s' are not valid labels", constants.FlavorLabels)
+	}
 
 	if len(flavorUUIDs) == 0 && len(flavorLabels) == 0 {
 		return errors.Errorf("tasks/get-configured-manifest:Run() No manifests were specified via the '%s' or '%s' environment variables", constants.FlavorUUIDs, constants.FlavorLabels)
 	}
 
 	for _, uuid := range flavorUUIDs {
-		manifestXml, err := task.manifestsClient.GetManifestXmlById(uuid)
+		manifestXml, err := manifestsClient.GetManifestXmlById(uuid)
 		if err != nil {
 			log.Errorf("tasks/get-configured-manifest:Run() An error occurred while getting manifest with id '%s': %s", uuid, err)
 			continue
@@ -137,7 +124,7 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 	}
 
 	for _, label := range flavorLabels {
-		manifestXml, err := task.manifestsClient.GetManifestXmlByLabel(label)
+		manifestXml, err := manifestsClient.GetManifestXmlByLabel(label)
 		if err != nil {
 			log.Errorf("tasks/get-configured-manifest:Run() An error occurred while getting manifest with label '%s': %s", label, err)
 			continue

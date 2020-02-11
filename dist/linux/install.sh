@@ -94,13 +94,6 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-# if secure efi is not enabled, require tboot to be present
-bootctl status 2> /dev/null | grep 'Secure Boot: disabled' > /dev/null
-if [ $? -eq 0 ]; then
-    SUEFI_ENABLED="false"
-    TRUSTAGENT_YUM_PACKAGES+=" $TBOOT_DEPENDENCY"
-fi
-
 # make sure tagent.service is not running or install won't work
 systemctl status $TRUSTAGENT_SERVICE 2>&1 >/dev/null
 if [ $? -eq 0 ]; then
@@ -108,9 +101,21 @@ if [ $? -eq 0 ]; then
     exit 1
 fi
 
-# 5.2 Install prerequisites
+# if secure efi is not enabled, require tboot has been installed.  Note: This must
+# be done manually until RHEL 8.3 (a manual patch is required).
+bootctl status 2> /dev/null | grep 'Secure Boot: disabled' > /dev/null
+if [ $? -eq 0 ]; then
+    SUEFI_ENABLED="false"
+    
+    rpm -qa | grep ${TBOOT_DEPENDENCY} >/dev/null
+    if [ $? -ne 0 ]; then
+      echo_failure "tboot must be installed on non SUEFI systems."
+      return 1
+    fi
+fi
+
 install_packages() {
-local yum_packages=$(eval "echo \$TRUSTAGENT_YUM_PACKAGES")
+  local yum_packages=$(eval "echo \$TRUSTAGENT_YUM_PACKAGES")
 
   for package in ${yum_packages}; do
     echo "Checking for dependency ${package}"
@@ -405,10 +410,6 @@ if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PR
 
     if [ $setup_results -eq 0 ]; then
 
-        if [[ "$AUTOMATIC_REGISTRATION" == "y" || "$AUTOMATIC_REGISTRATION" == "Y" || "$AUTOMATIC_REGISTRATION" == "yes" ]]; then
-            tagent setup create-host
-        fi
-
         systemctl start $TRUSTAGENT_SERVICE
         echo "Waiting for $TRUSTAGENT_SERVICE to start"
         sleep 3
@@ -421,6 +422,12 @@ if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PR
         fi
 
         echo "$TRUSTAGENT_SERVICE is running"
+
+        if [[ "$AUTOMATIC_REGISTRATION" == "y" || "$AUTOMATIC_REGISTRATION" == "Y" || "$AUTOMATIC_REGISTRATION" == "yes" ]]; then
+            echo "Automatically registering host with HVS..."
+            tagent setup create-host
+            tagent setup create-host-unique-flavor
+        fi
     else
         echo_failure "'$TRUSTAGENT_EXE setup' failed"
         exit 1
@@ -432,7 +439,6 @@ else
 fi
 
 echo_success "Installation succeeded"
-
 
 if [[ $rebootRequired -eq 0 ]] && [[ $SUEFI_ENABLED == "false" ]]; then
     echo

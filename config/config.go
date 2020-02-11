@@ -10,8 +10,8 @@ import (
 	"intel/isecl/lib/common/setup"
 	"intel/isecl/lib/common/validation"
 	commLog "intel/isecl/lib/common/log"
-        "intel/isecl/lib/common/log/message"
-        commLogInt "intel/isecl/lib/common/log/setup"
+	"intel/isecl/lib/common/log/message"
+	commLogInt "intel/isecl/lib/common/log/setup"
 	"io"
 	"os"
 	"strconv"
@@ -34,37 +34,37 @@ const (
 
 type TrustAgentConfiguration struct {
 	configFile        string
-	LogLevel          string
-	LogEnableStdout   bool
-	LogEntryMaxLength int
-	TpmQuoteIPv4      bool
-	TrustAgentService struct {
-		Port     int
+	TpmQuoteIPv4      bool						// TPM_QUOTE_IPV4
+	Logging struct {
+		LogLevel          string				// TRUSTAGENT_LOG_LEVEL
+		LogEnableStdout   bool					// TA_ENABLE_CONSOLE_LOG
+		LogEntryMaxLength int					// LOG_ENTRY_MAXLENGTH (NEEDS TO BE IN LLD)
+	}
+	WebService struct {
+		Port     int							// TRUSTAGENT_PORT
+		ReadTimeout       time.Duration			// TA_SERVER_READ_TIMEOUT
+		ReadHeaderTimeout time.Duration			// TA_SERVER_READ_HEADER_TIMEOUT
+		WriteTimeout      time.Duration			// TA_SERVER_WRITE_TIMEOUT
+		IdleTimeout       time.Duration			// TA_SERVER_IDLE_TIMEOUT
+		MaxHeaderBytes    int					// TA_SERVER_MAX_HEADER_BYTES
 	}
 	HVS struct {
-		Url string
+		Url string								// MTWILSON_API_URL
 	}
 	Tpm struct {
-		OwnerSecretKey string
-		AikSecretKey   string
+		OwnerSecretKey string					// TPM_OWNER_SECRET (generated if not provided during take-ownership)
+		AikSecretKey   string					// Generated in provision-aik
 	}
 	AAS struct {
-		BaseURL string
+		BaseURL string							// AAS_API_URL
 	}
 	CMS struct {
-		BaseURL       string
-		TLSCertDigest string
+		BaseURL       string					// CMS_BASE_URL
+		TLSCertDigest string					// CMS_TLS_CERT_SHA384
 	}
 	TLS struct {
-		CertSAN  string
-		CertCN string
-	}
-	HTTP_HEADERS struct {
-		ReadTimeout       time.Duration
-		ReadHeaderTimeout time.Duration
-		WriteTimeout      time.Duration
-		IdleTimeout       time.Duration
-		MaxHeaderBytes    int
+		CertSAN  string							// SAN_LIST
+		CertCN string							// TA_TLS_CERT_CN
 	}
 }
 
@@ -81,7 +81,7 @@ func NewConfigFromYaml(pathToYaml string) (*TrustAgentConfiguration, error) {
 		yaml.NewDecoder(file).Decode(&c)
 	} else {
 		// file doesnt exist, create a new blank one
-		c.LogLevel = logrus.InfoLevel.String()
+		c.Logging.LogLevel = logrus.InfoLevel.String()
 	}
 
 	c.configFile = pathToYaml
@@ -112,9 +112,18 @@ func (cfg *TrustAgentConfiguration) Save() error {
 	}
 	defer file.Close()
 	secLog.Info(message.ConfigChanged)
-	return yaml.NewEncoder(file).Encode(cfg)
+	err = yaml.NewEncoder(file).Encode(cfg)
+	if err != nil {
+		return err
+	}
+
+	log.Debug("Successfully updated config.yaml")
+	return nil
 }
 
+// This function will load environment variables into the TrustAgentConfiguration
+// structure.  It does not validate the presence of env/config values since that
+// is handled 'lazily' by setup tasks.
 func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	var err error
 	dirty := false
@@ -127,9 +136,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if environmentVariable != "" && cfg.Tpm.OwnerSecretKey != environmentVariable {
 		cfg.Tpm.OwnerSecretKey = environmentVariable
 		dirty = true
-	} else if strings.TrimSpace(cfg.Tpm.OwnerSecretKey) == "" {
-		return errors.Errorf("TPM_OWNER_SECRET is not defined in environment or configuration file")
-	}
+	} // else := ok (This field may be generated in tasks/take-ownership when not present.)
 
 
 	//---------------------------------------------------------------------------------------------
@@ -139,8 +146,6 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if environmentVariable != "" && cfg.HVS.Url != environmentVariable {
 		cfg.HVS.Url = environmentVariable
 		dirty = true
-	}  else if strings.TrimSpace(cfg.HVS.Url) == "" {
-		return errors.Errorf("MTWILSON_API_URL is not defined in environment or configuration file")
 	}
 
 	//---------------------------------------------------------------------------------------------
@@ -160,8 +165,8 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 		port = constants.DefaultPort
 	}
 
-	if cfg.TrustAgentService.Port != port {
-		cfg.TrustAgentService.Port = port
+	if cfg.WebService.Port != port {
+		cfg.WebService.Port = port
 		dirty = true
 	}
 
@@ -176,9 +181,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 			cfg.AAS.BaseURL = environmentVariable + "/"
 		}
 		dirty = true
-	} else if strings.TrimSpace(cfg.AAS.BaseURL) == "" {
-		return errors.Errorf("AAS_API_URL is not defined in environment or configuration file")
-	}
+	} 
 
 	//---------------------------------------------------------------------------------------------
 	// CMS_BASE_URL
@@ -187,39 +190,38 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	if environmentVariable != "" && cfg.CMS.BaseURL != environmentVariable {
 		cfg.CMS.BaseURL = environmentVariable
 		dirty = true
-	}else if strings.TrimSpace(cfg.CMS.BaseURL) == "" {
-		return errors.Errorf("CMS_BASE_URL is not defined in environment or configuration file")
 	}
 
 	//---------------------------------------------------------------------------------------------
-        // LOG_ENTRY_MAXLENGTH
-        //---------------------------------------------------------------------------------------------
+	// LOG_ENTRY_MAXLENGTH
+	//---------------------------------------------------------------------------------------------
 	logEntryMaxLength, err := context.GetenvInt(constants.LogEntryMaxlengthEnv, "Maximum length of each entry in a log")
 	if err == nil && logEntryMaxLength >= 300 {
-		cfg.LogEntryMaxLength = logEntryMaxLength
+		cfg.Logging.LogEntryMaxLength = logEntryMaxLength
 	} else {
 		fmt.Println("Invalid Log Entry Max Length defined (should be >= ", constants.DefaultLogEntryMaxlength, "), using default value:", constants.DefaultLogEntryMaxlength)
-		cfg.LogEntryMaxLength = constants.DefaultLogEntryMaxlength
+		cfg.Logging.LogEntryMaxLength = constants.DefaultLogEntryMaxlength
 	}
 
 	//---------------------------------------------------------------------------------------------
-        // TRUSTAGENT_LOG_LEVEL
-        //---------------------------------------------------------------------------------------------
+	// TRUSTAGENT_LOG_LEVEL
+	//---------------------------------------------------------------------------------------------
 	ll, err := context.GetenvString("TRUSTAGENT_LOG_LEVEL", "Logging Level")
 	if err != nil {
-		if cfg.LogLevel == "" {
-			fmt.Println("TRUSTAGENT_LOG_LEVEL not defined, using default log level: Info")
-			cfg.LogLevel = logrus.InfoLevel.String()
+		llp, err := logrus.ParseLevel(ll)
+		if err == nil {
+			cfg.Logging.LogLevel = llp.String()
+			fmt.Printf("Log level set %s\n", ll)
+			dirty = true
 		}
 	} else {
-		llp, err := logrus.ParseLevel(ll)
-		if err != nil {
-			fmt.Println("Invalid log level specified in env, using default log level: Info")
-			cfg.LogLevel = logrus.InfoLevel.String()
-		} else {
-			cfg.LogLevel = llp.String()
-			fmt.Printf("Log level set %s\n", ll)
-		}
+		fmt.Println("There was an error retreiving the log level from TRUSTAGENT_LOG_LEVEL")
+	}
+
+	if cfg.Logging.LogLevel == "" {
+		fmt.Println("TRUSTAGENT_LOG_LEVEL not defined, using default log level: Info")
+		cfg.Logging.LogLevel = logrus.InfoLevel.String()
+		dirty = true
 	}
 
 	//---------------------------------------------------------------------------------------------
@@ -273,17 +275,16 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 		if err != nil {
 			log.Info("config/config:LoadEnvironmentVariables() TPM_QUOTE_IPV4 not valid, setting default value true")
 			cfg.TpmQuoteIPv4 = true
-			}
+		}
 	}
 
 	//---------------------------------------------------------------------------------------------
-        // TA_ENABLE_CONSOLE_LOG
-        //---------------------------------------------------------------------------------------------
-
-	cfg.LogEnableStdout = false
+	// TA_ENABLE_CONSOLE_LOG
+	//---------------------------------------------------------------------------------------------
+	cfg.Logging.LogEnableStdout = false
 	logEnableStdout, err := context.GetenvString("TA_ENABLE_CONSOLE_LOG", "Trustagent Enable standard output")
 	if err == nil  && logEnableStdout != "" {
-		cfg.LogEnableStdout, err = strconv.ParseBool(logEnableStdout)
+		cfg.Logging.LogEnableStdout, err = strconv.ParseBool(logEnableStdout)
 		if err != nil{
 			fmt.Println("Error while parsing the variable TA_ENABLE_CONSOLE_LOG, setting to default value false")
 		}
@@ -295,41 +296,41 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	readTimeout, err := context.GetenvInt("TA_SERVER_READ_TIMEOUT", "Trustagent Read Timeout")
 	if err != nil {
 		log.Info("config/config:LoadEnvironmentVariables() could not parse the variable TA_SERVER_READ_TIMEOUT, setting default value 30s")
-		cfg.HTTP_HEADERS.ReadTimeout = constants.DefaultReadTimeout
+		cfg.WebService.ReadTimeout = constants.DefaultReadTimeout
 	} else {
-		cfg.HTTP_HEADERS.ReadTimeout = time.Duration(readTimeout) * time.Second
+		cfg.WebService.ReadTimeout = time.Duration(readTimeout) * time.Second
 	}
 
 	readHeaderTimeout, err := context.GetenvInt("TA_SERVER_READ_HEADER_TIMEOUT", "Trustagent Read Header Timeout")
 	if err != nil {
 		log.Info("config/config:LoadEnvironmentVariables() could not parse the variable TA_SERVER_READ_HEADER_TIMEOUT, setting default value 10s")
-		cfg.HTTP_HEADERS.ReadHeaderTimeout = constants.DefaultReadHeaderTimeout
+		cfg.WebService.ReadHeaderTimeout = constants.DefaultReadHeaderTimeout
 	} else {
-		cfg.HTTP_HEADERS.ReadHeaderTimeout = time.Duration(readHeaderTimeout) * time.Second
+		cfg.WebService.ReadHeaderTimeout = time.Duration(readHeaderTimeout) * time.Second
 	}
 
 	writeTimeout, err := context.GetenvInt("TA_SERVER_WRITE_TIMEOUT", "Trustagent Write Timeout")
 	if err != nil {
 		log.Info("config/config:LoadEnvironmentVariables() could not parse the variable TA_SERVER_WRITE_TIMEOUT, setting default value 10s")
-		cfg.HTTP_HEADERS.WriteTimeout = constants.DefaultWriteTimeout
+		cfg.WebService.WriteTimeout = constants.DefaultWriteTimeout
 	} else {
-		cfg.HTTP_HEADERS.WriteTimeout = time.Duration(writeTimeout) * time.Second
+		cfg.WebService.WriteTimeout = time.Duration(writeTimeout) * time.Second
 	}
 
 	idleTimeout, err := context.GetenvInt("TA_SERVER_IDLE_TIMEOUT", "Trustagent Idle Timeout")
 	if err != nil {
 		log.Info("config/config:LoadEnvironmentVariables() could not parse the variable TA_SERVER_IDLE_TIMEOUT, setting default value 10s")
-		cfg.HTTP_HEADERS.IdleTimeout = constants.DefaultIdleTimeout
+		cfg.WebService.IdleTimeout = constants.DefaultIdleTimeout
 	} else {
-		cfg.HTTP_HEADERS.IdleTimeout = time.Duration(idleTimeout) * time.Second
+		cfg.WebService.IdleTimeout = time.Duration(idleTimeout) * time.Second
 	}
 
 	maxHeaderBytes, err := context.GetenvInt("TA_SERVER_MAX_HEADER_BYTES", "Trustagent Max Header Bytes Timeout")
 	if err != nil {
 		log.Info("config/config:LoadEnvironmentVariables() could not parse the variable TA_SERVER_MAX_HEADER_BYTES, setting default value 10s")
-		cfg.HTTP_HEADERS.MaxHeaderBytes = constants.DefaultMaxHeaderBytes
+		cfg.WebService.MaxHeaderBytes = constants.DefaultMaxHeaderBytes
 	} else {
-		cfg.HTTP_HEADERS.MaxHeaderBytes = maxHeaderBytes
+		cfg.WebService.MaxHeaderBytes = maxHeaderBytes
 	}
 
 	//---------------------------------------------------------------------------------------------
@@ -345,26 +346,25 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	return nil
 }
 
+// This function validates whether or not the configuration has enough information to start the http
+// service.  It requires the TPM owner/aik secret, port and AAS URL to run (all other configuration is 
+// required during setup).
 func (cfg *TrustAgentConfiguration) Validate() error {
 
-	if cfg.TrustAgentService.Port == 0 || cfg.TrustAgentService.Port > 65535 {
-		return errors.Errorf("config/config:Validate() Invalid TrustAgent port value: '%d'", cfg.TrustAgentService.Port)
+	if cfg.Tpm.OwnerSecretKey == "" {
+		return errors.New("The Trust-Agent service requires that the configuration contains a TPM 'owner' secret.")
 	}
 
-	if cfg.HVS.Url == "" {
-		return errors.New("Validation error: HVS API URL is required")
+	if cfg.Tpm.AikSecretKey == "" {
+		return errors.New("The Trust-Agent service requires that the configuration contains a TPM 'aik' secret.")
+	}
+
+	if cfg.WebService.Port == 0 || cfg.WebService.Port > 65535 {
+		return errors.Errorf("The Trust-Agent service requires that the configuration contains a valid port number: '%d'", cfg.WebService.Port)
 	}
 
 	if cfg.AAS.BaseURL == "" {
-		return errors.New("Validation error: AAS API URL is required")
-	}
-
-	if cfg.CMS.BaseURL == "" {
-		return errors.New("Validation error: CMS Base URL is required")
-	}
-
-	if cfg.CMS.TLSCertDigest == "" {
-		return errors.New("Validation error: CMS TLS Cert Digest is required")
+		return errors.New("The Trust-Agent service requires that the configuration contains an AAS url.")
 	}
 
 	return nil
@@ -395,17 +395,17 @@ func (cfg *TrustAgentConfiguration) LogConfiguration(stdOut bool) {
 	}
 	ioWriterSecurity := io.MultiWriter(ioWriterDefault, secLogFile)
 
-	if cfg.LogLevel == "" {
-		cfg.LogLevel = logrus.InfoLevel.String()
+	if cfg.Logging.LogLevel == "" {
+		cfg.Logging.LogLevel = logrus.InfoLevel.String()
 	}
 
-	llp, err := logrus.ParseLevel(cfg.LogLevel)
+	llp, err := logrus.ParseLevel(cfg.Logging.LogLevel)
 	if err != nil {
-		cfg.LogLevel = logrus.InfoLevel.String()
-		llp, _ = logrus.ParseLevel(cfg.LogLevel)
+		cfg.Logging.LogLevel = logrus.InfoLevel.String()
+		llp, _ = logrus.ParseLevel(cfg.Logging.LogLevel)
 	}
-	commLogInt.SetLogger(commLog.DefaultLoggerName, llp, &commLog.LogFormatter{MaxLength: cfg.LogEntryMaxLength}, ioWriterDefault, false)
-	commLogInt.SetLogger(commLog.SecurityLoggerName, llp, &commLog.LogFormatter{MaxLength: cfg.LogEntryMaxLength}, ioWriterSecurity, false)
+	commLogInt.SetLogger(commLog.DefaultLoggerName, llp, &commLog.LogFormatter{MaxLength: cfg.Logging.LogEntryMaxLength}, ioWriterDefault, false)
+	commLogInt.SetLogger(commLog.SecurityLoggerName, llp, &commLog.LogFormatter{MaxLength: cfg.Logging.LogEntryMaxLength}, ioWriterSecurity, false)
 
 	secLog.Infof("config/config:LogConfiguration() %s", message.LogInit)
 	log.Infof("config/config:LogConfiguration() %s", message.LogInit)

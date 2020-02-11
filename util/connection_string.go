@@ -7,15 +7,13 @@ package util
 import (
 	"fmt"
 	commLog "intel/isecl/lib/common/log"
-	"intel/isecl/go-trust-agent/config"
-
 	"github.com/pkg/errors"
 )
 
 var log = commLog.GetDefaultLogger()
 var secLog = commLog.GetSecurityLogger()
 
-func GetConnectionString(cfg *config.TrustAgentConfiguration) (string, error) {
+func GetConnectionString(port int) (string, error) {
 	log.Trace("util/connection_string:GetConnectionString() Entering")
 	defer log.Trace("util/connection_string:GetConnectionString() Leaving")
 
@@ -24,6 +22,6 @@ func GetConnectionString(cfg *config.TrustAgentConfiguration) (string, error) {
 		return "", errors.Wrap(err, "util/connection_string:GetConnectionString() Error While retrieving local IP")
 	}
 
-	connectionString := fmt.Sprintf("intel:https://%s:%d", ip, cfg.TrustAgentService.Port)
+	connectionString := fmt.Sprintf("intel:https://%s:%d", ip, port)
 	return connectionString, nil
 }

@@ -40,7 +40,7 @@ type FlavorCreateCriteria struct {
 
 type flavorsClientImpl struct {
 	httpClient *http.Client
-	cfg        *VSClientConfig
+	cfg        *vsClientConfig
 }
 
 func (client *flavorsClientImpl) CreateFlavor(flavorCreateCriteria *FlavorCreateCriteria) ([]byte, error) {

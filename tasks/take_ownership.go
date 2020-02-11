@@ -6,7 +6,6 @@ package tasks
 
 import (
 	"fmt"
-	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/lib/common/crypt"
 	"intel/isecl/lib/common/setup"
 	"intel/isecl/lib/tpmprovider"
@@ -16,7 +15,7 @@ import (
 
 type TakeOwnership struct {
 	tpmFactory tpmprovider.TpmFactory
-	cfg        *config.TrustAgentConfiguration
+	ownerSecretKey *string	// this is an 'out' variable that can be set by the task
 }
 
 // Retrieves the 'OwnerSecretKey' value from configuration.  If it is not there, it generates a
@@ -26,24 +25,27 @@ func (task *TakeOwnership) Run(c setup.Context) error {
 	log.Trace("tasks/take_ownership:Run() Entering")
 	defer log.Trace("tasks/take_ownership:Run() Leaving")
 	fmt.Println("Running setup task: take-ownership")
+
+	if task.ownerSecretKey == nil {
+		return errors.New("ownerSecretKey cannot be nil")
+	}
+
 	// The OwnerSecretKey is either set via trustagent.env (env var) and trustagent_config.go,
 	// or is empty.  If it is empty, generate a new random key.  Note:  It could also be
 	// present from the config.yml, but we assume this task is only called when taking
 	// ownership of a cleared tpm.
-	if task.cfg.Tpm.OwnerSecretKey == "" {
+	if *task.ownerSecretKey == "" {
 		newSecretKey, err := crypt.GetHexRandomString(20)
 		if err != nil {
-			log.WithError(err).Error("tasks/take_ownership:Run() Error while generating a random key")
-			return errors.New("Error while generating a random key")
+			return errors.Wrap(err, "tasks/take_ownership:Run() Error while generating a random key")
 		}
 
-		task.cfg.Tpm.OwnerSecretKey = newSecretKey
+		*task.ownerSecretKey = newSecretKey
 	}
 
 	// validate the secret key...
-	if len(task.cfg.Tpm.OwnerSecretKey) == 0 || len(task.cfg.Tpm.OwnerSecretKey) > 40 {
-		log.Error("tasks/take_ownership:Run() Invalid secret key")
-		return errors.New("Invalid secret key")
+	if len(*task.ownerSecretKey) == 0 || len(*task.ownerSecretKey) > 40 {
+		return errors.New("Invalid secret key length")
 	}
 
 	tpm, err := task.tpmFactory.NewTpmProvider()
@@ -55,9 +57,9 @@ func (task *TakeOwnership) Run(c setup.Context) error {
 	defer tpm.Close()
 
 	// check if the tpm is already owned with the current secret key (and return)
-	alreadyOwned, err := tpm.IsOwnedWithAuth(task.cfg.Tpm.OwnerSecretKey)
+	alreadyOwned, err := tpm.IsOwnedWithAuth(*task.ownerSecretKey)
 	if err != nil {
-		log.WithError(err).Error("tasks/take_ownership:Run() EError while checking if the tpm is already owned with the current secret key")
+		log.WithError(err).Error("tasks/take_ownership:Run() Error while checking if the tpm is already owned with the current secret key")
 		return errors.New("Error while checking if the tpm is already owned with the current secret key")
 	}
 
@@ -67,17 +69,10 @@ func (task *TakeOwnership) Run(c setup.Context) error {
 	}
 
 	// tpm is not owned by current secret, take ownership
-	err = tpm.TakeOwnership(task.cfg.Tpm.OwnerSecretKey)
+	err = tpm.TakeOwnership(*task.ownerSecretKey)
 	if err != nil {
 		log.WithError(err).Error("tasks/take_ownership:Run() Error while performing tpm takeownership operation")
 		return errors.New("Error while performing tpm takeownership operation")
-	}
-
-	// TakeOwnership didn't fail, update config, the key will be checked in Validate()
-	err = task.cfg.Save()
-	if err != nil {
-		log.WithError(err).Error("tasks/take_ownership:Run() Error saving configuration")
-		return errors.New("Error saving configuration")
 	}
 
 	return nil
@@ -91,7 +86,7 @@ func (task *TakeOwnership) Validate(c setup.Context) error {
 	log.Trace("tasks/take_ownership:Validate() Entering")
 	defer log.Trace("tasks/take_ownership:Validate() Leaving")
 
-	if task.cfg.Tpm.OwnerSecretKey == "" {
+	if *task.ownerSecretKey == "" {
 		return errors.New("The configuration does not contain the tpm secret key")
 	}
 
@@ -103,7 +98,7 @@ func (task *TakeOwnership) Validate(c setup.Context) error {
 
 	defer tpmProvider.Close()
 
-	ok, err := tpmProvider.IsOwnedWithAuth(task.cfg.Tpm.OwnerSecretKey)
+	ok, err := tpmProvider.IsOwnedWithAuth(*task.ownerSecretKey)
 	if err != nil {
 		log.WithError(err).Error("tasks/take_ownership:Validate() Error while checking if the tpm is already owned with the current secret key")
 		return errors.New("Error while checking if the tpm is already owned with the current secret key")

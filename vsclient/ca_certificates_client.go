@@ -30,7 +30,7 @@ type CACertificatesClient interface {
 
 type caCertificatesClientImpl struct {
 	httpClient *http.Client
-	cfg        *VSClientConfig
+	cfg        *vsClientConfig
 }
 
 var context setup.Context

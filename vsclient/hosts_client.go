@@ -104,7 +104,7 @@ type HostFilterCriteria struct {
 
 type hostsClientImpl struct {
 	httpClient *http.Client
-	cfg        *VSClientConfig
+	cfg        *vsClientConfig
 }
 
 func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteria) (*HostCollection, error) {

@@ -51,7 +51,7 @@ const (
 
 type manifestsClientImpl struct {
 	httpClient *http.Client
-	cfg *VSClientConfig
+	cfg *vsClientConfig
 }
 
 func (client * manifestsClientImpl) getManifestXml(params map[string]string) ([]byte, error) {

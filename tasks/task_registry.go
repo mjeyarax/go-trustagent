@@ -6,10 +6,11 @@ package tasks
 
 import (
 	"crypto/x509/pkix"
-	"errors"
-	"fmt"
+	"github.com/pkg/errors"
+	commLog "intel/isecl/lib/common/log"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
+	"intel/isecl/go-trust-agent/util"
 	"intel/isecl/go-trust-agent/vsclient"
 	"intel/isecl/lib/common/setup"
 	"intel/isecl/lib/tpmprovider"
@@ -20,6 +21,7 @@ import (
 // that can be invoked at once (in specific order).
 type TaskRegistry struct {
 	taskMap map[string][]setup.Task
+	cfg *config.TrustAgentConfiguration
 }
 
 const (
@@ -34,51 +36,41 @@ const (
 	CreateHostCommand                      = "create-host"
 	CreateHostUniqueFlavorCommand          = "create-host-unique-flavor"
 	GetConfiguredManifestCommand           = "get-configured-manifest"
+	ProvisionAttestationCommand			   = "provision-attestation"
+	UpdateCertificatesCommand			   = "update-certificates"
 )
 
-// NewSetupTaskConfig sets up common configuration holder for all the setup tasks
-func NewSetupTaskConfig(cfg *config.TrustAgentConfiguration) (*vsclient.VSClientConfig, error) {
-	jwtToken := os.Getenv(constants.EnvBearerToken)
-	if jwtToken == "" {
-		fmt.Fprintln(os.Stderr, "BEARER_TOKEN is not defined in environment")
-		return nil, errors.New("BEARER_TOKEN is not defined in environment")
-	}
-
-	vsClientConfig := vsclient.VSClientConfig{
-		BaseURL:     cfg.HVS.Url,
-		BearerToken: jwtToken,
-	}
-
-	return &vsClientConfig, nil
-}
+var log = commLog.GetDefaultLogger()
+var secLog = commLog.GetSecurityLogger()
 
 func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*TaskRegistry, error) {
 
 	var registry TaskRegistry
-	registry.taskMap = make(map[string][]setup.Task)
 
-	vsClientConfig, err := NewSetupTaskConfig(cfg)
-	if err != nil {
-		log.Errorf("Could not create the vsclient config: %s", err)
-		os.Exit(1)
+	if cfg == nil {
+		return nil, errors.New("The cfg paramater was not provided")
 	}
 
-	vsClientFactory, err := vsclient.NewVSClientFactory(vsClientConfig)
+	registry.cfg = cfg
+	registry.taskMap = make(map[string][]setup.Task)
+
+	vsClientFactory, err := vsclient.NewVSClientFactory(cfg.HVS.Url, util.GetBearerToken())
 	if err != nil {
-		log.Errorf("Could not create the vsclient factory: %s", err)
-		os.Exit(1)
+		return nil, errors.Wrap(err, "Could not create the vsclient factory")
 	}
 
 	tpmFactory, err := tpmprovider.NewTpmFactory()
 	if err != nil {
-		log.Errorf("Could not create the tpm factory: %s", err)
-		os.Exit(1)
+		return nil, errors.Wrap(err, "Could not create tpm factory")
 	}
 
-	takeOwnership := TakeOwnership{tpmFactory: tpmFactory, cfg: cfg}
+	takeOwnership := TakeOwnership{
+		tpmFactory: tpmFactory, 
+		ownerSecretKey: &cfg.Tpm.OwnerSecretKey,
+	}
 
 	downloadRootCACert := setup.Download_Ca_Cert{
-		Flags:                flags,
+		Flags:                []string{"--force",},	 // to be consistent with other GTA tasks, always force update
 		CmsBaseURL:           cfg.CMS.BaseURL,
 		CaCertDirPath:        constants.TrustedCaCertsDir,
 		TrustedTlsCertDigest: cfg.CMS.TLSCertDigest,
@@ -86,7 +78,7 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 	}
 
 	downloadTLSCert := setup.Download_Cert{
-		Flags:              flags,
+		Flags:              []string{"--force",}, // to be consistent with other GTA tasks, always force update
 		KeyFile:            constants.TLSKeyFilePath,
 		CertFile:           constants.TLSCertFilePath,
 		KeyAlgorithm:       constants.DefaultKeyAlgorithm,
@@ -104,22 +96,25 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 
 	provisionEndorsementKey := ProvisionEndorsementKey{
 		clientFactory: vsClientFactory,
-		tpmFactory:    tpmFactory,
-		cfg:           cfg,
+		tpmFactory: tpmFactory,
+		ownerSecretKey: &cfg.Tpm.OwnerSecretKey,
 	}
 
 	provisionAttestationIdentityKey := ProvisionAttestationIdentityKey{
 		clientFactory: vsClientFactory,
-		tpmFactory:    tpmFactory,
-		cfg:           cfg,
+		tpmFactory: tpmFactory,
+		ownerSecretKey: &cfg.Tpm.OwnerSecretKey,
+		aikSecretKey: &cfg.Tpm.AikSecretKey,
 	}
 
 	downloadPrivacyCA := DownloadPrivacyCA{
 		clientFactory: vsClientFactory,
-		cfg:           cfg,
 	}
 
-	provisionPrimaryKey := ProvisionPrimaryKey{tpmFactory: tpmFactory, cfg: cfg}
+	provisionPrimaryKey := ProvisionPrimaryKey{
+		tpmFactory: tpmFactory,
+		ownerSecretKey: &cfg.Tpm.OwnerSecretKey,
+	}
 
 	registry.taskMap[TakeOwnershipCommand] = []setup.Task{&takeOwnership}
 	registry.taskMap[DownloadRootCACertCommand] = []setup.Task{&downloadRootCACert}
@@ -128,6 +123,19 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 	registry.taskMap[ProvisionAttestationIdentityKeyCommand] = []setup.Task{&provisionAttestationIdentityKey}
 	registry.taskMap[DownloadPrivacyCACommand] = []setup.Task{&downloadPrivacyCA}
 	registry.taskMap[ProvisionPrimaryKeyCommand] = []setup.Task{&provisionPrimaryKey}
+
+	registry.taskMap[ProvisionAttestationCommand] = [] setup.Task{
+		&downloadPrivacyCA,
+		&takeOwnership,
+		&provisionEndorsementKey,
+		&provisionAttestationIdentityKey,
+		&provisionPrimaryKey,
+	}
+
+	registry.taskMap[UpdateCertificatesCommand] = [] setup.Task{
+		&downloadRootCACert,
+		&downloadTLSCert,
+	}
 
 	registry.taskMap[DefaultSetupCommand] = []setup.Task{
 		&downloadRootCACert,
@@ -140,17 +148,24 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 	}
 
 	// these are individual commands that are not included in default setup tasks
+
+	connectionString, err := util.GetConnectionString(cfg.WebService.Port)
+	if err != nil {
+		log.WithError(err).Error("tasks/TaskRegistry/CreateTaskRegistry() Error while getting connection string")
+		return nil, errors.New("Error while getting connection string")
+	}
+
 	registry.taskMap[CreateHostCommand] = []setup.Task{
 		&CreateHost{
 			clientFactory: vsClientFactory,
-			cfg:           cfg,
+			connectionString: connectionString,
 		},
 	}
 
 	registry.taskMap[CreateHostUniqueFlavorCommand] = []setup.Task{
 		&CreateHostUniqueFlavor{
 			clientFactory: vsClientFactory,
-			cfg:           cfg,
+			connectionString: connectionString,
 		},
 	}
 
@@ -175,6 +190,7 @@ func (registry *TaskRegistry) RunCommand(command string) error {
 	}
 
 	err := setupRunner.RunTasks()
+	registry.cfg.Save()	// always update the cofig.yaml regardless of error (so TPM owner/aik are persisted)
 	if err != nil {
 		return err
 	}

@@ -19,6 +19,7 @@ import (
 const (
 	TpmSecretKey   = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
 	AikSecretKey   = "beefbeefbeefbeefbeefbeefbeefbeefbeefbeef"
+	ConnectionString = "intel://10.10.10.1:1443"
 )
 
 func TestTakeOwnership(t *testing.T) {
@@ -35,7 +36,7 @@ func TestTakeOwnership(t *testing.T) {
 	mockedTpmFactory := tpmprovider.MockedTpmFactory{TpmProvider: mockedTpmProvider}
 
 	context := setup.Context{}
-	createHost := TakeOwnership{tpmFactory: mockedTpmFactory, cfg: cfg}
+	createHost := TakeOwnership{tpmFactory: mockedTpmFactory, ownerSecretKey: &cfg.Tpm.OwnerSecretKey}
 
 	err := createHost.Run(context)
 	assert.NoError(err)
@@ -95,7 +96,7 @@ func TestCreateHostDefault(t *testing.T) {
 	assert := assert.New(t)
 
 	cfg := &config.TrustAgentConfiguration{}
-	cfg.TrustAgentService.Port = 8045
+	cfg.WebService.Port = 8045
 
 	// create mocks that return no hosts on 'SearchHosts' (i.e. host does not exist in hvs) and
 	// host with an new id for 'CreateHost'
@@ -103,8 +104,11 @@ func TestCreateHostDefault(t *testing.T) {
 	mockedHostsClient.On("SearchHosts", mock.Anything).Return(&vsclient.HostCollection{Hosts: []vsclient.Host{}}, nil)
 	mockedHostsClient.On("CreateHost", mock.Anything).Return(&vsclient.Host{Id: "068b5e88-1886-4ac2-a908-175cf723723f"}, nil)
 
+	mockedVSClientFactory := vsclient.MockedVSClientFactory {MockedHostsClient : mockedHostsClient}
+
 	context := setup.Context{}
-	createHost := CreateHost{hostsClient: mockedHostsClient, cfg: cfg}
+
+	createHost := CreateHost{clientFactory: mockedVSClientFactory, connectionString: ConnectionString}
 	err := createHost.Run(context)
 	assert.NoError(err)
 }
@@ -113,7 +117,7 @@ func TestCreateHostExisting(t *testing.T) {
 	assert := assert.New(t)
 
 	cfg := &config.TrustAgentConfiguration{}
-	cfg.TrustAgentService.Port = 8045
+	cfg.WebService.Port = 8045
 
 	existingHost := vsclient.Host{
 		Id:               "068b5e88-1886-4ac2-a908-175cf723723d",
@@ -129,8 +133,10 @@ func TestCreateHostExisting(t *testing.T) {
 	mockedHostsClient.On("SearchHosts", mock.Anything).Return(&vsclient.HostCollection{Hosts: []vsclient.Host{existingHost}}, nil)
 	mockedHostsClient.On("CreateHost", mock.Anything).Return(&vsclient.Host{Id: "068b5e88-1886-4ac2-a908-175cf723723f"}, nil)
 
+	mockedVSClientFactory := vsclient.MockedVSClientFactory {MockedHostsClient : mockedHostsClient}
+
 	context := setup.Context{}
-	createHost := CreateHost{hostsClient: mockedHostsClient, cfg: cfg}
+	createHost := CreateHost{clientFactory: mockedVSClientFactory, connectionString: ConnectionString}
 	err := createHost.Run(context)
 	assert.Error(err)
 }

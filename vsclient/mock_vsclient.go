@@ -11,6 +11,43 @@ import (
 )
 
 //-------------------------------------------------------------------------------------------------
+// Mocked Client Factory:  Assumes that unit tests will populate the factory with mocked 
+// implementations of the clients as needed.
+//-------------------------------------------------------------------------------------------------
+type MockedVSClientFactory struct {
+	MockedHostsClient HostsClient
+	MockedFlavorsClient FlavorsClient
+	MockedManifestsClient ManifestsClient
+	MockedTpmEndorsementClient TpmEndorsementsClient
+	MockedPrivacyCAClient PrivacyCAClient
+	MockedCACertificatesClient CACertificatesClient
+}
+
+func (factory MockedVSClientFactory) HostsClient() (HostsClient, error) {
+	return factory.MockedHostsClient, nil
+}
+
+func (factory MockedVSClientFactory) FlavorsClient() (FlavorsClient, error) {
+	return factory.MockedFlavorsClient, nil
+}
+
+func (factory MockedVSClientFactory) ManifestsClient() (ManifestsClient, error) {
+	return factory.MockedManifestsClient, nil
+}
+
+func (factory MockedVSClientFactory) TpmEndorsementsClient() (TpmEndorsementsClient, error) {
+	return factory.MockedTpmEndorsementClient, nil
+}
+
+func (factory MockedVSClientFactory) PrivacyCAClient() (PrivacyCAClient, error) {
+	return factory.MockedPrivacyCAClient, nil
+}
+
+func (factory MockedVSClientFactory) CACertificatesClient() (CACertificatesClient, error) {
+	return factory.MockedCACertificatesClient, nil
+}
+
+//-------------------------------------------------------------------------------------------------
 // Mocked Hosts interface
 //-------------------------------------------------------------------------------------------------
 type MockedHostsClient struct {

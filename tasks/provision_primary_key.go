@@ -7,7 +7,6 @@ package tasks
 import (
 	"encoding/hex"
 	"fmt"
-	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/lib/common/setup"
 	"intel/isecl/lib/tpmprovider"
 	
@@ -16,7 +15,7 @@ import (
 
 type ProvisionPrimaryKey struct {
 	tpmFactory tpmprovider.TpmFactory
-	cfg        *config.TrustAgentConfiguration
+	ownerSecretKey *string
 }
 
 // This task is used to persist a primary public key at handle TPM_HANDLE_PRIMARY
@@ -40,7 +39,7 @@ func (task *ProvisionPrimaryKey) Run(c setup.Context) error {
 	}
 
 	if !exists {
-		ownerSecret, err := hex.DecodeString(task.cfg.Tpm.OwnerSecretKey)
+		ownerSecret, err := hex.DecodeString(*task.ownerSecretKey)
 		if err != nil {
 			return err
 		}

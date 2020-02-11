@@ -91,7 +91,7 @@ type IdentityProofRequest struct {
 
 type privacyCAClientImpl struct {
 	httpClient *http.Client
-	cfg *VSClientConfig
+	cfg *vsClientConfig
 }
 
 func (client *privacyCAClientImpl) DownloadPrivacyCa() ([]byte, error) {

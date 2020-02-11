@@ -35,7 +35,7 @@ type TpmEndorsement struct {
 
 type tpmEndorsementsClientImpl struct {
 	httpClient *http.Client
-	cfg *VSClientConfig
+	cfg *vsClientConfig
 }
 
 func (client *tpmEndorsementsClientImpl) IsEkRegistered(hardwareUUID string) (bool, error) {

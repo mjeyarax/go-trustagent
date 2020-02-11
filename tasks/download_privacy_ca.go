@@ -6,7 +6,6 @@ package tasks
 
 import (
 	"fmt"
-	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/util"
 	"intel/isecl/go-trust-agent/vsclient"
@@ -18,8 +17,6 @@ import (
 
 type DownloadPrivacyCA struct {
 	clientFactory   vsclient.VSClientFactory
-	privacyCAClient vsclient.PrivacyCAClient
-	cfg             *config.TrustAgentConfiguration
 }
 
 // Download's the privacy CA from HVS.
@@ -27,17 +24,14 @@ func (task *DownloadPrivacyCA) Run(c setup.Context) error {
 	log.Trace("tasks/download_privacy_ca:Run() Entering")
 	defer log.Trace("tasks/download_privacy_ca:Run() Leaving")
 	fmt.Println("Running setup task: download-privacy-ca")
-	// initialize if nil
-	if task.privacyCAClient == nil {
-		task.privacyCAClient = task.clientFactory.PrivacyCAClient()
+
+	privacyCAClient, err := task.clientFactory.PrivacyCAClient()
+	if err != nil {
+		log.WithError(err).Error("tasks/download_privacy_ca:Run() Could not create privacy-ca client")
+		return err
 	}
 
-	// initialize if nil
-	if task.privacyCAClient == nil {
-		task.privacyCAClient = task.clientFactory.PrivacyCAClient()
-	}
-
-	ca, err := task.privacyCAClient.DownloadPrivacyCa()
+	ca, err := privacyCAClient.DownloadPrivacyCa()
 	if err != nil {
 		log.WithError(err).Error("tasks/download_privacy_ca:Run() Error while downloading privacyCA file")
 		return errors.New("Error while downloading privacyCA file")
@@ -61,6 +55,5 @@ func (task *DownloadPrivacyCA) Validate(c setup.Context) error {
 	}
 
 	log.Info("tasks/download_privacy_ca:Validate() Download PrivacyCA was successful")
-
 	return nil
 }

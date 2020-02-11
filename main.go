@@ -59,21 +59,25 @@ func printUsage() {
 	fmt.Println("    tagent setup all (or with empty 3rd argument)")
 	fmt.Println("        - Runs all setup tasks to provision the trustagent.")
 	fmt.Println("    tagent setup trustagent.env")
-	fmt.Println("        - Runs all setup tasks to provision the trustagent using the env file path provided as 3rd argument.")
-	fmt.Println("    tagent setup download-ca-cert [--force]")
-	fmt.Println("        - Fetches the latest CMS Root CA Certificates.")
-	fmt.Println("        --force option overwrites existing root CA certificates.")
-	fmt.Println("    tagent setup download-cert [--force]")
-	fmt.Println("        - Fetches a signed TLS Certificate from CMS.")
-	fmt.Println("        --force option overwrites existing TLS certificates.")
+	fmt.Println("        - Runs all setup tasks to provision the trustagent using the env")
+	fmt.Println("          file path provided as 3rd argument.")
+	fmt.Println("    tagent setup download-ca-cert")
+	fmt.Println("        - Fetches the latest CMS Root CA Certificates, overwriting existing")
+	fmt.Println("          files.")
+	fmt.Println("    tagent setup download-cert")
+	fmt.Println("        - Fetches a signed TLS Certificate from CMS, overwriting existing")
+	fmt.Println("          files.")
+	fmt.Println("    tagent setup update-certificates")
+	fmt.Println("        - Runs 'download-ca-cert' and 'download-cert'")
+	fmt.Println("    tagent setup provision-attestation")
+	fmt.Println("        - Runs setup tasks assocated with HVS/TPM provisioning.")
 	fmt.Println("    tagent setup create-host")
 	fmt.Println("        - Registers the trustagent with the verification service.")
 	fmt.Println("    tagent setup create-host-unique-flavor")
 	fmt.Println("        - Populates the verification service with the host unique flavor")
-	fmt.Println("    tagent setup get-configured-manifest [--force]")
+	fmt.Println("    tagent setup get-configured-manifest")
 	fmt.Println("        - Uses environment variables to pull application-integrity.")
 	fmt.Println("          manifests from the verification service.")
-	fmt.Println("          --force option repulls manifests from VS.")
 	fmt.Println("")
 }
 
@@ -185,7 +189,7 @@ func uninstall() error {
 		}
 	}
 
-	log.Info("main:uninstall() TrustAgent service removed successfully")
+	fmt.Println("TrustAgent service removed successfully")
 
 	//
 	// uninstall tbootxml (if uninstall script is present)
@@ -197,7 +201,7 @@ func uninstall() error {
 		}
 	}
 
-	log.Info("main:uninstall() tbootxm removed successfully")
+	fmt.Println("Application-Agent removed successfully")
 
 	//
 	// remove all of tagent files (in /opt/trustagent/)
@@ -209,7 +213,17 @@ func uninstall() error {
 		}
 	}
 
-	log.Info("main:uninstall() trustagent files removed successfully")
+	//
+	// remove all of tagent files (in /var/log/trustagent)
+	//
+	if _, err := os.Stat(constants.LogDir); err == nil {
+		err = os.RemoveAll(constants.LogDir)
+		if err != nil {
+			log.Errorf("main:uninstall() An error occurred removing the trustagent log files: %s", err)
+		}
+	}
+
+	fmt.Println("TrustAgent files removed successfully")
 
 	return nil
 }
@@ -257,7 +271,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		cfg.LogConfiguration(cfg.LogEnableStdout)
+		cfg.LogConfiguration(cfg.Logging.LogEnableStdout)
 
 		err = updatePlatformInfo()
 		if err != nil {
@@ -328,7 +342,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		cfg.LogConfiguration(cfg.LogEnableStdout)
+		cfg.LogConfiguration(cfg.Logging.LogEnableStdout)
 
 		// make sure the config is valid before starting the trust agent service
 		err = cfg.Validate()
@@ -353,7 +367,7 @@ func main() {
 		service.Start()
 
 	case "start":
-		cfg.LogConfiguration(cfg.LogEnableStdout)
+		cfg.LogConfiguration(cfg.Logging.LogEnableStdout)
 
 		output, err := run_systemctl(SYSTEMCTL_START)
 		if err != nil {
@@ -365,7 +379,7 @@ func main() {
 		fmt.Println("Successfully started the Trust Agent Service")
 
 	case "status":
-		cfg.LogConfiguration(cfg.LogEnableStdout)
+		cfg.LogConfiguration(cfg.Logging.LogEnableStdout)
 
 		// systemctl status returns an error code when the service is not running --
 		// don't report an error, just show the results to the console in either case
@@ -373,7 +387,7 @@ func main() {
 		fmt.Fprintln(os.Stdout, output)
 
 	case "stop":
-		cfg.LogConfiguration(cfg.LogEnableStdout)
+		cfg.LogConfiguration(cfg.Logging.LogEnableStdout)
 
 		output, err := run_systemctl(SYSTEMCTL_STOP)
 		if err != nil {
@@ -386,7 +400,7 @@ func main() {
 
 	case "setup":
 
-		cfg.LogConfiguration(cfg.LogEnableStdout)
+		cfg.LogConfiguration(cfg.Logging.LogEnableStdout)
 		// only apply env vars to config before starting 'setup' tasks
 
 		if currentUser.Username != constants.RootUserName {
@@ -413,6 +427,7 @@ func main() {
 			log.WithError(err).Error("Error loading environment variables")
 			fmt.Fprintf(os.Stderr, "Error loading environment variables\n %v \n\n", err)
 		}
+
 		registry, err := tasks.CreateTaskRegistry(cfg, flags)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error while creating task registry \n Error: %s\n", err.Error())
@@ -476,6 +491,10 @@ func sourceEnvFile(trustagentEnvFile string){
     scanner := bufio.NewScanner(file)
     var envKeyPair []string
     for scanner.Scan() {
+		if scanner.Text() == "" || strings.HasPrefix("#", scanner.Text()) {
+			continue
+		}
+
 		envKeyPair = strings.Split(scanner.Text(), "=")
 		os.Setenv(envKeyPair[0], envKeyPair[1]) 
     }

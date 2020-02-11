@@ -15,7 +15,6 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
-	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/util"
 	"intel/isecl/go-trust-agent/vsclient"
@@ -54,10 +53,10 @@ import (
 //-------------------------------------------------------------------------------------------------
 
 type ProvisionAttestationIdentityKey struct {
-	clientFactory   vsclient.VSClientFactory
-	tpmFactory      tpmprovider.TpmFactory
-	cfg             *config.TrustAgentConfiguration
-	privacyCAClient vsclient.PrivacyCAClient
+	clientFactory vsclient.VSClientFactory
+	tpmFactory tpmprovider.TpmFactory
+	ownerSecretKey *string
+	aikSecretKey *string	// out variable that can be set during setup
 }
 
 func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
@@ -66,9 +65,10 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	fmt.Println("Running setup task: provision-aik")
 	var err error
 
-	// initialize if nil
-	if task.privacyCAClient == nil {
-		task.privacyCAClient = task.clientFactory.PrivacyCAClient()
+	privacyCAClient, err := task.clientFactory.PrivacyCAClient()
+	if err != nil {
+		log.WithError(err).Error("tasks/provision_aik:Run() Could not create privacy- client")
+		return err
 	}
 
 	// generate the aik in the tpm
@@ -100,7 +100,7 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	}
 
 	// send the 'challenge request' to HVS and get an 'proof request' back
-	identityProofRequest, err := task.privacyCAClient.GetIdentityProofRequest(&identityChallengeRequest)
+	identityProofRequest, err := privacyCAClient.GetIdentityProofRequest(&identityChallengeRequest)
 	if err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error while getting identity proof request from VS for a given challenge request with ek")
 		return errors.New("Error while getting identity proof request from VS for a given challenge request with ek")
@@ -129,7 +129,7 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	}
 
 	// send the decrypted nonce data back to HVS and get a 'proof request' back
-	identityProofRequest2, err := task.privacyCAClient.GetIdentityProofResponse(&identityChallengeResponse)
+	identityProofRequest2, err := privacyCAClient.GetIdentityProofResponse(&identityChallengeResponse)
 	if err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error while retrieving identity proof response from HVS")
 		return errors.New("Error while retrieving identity proof response from HVS")
@@ -191,19 +191,13 @@ func (task *ProvisionAttestationIdentityKey) createAik() error {
 
 	var err error
 
-	// initialize if nil
-	if task.privacyCAClient == nil {
-		task.privacyCAClient = task.clientFactory.PrivacyCAClient()
+	if task.aikSecretKey == nil {
+		return errors.New("aikSecretKey cannot be nil")
 	}
 
 	// if the configuration's aik secret has not been set, do it now...
-	if task.cfg.Tpm.AikSecretKey == "" {
-		task.cfg.Tpm.AikSecretKey, err = crypt.GetHexRandomString(20)
-		err = task.cfg.Save()
-		if err != nil {
-			return errors.Wrap(err, "tasks/provision_aik:createAik() Error saving config")
-		}
-
+	if *task.aikSecretKey == "" {
+		*task.aikSecretKey, err = crypt.GetHexRandomString(20)
 		log.Debug("tasks/provision_aik:createAik() Generated new AIK secret key")
 	}
 
@@ -213,7 +207,7 @@ func (task *ProvisionAttestationIdentityKey) createAik() error {
 	}
 
 	defer tpm.Close()
-	err = tpm.CreateAik(task.cfg.Tpm.OwnerSecretKey, task.cfg.Tpm.AikSecretKey)
+	err = tpm.CreateAik(*task.ownerSecretKey, *task.aikSecretKey)
 	if err != nil {
 		return errors.Wrap(err, "tasks/provision_aik:createAik() Error while creating Aik Key")
 	}
@@ -275,7 +269,7 @@ func (task *ProvisionAttestationIdentityKey) getEndorsementKeyBytes() ([]byte, e
 
 	defer tpm.Close()
 
-	ekCertBytes, err := tpm.NvRead(task.cfg.Tpm.OwnerSecretKey, tpmprovider.NV_IDX_ENDORSEMENT_KEY)
+	ekCertBytes, err := tpm.NvRead(*task.ownerSecretKey, tpmprovider.NV_IDX_ENDORSEMENT_KEY)
 	if err != nil {
 		return nil, errors.Wrap(err, "tasks/provision_aik:getEndorsementKeyBytes() Error while performing tpm Nv read operation for getting endorsement certificate in bytes")
 	}
@@ -404,7 +398,7 @@ func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityReq
 	defer tpm.Close()
 
 	// get the aik's public key and populate into the identityRequest
-	aikPublicKeyBytes, err := tpm.GetAikBytes(task.cfg.Tpm.OwnerSecretKey)
+	aikPublicKeyBytes, err := tpm.GetAikBytes(*task.ownerSecretKey)
 	if err != nil {
 		return err
 	}
@@ -415,7 +409,7 @@ func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityReq
 	identityRequest.TpmVersion = "2.0" // Assume TPM 2.0 for GTA (1.2 is no longer supported)
 	identityRequest.AikBlob = new(big.Int).SetInt64(tpmprovider.TPM_HANDLE_AIK).Bytes()
 
-	identityRequest.AikName, err = tpm.GetAikName(task.cfg.Tpm.OwnerSecretKey)
+	identityRequest.AikName, err = tpm.GetAikName(*task.ownerSecretKey)
 	if err != nil {
 		return errors.Wrap(err, "tasks/provision_aik:populateIdentityRequest() Error while retrieving Aik Name from tpm")
 	}
@@ -484,7 +478,7 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 	//
 	// Now decrypt the symetric key using ActivateCredential
 	//
-	symmetricKey, err := tpm.ActivateCredential(task.cfg.Tpm.OwnerSecretKey, task.cfg.Tpm.AikSecretKey, credentialBytes, secretBytes)
+	symmetricKey, err := tpm.ActivateCredential(*task.ownerSecretKey, *task.aikSecretKey, credentialBytes, secretBytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "tasks/provision_aik:activateCredential() Error while performing tpm activate credential operation")
 	}

@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
-	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/go-trust-agent/constants"
 	"intel/isecl/go-trust-agent/vsclient"
 	"intel/isecl/lib/common/setup"
@@ -31,46 +30,50 @@ import (
 type ProvisionEndorsementKey struct {
 	clientFactory          vsclient.VSClientFactory
 	tpmFactory             tpmprovider.TpmFactory
-	ekCert                 *x509.Certificate
-	endorsementAuthorities *x509.CertPool
-	cfg                    *config.TrustAgentConfiguration
-	caCertificatesClient   vsclient.CACertificatesClient
-	tpmEndorsementsClient  vsclient.TpmEndorsementsClient
+	ownerSecretKey         *string
 }
 
 func (task *ProvisionEndorsementKey) Run(c setup.Context) error {
 	log.Trace("tasks/provision_ek:Run() Entering")
 	defer log.Trace("tasks/provision_ek:Run() Leaving")
+	fmt.Println("Running setup task: provision-ek")
+
 	var err error
 	var registered bool
 	var isEkSigned bool
 
-	fmt.Println("Running setup task: provision-ek")
+	if task.ownerSecretKey == nil || *task.ownerSecretKey == "" {
+		return errors.New("ownerSecretKey cannot be nil or empty")
+	}
+	
 	tpmProvider, err := task.tpmFactory.NewTpmProvider()
 	if err != nil {
 		log.WithError(err).Error("tasks/provision_ek:Run() Error while creating NewTpmProvider")
-		return errors.New("Error while creating NewTpmProvider")
+		return errors.Wrap(err, "Error while creating NewTpmProvider")
 	}
 
 	defer tpmProvider.Close()
 
 	// read the manufacture's endorsement key from the TPM
-	if err = task.readEndorsementKeyCertificate(tpmProvider); err != nil {
+	ekCert, err := task.readEndorsementKeyCertificate(tpmProvider)
+	if err != nil {
 		log.WithError(err).Error("tasks/provision_ek:Run() Error while creating NewTpmProvider")
-		return errors.New("Error while reading tpm endorsement certificate")
+		return errors.Wrap(err, "Error while reading tpm endorsement certificate")
 	}
 
 	// download the list of public endorsement authority certs from VS
-	if err := task.downloadEndorsementAuthorities(); err != nil {
+	endorsementAuthorities, err := task.downloadEndorsementAuthorities()
+	if err != nil {
 		log.WithError(err).Error("tasks/provision_ek:Run() Error while downloading endorsement authorities")
-		return errors.New("Error while downloading endorsement authorities")
+		return errors.Wrap(err, "Error while downloading endorsement authorities")
 	}
 
 	// make sure manufacture's endorsement key is signed by one of the ea certs
 	// provided by VS.
-	if isEkSigned, err = task.isEkSignedByEndorsementAuthority(); err != nil {
+	isEkSigned, err = task.isEkSignedByEndorsementAuthority(ekCert, endorsementAuthorities)
+	if err != nil {
 		log.WithError(err).Error("tasks/provision_ek:Run() Error while verifying endorsement certificate is signed by endorsement authorities")
-		return errors.New("Error while verifying endorsement certificate is signed by endorsement authorities")
+		return errors.Wrap(err, "Error while verifying endorsement certificate is signed by endorsement authorities")
 	}
 
 	// if the ek verifies, we're done/ok
@@ -87,7 +90,7 @@ func (task *ProvisionEndorsementKey) Run(c setup.Context) error {
 
 	// if not registered with vs, do so now
 	if !registered {
-		if err = task.registerEkWithMtWilson(); err != nil {
+		if err = task.registerEkWithMtWilson(ekCert); err != nil {
 			return err
 		}
 	}
@@ -103,13 +106,13 @@ func (task *ProvisionEndorsementKey) Validate(c setup.Context) error {
 	return nil
 }
 
-func (task *ProvisionEndorsementKey) readEndorsementKeyCertificate(tpm tpmprovider.TpmProvider) error {
+func (task *ProvisionEndorsementKey) readEndorsementKeyCertificate(tpm tpmprovider.TpmProvider) (*x509.Certificate, error) {
 	log.Trace("tasks/provision_ek:readEndorsementKeyCertificate() Entering")
 	defer log.Trace("tasks/provision_ek:readEndorsementKeyCertificate() Leaving")
 
-	ekCertBytes, err := tpm.NvRead(task.cfg.Tpm.OwnerSecretKey, tpmprovider.NV_IDX_ENDORSEMENT_KEY)
+	ekCertBytes, err := tpm.NvRead(*task.ownerSecretKey, tpmprovider.NV_IDX_ENDORSEMENT_KEY)
 	if err != nil {
-		return errors.Wrap(err, "tasks/provision_ek:readEndorsementKeyCertificate() Error while performing NV read operation for retrieving endorsement certificate")
+		return nil, errors.Wrap(err, "tasks/provision_ek:readEndorsementKeyCertificate() Error while performing NV read operation for retrieving endorsement certificate")
 	}
 
 	if ekCertBytes == nil {
@@ -130,51 +133,51 @@ func (task *ProvisionEndorsementKey) readEndorsementKeyCertificate(tpm tpmprovid
 	}
 
 	// make sure we can turn the certificate bytes into x509
-	task.ekCert, err = x509.ParseCertificate(ekCertBytes)
+	ekCert, err := x509.ParseCertificate(ekCertBytes)
 	if err != nil {
-		return errors.Wrap(err, "tasks/provision_ek:readEndorsementKeyCertificate() Error while parsing endorsement certificate in bytes into x509 certificate")
+		return nil, errors.Wrap(err, "tasks/provision_ek:readEndorsementKeyCertificate() Error while parsing endorsement certificate in bytes into x509 certificate")
 	}
 
-	return nil
+	return ekCert, nil
 }
 
-func (task *ProvisionEndorsementKey) downloadEndorsementAuthorities() error {
+func (task *ProvisionEndorsementKey) downloadEndorsementAuthorities() (*x509.CertPool, error) {
 	log.Trace("tasks/provision_ek:downloadEndorsementAuthorities() Entering")
 	defer log.Trace("tasks/provision_ek:downloadEndorsementAuthorities() Leaving")
 
-	// initialize if nil
-	if task.caCertificatesClient == nil {
-		task.caCertificatesClient = task.clientFactory.CACertificatesClient()
-	}
-
-	ea, err := task.caCertificatesClient.DownloadEndorsementAuthorities()
+	caCertificatesClient, err := task.clientFactory.CACertificatesClient()
 	if err != nil {
-		return errors.Wrap(err, "tasks/provision_ek:downloadEndorsementAuthorities() Error while downloading endorsement authorities")
+		return nil, errors.Wrapf(err, "tasks/provision_ek:downloadEndorsementAuthorities() Could not ca-certificates client")
 	}
 
-	task.endorsementAuthorities = x509.NewCertPool()
-	if !task.endorsementAuthorities.AppendCertsFromPEM(ea) {
-		return errors.New("tasks/provision_ek:downloadEndorsementAuthorities() Error loading endorsement authorities")
+	ea, err := caCertificatesClient.DownloadEndorsementAuthorities()
+	if err != nil {
+		return nil, errors.Wrap(err, "tasks/provision_ek:downloadEndorsementAuthorities() Error while downloading endorsement authorities")
+	}
+
+	endorsementAuthorities := x509.NewCertPool()
+	if !endorsementAuthorities.AppendCertsFromPEM(ea) {
+		return nil, errors.New("tasks/provision_ek:downloadEndorsementAuthorities() Error loading endorsement authorities")
 	}
 
 	err = ioutil.WriteFile(constants.EndorsementAuthoritiesFile, ea, 0644)
 	if err != nil {
-		return errors.Wrapf(err, "tasks/provision_ek:downloadEndorsementAuthorities() Error saving endorsement authority file '%s'", constants.EndorsementAuthoritiesFile)
+		return nil, errors.Wrapf(err, "tasks/provision_ek:downloadEndorsementAuthorities() Error saving endorsement authority file '%s'", constants.EndorsementAuthoritiesFile)
 	}
 
-	return nil
+	return endorsementAuthorities, nil
 }
 
-func (task *ProvisionEndorsementKey) isEkSignedByEndorsementAuthority() (bool, error) {
+func (task *ProvisionEndorsementKey) isEkSignedByEndorsementAuthority(ekCert *x509.Certificate, endorsementAuthorities *x509.CertPool) (bool, error) {
 	log.Trace("tasks/provision_ek:isEkSignedByEndorsementAuthority() Entering")
 	defer log.Trace("tasks/provision_ek:isEkSignedByEndorsementAuthority() Leaving")
 	isEkSigned := false
 
 	opts := x509.VerifyOptions{
-		Roots: task.endorsementAuthorities,
+		Roots: endorsementAuthorities,
 	}
 
-	_, err := task.ekCert.Verify(opts)
+	_, err := ekCert.Verify(opts)
 
 	if err == nil {
 		isEkSigned = true
@@ -196,10 +199,10 @@ func (task *ProvisionEndorsementKey) isEkRegisteredWithMtWilson() (bool, error) 
 	log.Trace("tasks/provision_ek:isEkRegisteredWithMtWilson() Entering")
 	defer log.Trace("tasks/provision_ek:isEkRegisteredWithMtWilson() Leaving")
 
-	// initialize if nil
-	if task.tpmEndorsementsClient == nil {
-		task.tpmEndorsementsClient = task.clientFactory.TpmEndorsementsClient()
-	}
+	tpmEndorsementsClient, err := task.clientFactory.TpmEndorsementsClient()
+	if err != nil {
+		return false, errors.Wrapf(err, "tasks/provision_ek:isEkRegisteredWithMtWilson() Could not create tpm-endorsements client")
+	}	
 
 	hardwareUUID, err := platforminfo.HardwareUUID()
 	if err != nil {
@@ -208,24 +211,24 @@ func (task *ProvisionEndorsementKey) isEkRegisteredWithMtWilson() (bool, error) 
 
 	log.Tracef("tasks/provision_ek:isEkRegisteredWithMtWilson() HARDWARE-UUID: %s", hardwareUUID)
 
-	return task.tpmEndorsementsClient.IsEkRegistered(hardwareUUID)
+	return tpmEndorsementsClient.IsEkRegistered(hardwareUUID)
 }
 
-func (task *ProvisionEndorsementKey) registerEkWithMtWilson() error {
+func (task *ProvisionEndorsementKey) registerEkWithMtWilson(ekCert *x509.Certificate) error {
 	log.Trace("tasks/provision_ek:registerEkWithMtWilson() Entering")
 	defer log.Trace("tasks/provision_ek:registerEkWithMtWilson() Leaving")
 
-	// initialize if nil
-	if task.tpmEndorsementsClient == nil {
-		task.tpmEndorsementsClient = task.clientFactory.TpmEndorsementsClient()
-	}
+	tpmEndorsementsClient, err := task.clientFactory.TpmEndorsementsClient()
+	if err != nil {
+		return errors.Wrapf(err, "tasks/provision_ek:registerEkWithMtWilson() Could not create tpm-endorsements client")
+	}	
 
 	hardwareUUID, err := platforminfo.HardwareUUID()
 	if err != nil {
 		return errors.Wrap(err, "tasks/provision_ek:registerEkWithMtWilson() Error while fetching hardware uuid")
 	}
 
-	publicKeyDer, err := x509.MarshalPKIXPublicKey(task.ekCert.PublicKey)
+	publicKeyDer, err := x509.MarshalPKIXPublicKey(ekCert.PublicKey)
 	if err != nil {
 		return errors.Wrap(err, "tasks/provision_ek:registerEkWithMtWilson() Error marshalling endorsement certificate public key")
 	}
@@ -234,10 +237,10 @@ func (task *ProvisionEndorsementKey) registerEkWithMtWilson() error {
 
 	endorsementData := vsclient.TpmEndorsement{}
 	endorsementData.HardwareUUID = hardwareUUID
-	endorsementData.Issuer = task.ekCert.Issuer.ToRDNSequence().String()
+	endorsementData.Issuer = ekCert.Issuer.ToRDNSequence().String()
 	endorsementData.Revoked = false
 	endorsementData.Certificate = certificateString
 	endorsementData.Command = "registered by trust agent"
 
-	return task.tpmEndorsementsClient.RegisterEk(&endorsementData)
+	return tpmEndorsementsClient.RegisterEk(&endorsementData)
 }

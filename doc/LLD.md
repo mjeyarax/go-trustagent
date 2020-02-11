@@ -35,10 +35,16 @@ During minimal installation, the installer performs the following activities...
 
 ## Automatic Provisioning
 When the GTA installer is invoked with a valid `trustagent.env` file in the same directory (see [trustagent.env Reference](#trustagent.env-reference)), and that file contains `PROVISION_ATTESTATION=Y`, the installer will...
-1. Perform the 'minimal installation' listed above.
+1. Perform the 'minimal installation' steps listed above.
 2. Starts the `tpm2-abrmd` service to provision the TPM, AAS/CMS and HVS.
 3. Invokes `tagent setup` (see [Setup](#setup) for more information).
 4. Start the `tagent` service.
+
+## Automatic Registration
+When the GTA installer is invoked with a valid `trustagent.env` file in the same directory (see [trustagent.env Reference](#trustagent.env-reference)), and that file contains `AUTOMATIC_REGISTRATION=Y` as well as `PROVISION_ATTESTATION=Y`, the installer will...
+1. Perform the 'minimal installation' steps listed above.
+2. Perform the 'automatic provisioning' steps listed above.
+3. Register the host with HVS by calling `tagent setup create-host` and `tagent setup create-host-unique-flavor`.
 
 ## Uninstall
 After installation is completed, `tagent uninstall` can be run to remove the GTA.  Uninstall will...
@@ -61,15 +67,15 @@ By default, the `tagent setup` command (or `tagent setup all`) is used during in
 
 |Task|Description|Results| Env Var(s)|
 |----|-----------|-------|-----------|
-|download-root-ca-cert|Downloads the root CA certificate from Certificate Management Service (CMS)|Creates a .pem file containing the Root CA certificate chain (root CA and Intermediate CA) in /opt/trustagent/configuration/cacerts/|CMS_BASE_URL|
-|download-ca-cert|Generates a asymmetric keypair and obtains the signed TLS certificate for Trust Agent webservice from Certificate CMS|Creates two files in /opt/trustagent/configuration: tls-key.pem containing the private key and tls-cert.pem containing the signed public key TLS cert signed by CMS|CMS_BASE_URL, TA_TLS_CERT_CN, TA_TLS_CERT_IP|
+|download-root-ca-cert|Downloads the root CA certificate from Certificate Management Service (CMS)|Creates a .pem file containing the Root CA certificate chain (root CA and Intermediate CA) in /opt/trustagent/configuration/cacerts/|CMS_BASE_URL, CMS_TLS_CERT_SHA384|
+|download-ca-cert|Generates a asymmetric keypair and obtains the signed TLS certificate for Trust Agent webservice from Certificate CMS|Creates two files in /opt/trustagent/configuration: tls-key.pem containing the private key and tls-cert.pem containing the signed public key TLS cert signed by CMS|CMS_BASE_URL, TA_TLS_CERT_CN (optional), SAN_LIST, BEARER_TOKEN|
 |download-privacy-ca|Downloads a certificate from HVS (/ca-certificates/privacy) which is used to encrypt data during 'provision-aik'. |Creates /opt/trustagent/configuration/privacy-ca.cer.|MTWILSON_API_URL, BEARER_TOKEN|
 |take-ownership|Uses the value of TPM_OWNER_SECRET (or generates a new random secret) to take ownership of the TPM. |Takes ownership of the TPM and saves the secret key in /opt/trustagent/configuration/config.yml.  Fails if the TPM is already owned.|TPM_OWNER_SECRET|
 |provision-ek|Validates the TPM's endorsement key (EK) against the list stored in HVS.|Validates the TPM's EK against the  manufacture certs downloaded from HVS (/ca-certificates?domain=ek).  Stores the manufacture EKs from HVS at /opt/trustagent/configuration/endorsement.pem.  Returns an error if the TPM EK is not valid.  Optionally registers the EK with HVS (if not present).|TPM_OWNER_SECRET, MTWILSON_API_URL, BEARER_TOKEN|
 |provision-aik|Performs dark magic that provisions an AIK with HVS, supporting the ability to collect authenticated tpm quotes. |Generates an AIK secret key that is stored in /opt/trustagent/configuration/config.yml.  Creates /opt/trustagent/configuration/aik.cer that is hosted in the /aik endpoint.|TPM_OWNER_SECRET, MTWILSON_API_URL, BEARER_TOKEN|
 |provision-primary-key|Allocates a primary key in the TPM used by WLA to create the binding/singing keys.|Allocates a new primary key in the TPM at index 0x81000000.|TPM_OWNER_SECRET|
 
-*Note:  While GTA supports the option of independently executing the tasks below (ex. `tagent setup create-tls-keypair`), it is not recommended due to complex ordering and interdependencies.*
+*Note:  While GTA supports the option of independently executing the tasks below (ex. `tagent setup provision-ek`), it is not recommended due to complex ordering and interdependencies.*
 
 # Operations
 Provided the trust-agent has been installed and provisioned (aka 'setup'), administrators are then able to manage the service and register the host with HVS (to integrate the host into the ISecL platform). 
@@ -82,7 +88,7 @@ During installation, /opt/trustagent/tagent.service is created and enabled with 
 |Start tagent service|tagent start|`systemctl start tagent`|
 |Stop tagent service|tagent stop|`systemctl stop tagent`|
 |Get the status tagent service|tagent status|`systemctl status tagent`|
-|Restart the tagent service|tagent restart|`systemctl status tagent`|
+|Restart the tagent service|tagent restart|`systemctl restart tagent`|
 
 Once the trust-agent is successfully operating under systemd, it will be restarted after system boot.
 
@@ -231,7 +237,7 @@ The public certificate of the AAS instance will be provisioned to the TA service
             
         - Status: 200 on success, 400 with invalid input, 401 if not authorized, 500 for all other server errors.
 
-## /deploy/manifest (GET)
+## /deploy/manifest (POST)
     Description: Allows users of HVS to deploy a list of directories/files (aka a 'manifest' in xml format) to establish 'Application Integrity'.
 
     Authentication: Requires deploy_manifest:create permission
@@ -308,11 +314,14 @@ The following sections are provided as a reference of GTA.
 |------|-----------|-----------|
 |`tagent config aik.secret`|When populated in /opt/trustagent/configuration/config.yml, prints the aik secret key to stdout (supports WLA to create signing/binding keys.).||
 |`tagent help`|Prints usage to stdout.||
-|`tagent setup` or `tagent setup all`|Analogous to the legacy TA's "provision-attestation" command.  Also supports a third parameter (i.e. `tagent setup trustagent.env`) that can be used to provide configuration options to the GTA.  [See Setup](#setup)||
+|`tagent setup` or `tagent setup all`|Runs all setup tasks to provision the host to operate within ISecL (i.e. creates Root-CA/TLS certificates, provisions the TPM with HVS, etc.).  Also supports an option to use an answer file names `trustagent.env` (i.e. `tagent setup trustagent.env`) that will pass environment variables to GTA during setup.  [See Setup](#setup)||
+|`tagent setup provision-attestation`|"Utility" command that provisions the TPM with HVS but does not perform other setup tasks.|MTWISLON_API_URL, BEARER_TOKEN|
 |`tagent setup create-host`|Adds the local host to the list of HVS' known hosts.| MTWILSON_API_URL, BEARER_TOKEN|
 |`tagent setup create-host-unique-flavor`|Registers the local hosts' unique flavor with HVS.| MTWILSON_API_URL, BEARER_TOKEN|
-|`tagent setup get-configured-manifest`|Use environment variables, adds an application manifest from HVS to the local host to be measured at boot.  When invoked, the setup command will look for a comma seperated list of environment variables with the name 'FLAVOR_UUIDS' or 'FLAVOR_LABELS'.  It will then use that list to pull one or more manifest from HVS into the /opt/trustagent/var directory (so the manifest will be measured at next boot).  | MTWILSON_API_URL, BEARER_TOKEN, (FLAVOR_UUIDS or FLAVOR_LABELS)|
-|`tagent setup replace-tls-keypair`|Regenerates TLS certs by deleting `tls-key.pem` and `tls-cert.pem` from `/opt/trustagent/configuration` and reruns 'create-tls-keypair' command.| MTWILSON_API_URL, BEARER_TOKEN|
+|`tagent setup get-configured-manifest`|Using environment variables, adds an application manifest from HVS to the local host to be measured at boot.  When invoked, the setup command will look for a comma seperated list of environment variables with the name 'FLAVOR_UUIDS' or 'FLAVOR_LABELS'.  It will then use that list to pull one or more manifest from HVS into the /opt/trustagent/var directory (so the manifest will be measured at next boot).  | MTWILSON_API_URL, BEARER_TOKEN, (FLAVOR_UUIDS or FLAVOR_LABELS)|
+|`tagent setup download-ca-cert`|Downloads the latest Root-CA certificate from CMS to  `/opt/trustagent/configuration/cacerts`.| CMS_BASE_URL, SAN_LIST, TA_TLS_CERT_CN (optional), BEARER_TOKEN|
+|`tagent setup download-cert`|Downloads TLS certs from CMS and updates the files in `/opt/trustagent/configuration` ( `tls-key.pem` and `tls-cert.pem`).| CMS_BASE_URL, SAN_LIST, TA_TLS_CERT_CN (optional), BEARER_TOKEN|
+|`tagent setup update-certificates`|"Utility" command used to update the Root-CA and TLS cert.  Combines `tagent setup download-ca-cert` and `tagent setup downaload-ca`.|See `tagent setup download-ca-cert` and `tagent setup download-cert`.|
 |`tagent start`|Starts the trust-agent service/http host similar to `systemctl status tagent`.||
 |`tagent status`|Retrieves information about the trust-agent service/http host similar to `systemctl status tagent`.||
 |`tagent stop`|Stops the trust-agent service/http host similar to `systemctl stop tagent`.||
@@ -326,23 +335,26 @@ If the GTA installer is run with a valid 'trustagent.env' file, it will parse th
 
 | Env Var | Description | Example | Required?|Default|
 |---------|-------------|---------|----------|-------|
-|AAS_API_URL|API URL for Authentication Authorization Service (AAS)|AAS_API_URL=https://{host}:{port}/aas/v1|Yes|NA|
+|AAS_API_URL|API URL for Authentication Authorization Service (AAS).|AAS_API_URL=https://{host}:{port}/aas/v1|Yes|NA|
 |AUTOMATIC_REGISTRATION|Automatically registers the host with HVS similar to `tagent setup create-host`.|AUTOMATIC_REGISTRATION=Y|No|N|
-|BEARER_TOKEN|JWT containing the roles and permissions needed for access HVS services for various setup tasks (use jwt.io to parse the token)|BEARER_TOKEN=eyJhbGciOiJSUzM4NCIsjdkMTdiNmUz...|Yes|NA|
-|CMS_BASE_URL|API URL for Certificate Management Service (CMS)|CMS_BASE_URL=https://{host}:{port}/cms/v1|Yes|NA|
-|CMS_TLS_CERT_SHA384|SHA384 Hash sum for verifying the CMS TLS certificate|CMS_TLS_CERT_SHA384=bd8ebf5091289958b5765da4...|Yes|NA|
-|MTWILSON_API_URL|The url used by GTA during setup to request information from HVS. |MTWILSON_API_URL=https://{host}:{port}/mtwilson/v2|Yes|NA|
+|BEARER_TOKEN|JWT from AAS that contains "install" permissions needed to access ISecL services during provisioning and registration.
+|BEARER_TOKEN=eyJhbGciOiJSUzM4NCIsjdkMTdiNmUz...|Yes|NA|
+|CMS_BASE_URL|API URL for Certificate Management Service (CMS).|CMS_BASE_URL=https://{host}:{port}/cms/v1|Yes|NA|
+|CMS_TLS_CERT_SHA384|SHA384 Hash sum for verifying the CMS TLS certificate.|CMS_TLS_CERT_SHA384=bd8ebf5091289958b5765da4...|Yes|NA|
+|MTWILSON_API_URL|The url used during setup to request information from HVS.|MTWILSON_API_URL=https://{host}:{port}/mtwilson/v2|Yes|NA|
 |PROVISION_ATTESTATION|When present, enables/disables whether `tagent setup` is called during installation.  If trustagent.env is not present, the value defaults to no ('N').|PROVISION_ATTESTATION=Y|No|N|
-|TA_TLS_CERT_CN|Sets the value for Common Name in the TA TLS certificate.  Defaults to CN=trustagent.|TA_TLS_CERT_CN=Acme Trust Agent 007|No|"Trust Agent TLS Certificate"|
 |SAN_LIST|CSV list that sets the value for SAN list in the TA TLS certificate.  Defaults to 127.0.0.1.|SAN_LIST=10.123.100.1,201.102.10.22,mya.example.com|No|"127.0.0.1,localhost"|
-|TPM_OWNER_SECRET|20 byte hex value to be used as the secret key when taking ownership of the tpm.  *Note: If this field is not specified, GTA will generate a random secret key.*|TPM_OWNER_SECRET=625d6...|No|""|
+|TA_TLS_CERT_CN|Sets the value for Common Name in the TA TLS certificate.  Defaults to CN=trustagent.|TA_TLS_CERT_CN=Acme Trust Agent 007|No|"Trust Agent TLS Certificate"|
+|TPM_OWNER_SECRET|20 byte hex value to be used as the secret key when taking ownership of the TPM.  *Note: If this field is not specified, GTA will generate a random secret key.*|TPM_OWNER_SECRET=625d6...|No|""|
 |TPM_QUOTE_IPV4|When enabled (`=y`), uses the local system's ip address as a salt when processing a quote nonce.  This field must align with the configuration of HVS.|TPM_QUOTE_IPV4=no|No|N|
-|TA_SERVER_READ_TIMEOUT|sets tagent server ReadTimeout.  Defaults to 30 seconds.|TA_SERVER_READ_TIMEOUT=30|No|30|
-|TA_SERVER_READ_HEADER_TIMEOUT|sets `tagent` server ReadHeaderTimeout .  Defaults to 30 seconds. |TA_SERVER_READ_HEADER_TIMEOUT=10|No|10|
-|TA_SERVER_WRITE_TIMEOUT|sets `tagent` server WriteTimeout.  Defaults to 10 seconds.|TA_SERVER_WRITE_TIMEOUT=10|No|10|
-|TA_SERVER_IDLE_TIMEOUT|sets `tagent` server IdleTimeout.  Defaults to 10 seconds.|TA_SERVER_IDLE_TIMEOUT=10|No|10|
-|TA_SERVER_MAX_HEADER_BYTES|sets `tagent` server MaxHeaderBytes.  Defaults to 1MB(1048576)|TA_SERVER_MAX_HEADER_BYTES=1048576|No|1 << 20|
-|TA_ENABLE_CONSOLE_LOG|when set true, `tagent` logs are redirected to stdout. Defaults to false|TA_ENABLE_CONSOLE_LOG=true|No|false|
+|TA_SERVER_READ_TIMEOUT|Sets tagent server ReadTimeout.  Defaults to 30 seconds.|TA_SERVER_READ_TIMEOUT=30|No|30|
+|TA_SERVER_READ_HEADER_TIMEOUT|Sets `tagent` server ReadHeaderTimeout.  Defaults to 30 seconds. |TA_SERVER_READ_HEADER_TIMEOUT=10|No|10|
+|TA_SERVER_WRITE_TIMEOUT|Sets `tagent` server WriteTimeout.  Defaults to 10 seconds.|TA_SERVER_WRITE_TIMEOUT=10|No|10|
+|TA_SERVER_IDLE_TIMEOUT|Sets `tagent` server IdleTimeout.  Defaults to 10 seconds.|TA_SERVER_IDLE_TIMEOUT=10|No|10|
+|TA_SERVER_MAX_HEADER_BYTES|Sets `tagent` server MaxHeaderBytes.  Defaults to 1MB(1048576)|TA_SERVER_MAX_HEADER_BYTES=1048576|No|1 << 20|
+|TA_ENABLE_CONSOLE_LOG|When set true, `tagent` logs are redirected to stdout. Defaults to false|TA_ENABLE_CONSOLE_LOG=true|No|false|
+|TRUSTAGENT_LOG_LEVEL|The logging level to be saved in config.yml during installation ("trace", "debug", "info").|TRUSTAGENT_LOG_LEVEL=debug|No|info|
+|TRUSTAGENT_PORT|The port on which the trust-agent service will listen.|TRUSTAGENT_PORT=10433|No|1443|
 
 ## Installed Files
 The following files are present after installation, setup and measured launch.
@@ -390,23 +402,32 @@ The GTA installer will update the system with the following dependencies.
 \* tboot is only installed when sUEFI is not enabled.  
 
 ## config.yml
-The GTA stores configuration information in /opt/trustagent/configuration/config.yml.  The contents of the file is based on environment variables (`trustagent.env`) provided during `tagent setup`.  
+The GTA stores configuration information in /opt/trustagent/configuration/config.yml.  The contents of the file is based on environment variables (`trustagent.env`) provided during `tagent setup`.  The example below includes comments that correlate the configuration item to environment variables defined in `trustagent.env`.
 
 ```
-loglevel: info
-trustagentservice:
-  port: 1443
+tpmquoteipv4: true                          # TPM_QUOTE_IPV4
+logging:
+  loglevel: info                            # TRUSTAGENT_LOG_LEVEL
+  logenablestdout: false                    # TA_ENABLE_CONSOLE_LOG
+  logentrymaxlength: 300                    # LOG_ENTRY_MAXLENGTH
+webservice:
+  port: 1443                                # TRUSTAGENT_PORT
+  readtimeout: 30s                          # TA_SERVER_READ_TIMEOUT
+  readheadertimeout: 10s                    # TA_SERVER_READ_HEADER_TIMEOUT
+  writetimeout: 10s                         # TA_SERVER_WRITE_TIMEOUT
+  idletimeout: 10s                          # TA_SERVER_IDLE_TIMEOUT
+  maxheaderbytes: 1048576                   # TA_SERVER_MAX_HEADER_BYTES
 hvs:
-  url: https://10.105.168.239:8443/mtwilson/v2
+  url: https://0.0.0.0:8443/mtwilson/v2     # MTWILSON_API_URL
 tpm:
-  ownersecretkey: 625d6d8a18f98bf794760fd392b8c01be0b4e959
-  aiksecretkey: 0758026a90029dbda474830e9a09c934544d482c
+  ownersecretkey: 625d6d8...1be0b4e957      # TPM_OWNER_SECRET
+  aiksecretkey: 59acd1367...edcbede60c      # NA, generated by setup
 aas:
-  baseurl: https://10.105.168.239:8444/aas/
+  baseurl: https://0.0.0.0:8444/aas/        # AAS_API_URL
 cms:
-  baseurl: https://10.105.168.239:8445/cms/v1
-  tlscertdigest: bd8ebf06105091289958b5765da4c5a9560656eaad4024195d774ed0ea66b5a1ed88313c16c8b101b2e2eda3c8918887
+  baseurl: https://0.0.0.0:8445/cms/v1      # CMS_BASE_URL
+  tlscertdigest: 330086b3...ae477c8502      # CMS_TLS_CERT_SHA384
 tls:
-  certip: 10.123.100.55
-  certdns: Trust Agent TLS Certificate
+  certsan: 10.105.167.153,localhost         # SAN_LIST
+  certcn: Trust Agent TLS Certificate       # TA_TLS_CERT_CN
 ```
