@@ -42,6 +42,7 @@ const (
 	ServiceStopCommand         = "systemctl stop " + ServiceName
 	ServiceStartCommand        = "systemctl start " + ServiceName
 	ServiceDisableCommand      = "systemctl disable " + ServiceName
+	ServiceDisableInitCommand  = "systemctl disable tagent_init.service"
 	UninstallTbootXmScript     = "/opt/tbootxm/bin/tboot-xm-uninstall.sh"
 	LogEntryMaxlengthEnv       = "LOG_ENTRY_MAXLENGTH"
 	TrustedJWTSigningCertsDir  = ConfigDir + "jwt/"

@@ -76,6 +76,7 @@ TRUSTAGENT_MODULE_ANALYSIS_SH=module_analysis.sh
 TRUSTAGENT_MODULE_ANALYSIS_DA_SH=module_analysis_da.sh
 TRUSTAGENT_MODULE_ANALYSIS_DA_TCG_SH=module_analysis_da_tcg.sh
 TRUSTAGENT_SERVICE=tagent.service
+TRUSTAGENT_INIT_SERVICE=tagent_init.service
 TRUSTAGENT_BIN_DIR=$TRUSTAGENT_HOME/bin
 TRUSTAGENT_LOG_DIR=/var/log/trustagent
 TRUSTAGENT_CFG_DIR=$TRUSTAGENT_HOME/configuration
@@ -309,8 +310,9 @@ cp $TRUSTAGENT_MODULE_ANALYSIS_DA_TCG_SH $TRUSTAGENT_BIN_DIR/
 # make a link in /usr/bin to tagent...
 ln -sfT $TRUSTAGENT_BIN_DIR/$TRUSTAGENT_EXE /usr/bin/$TRUSTAGENT_EXE
 
-# Install systemd script
+# Install systemd scripts
 cp $TRUSTAGENT_SERVICE $TRUSTAGENT_HOME
+cp $TRUSTAGENT_INIT_SERVICE $TRUSTAGENT_HOME
 
 # copy default and workload software manifest to /opt/trustagent/var/ (application-agent)
 if ! stat $TRUSTAGENT_VAR_DIR/manifest_* 1>/dev/null 2>&1; then
@@ -379,7 +381,9 @@ fi
 # enable tpm2-abrmd service (start below if automatic provisioning is enabled)
 systemctl enable $TPM2_ABRMD_SERVICE
 
-# Enable tagent service
+# Enable tagent service and tagent 'init' service
+systemctl disable $TRUSTAGENT_INIT_SERVICE >/dev/null 2>&1
+systemctl enable $TRUSTAGENT_HOME/$TRUSTAGENT_INIT_SERVICE
 systemctl disable $TRUSTAGENT_SERVICE >/dev/null 2>&1
 systemctl enable $TRUSTAGENT_HOME/$TRUSTAGENT_SERVICE
 systemctl daemon-reload
@@ -412,7 +416,7 @@ if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PR
 
         systemctl start $TRUSTAGENT_SERVICE
         echo "Waiting for $TRUSTAGENT_SERVICE to start"
-        sleep 3
+        sleep 5
 
         systemctl status $TRUSTAGENT_SERVICE 2>&1 >/dev/null
         if [ $? -ne 0 ]; then

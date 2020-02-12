@@ -1,0 +1,10 @@
+[Unit]
+Description=TrustAgent Initialization
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/trustagent/bin
+ExecStart=/opt/trustagent/bin/tagent init
+
+[Install]
+WantedBy=multi-user.target

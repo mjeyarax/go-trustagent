@@ -49,7 +49,7 @@ func printUsage() {
 	fmt.Println("Available Commands:")
 	fmt.Println("    help|-h|-help    Show this help message")
 	fmt.Println("    setup [task]     Run setup task")
-	fmt.Println("    uninstall        Uninstall tagent")
+	fmt.Println("    uninstall        Uninstall trustagent")
 	fmt.Println("    version          Print build version info")
 	fmt.Println("    start            Start the trustagent service")
 	fmt.Println("    stop             Stop the trustagent service")
@@ -70,7 +70,7 @@ func printUsage() {
 	fmt.Println("    tagent setup update-certificates")
 	fmt.Println("        - Runs 'download-ca-cert' and 'download-cert'")
 	fmt.Println("    tagent setup provision-attestation")
-	fmt.Println("        - Runs setup tasks assocated with HVS/TPM provisioning.")
+	fmt.Println("        - Runs setup tasks associated with HVS/TPM provisioning.")
 	fmt.Println("    tagent setup create-host")
 	fmt.Println("        - Registers the trustagent with the verification service.")
 	fmt.Println("    tagent setup create-host-unique-flavor")
@@ -189,6 +189,10 @@ func uninstall() error {
 		}
 	}
 
+	// always disable 'tagent_init.service' since it is not expected to be running (i.e. it's 
+	// a 'oneshot' service)
+	_, _, _ = commonExec.RunCommandWithTimeout(constants.ServiceDisableInitCommand, 5)
+
 	fmt.Println("TrustAgent service removed successfully")
 
 	//
@@ -255,16 +259,16 @@ func main() {
 	switch cmd {
 	case "version":
 		printVersion()
-	case "startService":
+	case "init":
 
 		//
-		// The legacy trust agent was a shell script that did work like creating platform-info,
-		// measureLog.xml, etc.  The systemd service ran that script as root.  Now, systemd is
-		// starting tagent (go exec) which shells out to module_anlaysis.sh to create measureLog.xml
-		// (requires root permissions).  So, 'tagent start' is two steps...
-		// 1.) There tagent.service runs as root and calls 'start'.  platform-info and measureLog.xml
-		// are created under that account.
-		// 2.) 'start' option then forks the service running as 'tagent' user.
+		// The trust-agent service requires files like platform-info and eventLog.xml to be up to
+		// date.  It also needs to run as the tagent user for security reasons.
+		//
+		// 'tagent init' is run as root (as configured in 'tagent_init.service') to generate
+		// those files and own the files by tagent user.  The 'tagent.service' is configured
+		// to 'Require' 'tagent_init.service' so that running 'systemctl start tagent' will 
+		// always run 'tagent_init'.
 		//
 		if currentUser.Username != constants.RootUserName {
 			fmt.Printf("'tagent start' must be run as root, not  user '%s'\n", currentUser.Username)
@@ -323,22 +327,12 @@ func main() {
 
 			return nil
 		})
-				
-		// spawn 'tagent startService' as the 'tagent' user
-		cmd := exec.Command(constants.TagentExe, "startWebService")
-		cmd.SysProcAttr = &syscall.SysProcAttr{}
-		cmd.Dir = constants.BinDir
-		cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
-		
-		err = cmd.Start()
-		if err != nil {
-			log.Errorf("main:main() error while starting the command %s : %s", constants.TagentExe, err)
-			os.Exit(1)
-		}
 
-	case "startWebService":
+		fmt.Println("tagent 'init' completed successful")
+
+	case "startService":
 		if currentUser.Username != constants.TagentUserName {
-			fmt.Printf("'tagent startWebService' must be run as the agent user, not  user '%s'\n", currentUser.Username)
+			fmt.Printf("'tagent startWebService' must be run as the 'tagent' user, not  user '%s'\n", currentUser.Username)
 			os.Exit(1)
 		}
 

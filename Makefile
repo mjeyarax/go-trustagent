@@ -18,6 +18,7 @@ gta:
 package: gta
 	mkdir -p out/installer
 	cp dist/linux/tagent.service out/installer/tagent.service
+	cp dist/linux/tagent_init.service out/installer/tagent_init.service
 	cp dist/linux/install.sh out/installer/install.sh && chmod +x out/installer/install.sh
 	cp dist/linux/module_analysis.sh out/installer/module_analysis.sh && chmod +x out/installer/module_analysis.sh
 	cp dist/linux/module_analysis_da.sh out/installer/module_analysis_da.sh && chmod +x out/installer/module_analysis_da.sh
