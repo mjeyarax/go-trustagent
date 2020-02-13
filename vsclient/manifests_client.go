@@ -7,6 +7,7 @@
  import (
 	 "fmt"
 	 "io/ioutil"
+	 "intel/isecl/lib/common/log/message"
 	 "net/http"
 
 	 "github.com/pkg/errors"
@@ -74,6 +75,7 @@ func (client * manifestsClientImpl) getManifestXml(params map[string]string) ([]
 
 	response, err := client.httpClient.Do(request)
         if err != nil {
+		secLog.Warn(message.BadConnection)
     		return nil, errors.Wrapf(err,"vsclient/manifests_client:getManifestXml() Error while sending request to %s", url)
 	}
 	

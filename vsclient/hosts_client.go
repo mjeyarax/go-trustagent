@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"intel/isecl/lib/common/validation"
+	"intel/isecl/lib/common/log/message"
 	"io/ioutil"
 	"net/http"
 
@@ -145,6 +146,7 @@ func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteri
 
 	response, err := client.httpClient.Do(request)
         if err != nil {
+		secLog.Warn(message.BadConnection)
         	return nil, errors.Wrapf(err, "vsclient/hosts_client:SearchHosts() Error making request to %s", url)
 	}
 
@@ -222,6 +224,7 @@ func (client *hostsClientImpl) CreateHost(hostCreateCriteria *HostCreateCriteria
 
 	response, err := client.httpClient.Do(request)
         if err != nil {
+		secLog.Warn(message.BadConnection)
     		return nil, errors.Wrapf(err, "vsclient/hosts_client:CreateHost() Error while making request to %s ", url)
         }
 
@@ -271,6 +274,7 @@ func (client *hostsClientImpl) UpdateHost(host *Host) (*Host, error) {
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
+		secLog.Warn(message.BadConnection)
         	return nil, errors.Wrapf(err,"vsclient/hosts_client:UpdateHost() Error while sending request to %s", url)
 	}
 

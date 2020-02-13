@@ -371,7 +371,11 @@ char* measure(char *manifest_xml, char *mount_path) {
 		goto final;
 	}
 
-	fread (measurement_xml, 1, length, measurement_fp);
+	if (fread (measurement_xml, 1, length, measurement_fp) != length) {
+		free(measurement_xml);
+		goto final;
+	}
+
 	log_info("MEASUREMENT-XMl : %s", measurement_xml);
 
 final:

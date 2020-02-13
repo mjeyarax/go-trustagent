@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"intel/isecl/lib/common/log/message"
 	"io/ioutil"
 	"net/http"
 	"github.com/pkg/errors"
@@ -106,6 +107,7 @@ func (client *privacyCAClientImpl) DownloadPrivacyCa() ([]byte, error) {
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
+		secLog.Warn(message.BadConnection)
 		return nil, errors.Wrapf(err, "vsclient/privacy_ca_client:DownloadPrivacyCa() Error while sending request to %s ", url)
 	} else {
 		if response.StatusCode != http.StatusOK {
@@ -141,6 +143,7 @@ func (client *privacyCAClientImpl) GetIdentityProofRequest(identityChallengeRequ
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
+		secLog.Warn(message.BadConnection)
 		return nil, errors.Wrapf(err,"vsclient/privacy_ca_client:GetIdentityProofRequest() Error sending request to %s", url)
 	} else {
 		if response.StatusCode != http.StatusOK {
@@ -182,6 +185,7 @@ func (client *privacyCAClientImpl) GetIdentityProofResponse(identityChallengeRes
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
+		secLog.Warn(message.BadConnection)
 		return nil, errors.Wrapf(err, "vsclient/privacy_ca_client:GetIdentityProofResponse() Error while sending request to %s ", url)
 	} else {
 		if response.StatusCode != http.StatusOK {

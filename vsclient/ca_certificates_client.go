@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"intel/isecl/lib/common/setup"
 	commLog "intel/isecl/lib/common/log"
+	"intel/isecl/lib/common/log/message"
 	"io/ioutil"
 	"net/http"
 	"github.com/pkg/errors"
@@ -46,6 +47,7 @@ func (client *caCertificatesClientImpl) DownloadEndorsementAuthorities() ([]byte
 	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 	response, err := client.httpClient.Do(request)
 	if err != nil {
+		secLog.Warn(message.BadConnection)
 		return nil, errors.Wrapf(err,"vsclient/ca_certificates_client:DownloadEndorsementAuthorities() Error sending request")
 	} else {
 		if response.StatusCode != http.StatusOK {

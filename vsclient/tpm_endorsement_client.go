@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"intel/isecl/lib/common/log/message"
 	"io/ioutil"
 	"net/http"
 	"github.com/pkg/errors"
@@ -48,6 +49,7 @@ func (client *tpmEndorsementsClientImpl) IsEkRegistered(hardwareUUID string) (bo
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
+		secLog.Warn(message.BadConnection)
 		return false, errors.Wrapf(err, "vsclient/tpm_endorsement_client:IsEkRegistered() Error while sending request to %s ", url)
 	} else {
 		if response.StatusCode != http.StatusOK {
@@ -91,6 +93,7 @@ func (client *tpmEndorsementsClientImpl) RegisterEk(tpmEndorsement *TpmEndorseme
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
+		secLog.Warn(message.BadConnection)
 		return errors.Wrapf(err, "vsclient/tpm_endorsement_client:RegisterEk() Error while sending request to %s ", url)
 	} else {
 		if response.StatusCode != http.StatusOK {

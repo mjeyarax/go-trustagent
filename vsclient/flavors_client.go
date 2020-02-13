@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"intel/isecl/lib/common/log/message"
 	"io/ioutil"
 	"net/http"
 
@@ -61,6 +62,7 @@ func (client *flavorsClientImpl) CreateFlavor(flavorCreateCriteria *FlavorCreate
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
+		secLog.Warn(message.BadConnection)
 		return nil, errors.Wrapf(err, "vsclient/flavors_client:CreateFlavor() Error while making request to %s", url)
 	}
 

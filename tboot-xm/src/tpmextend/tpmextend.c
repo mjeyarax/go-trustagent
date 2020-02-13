@@ -193,12 +193,12 @@ int main(int argc, char** argv) {
 
 	fprintf(STDOUT, "TPM extension\n\n");
 	
-    pcrno = atoi(argv[1]);
+    pcrno = strtol(argv[1], (char **)NULL, 10);
     if (pcrno < 0 || pcrno > 22) {
       	printf("Invalid PCR no. found.\nCurrently supported PCR nos. are 0 to 22\n");
        	return -1;
     }
-
+	
 	size = snprintf(filesystem_hash, MAX_HASH_LEN, "%s", argv[2]);
 	if(size == 40) {
 		hash_size = 20;
