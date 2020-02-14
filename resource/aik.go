@@ -9,15 +9,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"intel/isecl/go-trust-agent/constants"
-	commLog "intel/isecl/lib/common/log"
 	"intel/isecl/lib/common/log/message"
 	"io/ioutil"
 	"net/http"
 	"os"
 )
-
-var log = commLog.GetDefaultLogger()
-var secLog = commLog.GetSecurityLogger()
 
 //
 // Reads the provision aik certificate from /opt/trustagent/configuration/aik.cert

@@ -24,6 +24,8 @@ install()
 	inst /usr/bin/expr "/bin/expr"
 	#inst /usr/bin/openssl "/bin/openssl"
 	inst /usr/bin/xmllint "/bin/xmllint"
+	inst /usr/bin/xargs "/bin/xargs"
+	inst /usr/bin/printf "/bin/printf"
 	inst /usr/bin/basename "/bin/basename"
 	inst /bin/find "/bin/find"
 	#inst /etc/pki/tls/openssl.cnf "/etc/pki/tls/openssl.cnf"

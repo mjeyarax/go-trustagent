@@ -42,43 +42,132 @@ const (
 )
 
 func printUsage() {
-	fmt.Println("Usage:")
-	fmt.Println("")
-	fmt.Println("    tagent <command> [arguments]")
-	fmt.Println("")
-	fmt.Println("Available Commands:")
-	fmt.Println("    help|-h|-help    Show this help message")
-	fmt.Println("    setup [task]     Run setup task")
-	fmt.Println("    uninstall        Uninstall trustagent")
-	fmt.Println("    version          Print build version info")
-	fmt.Println("    start            Start the trustagent service")
-	fmt.Println("    stop             Stop the trustagent service")
-	fmt.Println("    status           Get the status of the trustagent service")
-	fmt.Println("")
-	fmt.Println("Available Tasks for setup:")
-	fmt.Println("    tagent setup all (or with empty 3rd argument)")
-	fmt.Println("        - Runs all setup tasks to provision the trustagent.")
-	fmt.Println("    tagent setup trustagent.env")
-	fmt.Println("        - Runs all setup tasks to provision the trustagent using the env")
-	fmt.Println("          file path provided as 3rd argument.")
-	fmt.Println("    tagent setup download-ca-cert")
-	fmt.Println("        - Fetches the latest CMS Root CA Certificates, overwriting existing")
-	fmt.Println("          files.")
-	fmt.Println("    tagent setup download-cert")
-	fmt.Println("        - Fetches a signed TLS Certificate from CMS, overwriting existing")
-	fmt.Println("          files.")
-	fmt.Println("    tagent setup update-certificates")
-	fmt.Println("        - Runs 'download-ca-cert' and 'download-cert'")
-	fmt.Println("    tagent setup provision-attestation")
-	fmt.Println("        - Runs setup tasks associated with HVS/TPM provisioning.")
-	fmt.Println("    tagent setup create-host")
-	fmt.Println("        - Registers the trustagent with the verification service.")
-	fmt.Println("    tagent setup create-host-unique-flavor")
-	fmt.Println("        - Populates the verification service with the host unique flavor")
-	fmt.Println("    tagent setup get-configured-manifest")
-	fmt.Println("        - Uses environment variables to pull application-integrity.")
-	fmt.Println("          manifests from the verification service.")
-	fmt.Println("")
+
+usage := `
+Usage:
+
+  tagent <command> [arguments]
+
+Available Commands:
+
+  help|-h|-help Show this help message.
+  setup [task]  Run setup task.
+  uninstall     Uninstall trust agent.
+  version       Print build version info.
+  start         Start the trust agent service.
+  stop          Stop the trust agent service.
+  status        Get the status of the trust agent service.
+
+Available Tasks for 'setup':
+
+  tagent setup (all)
+    - Runs all setup tasks to provision the trust agent.
+    - Required environment variables:  AAS_API_URL, CMS_BASE_URL, 
+      CMS_TLS_CERT_SHA384, BEARER_TOKEN, MTWILSON_API_URL
+  tagent setup trustagent.env
+    - Runs all setup tasks to provision the trust agent using trustagent.env
+      file for environment variables (the file must contain all of the 
+      required environment variables listed in 'tagent setup (all)'.  See 
+      "Environment variables" below).
+  tagent setup download-ca-cert
+    - Fetches the latest CMS Root CA Certificates, overwriting existing
+      files.
+    - Required environment variables:  BEARER_TOKEN, CMS_BASE_URL
+  tagent setup download-cert
+    - Fetches a signed TLS Certificate from CMS, overwriting existing
+      files.
+    - Required environment variables:  CMS_BASE_URL, CMS_TLS_CERT_SHA384
+  tagent setup update-certificates
+    - Runs 'download-ca-cert' and 'download-cert'
+    - Required environment variables:  CMS_BASE_URL, CMS_TLS_CERT_SHA384,
+      BEARER_TOKEN
+  tagent setup provision-attestation
+    - Runs setup tasks associated with HVS/TPM provisioning.
+    - Required environment variables:  BEARER_TOKEN, MTWILSON_API_URL
+  tagent setup create-host
+    - Registers the trust agent with the verification service.
+    - Required environment variables:  BEARER_TOKEN, MTWILSON_API_URL
+  tagent setup create-host-unique-flavor
+    - Populates the verification service with the host unique flavor
+    - Required environment variables:  BEARER_TOKEN, MTWILSON_API_URL
+  tagent setup get-configured-manifest
+    - Uses environment variables to pull application-integrity.
+      manifests from the verification service.
+    - Required Environment variables:  BEARER_TOKEN, MTWILSON_API_URL,
+      FLAVOR_UUIDS or FLAVOR_LABELS
+
+Environment variables:
+
+  AAS_API_URL
+    - Used by the trust agent service to validate jwt/bearer tokens.
+    - Ex. AAS_API_URL=https://{host}:{port}/aas/v1
+  AUTOMATIC_REGISTRATION*
+    - When 'Y', instructs the installer to register the host with HVS by
+      running 'create-host' and 'create-host-unique-flavor'.  Defaults to 'N'.
+    - Ex. AUTOMATIC_REGISTRATION=Y
+  BEARER_TOKEN
+    - 'jwt' token used during setup to communicate to CMS and HVS.
+    - Ex. BEARER_TOKEN=eyJhbGciOiJSUzM4NCIsjdkMTdiNmUz...
+  CMS_BASE_URL
+    - URL used by setup to download root-ca and tls certificates from 
+      CMS.
+    - Ex. CMS_BASE_URL=https://{host}:{port}/cms/v1
+  CMS_TLS_CERT_SHA384
+    - SHA384 sum used during setup to secure communications with CMS.
+    - Ex. CMS_TLS_CERT_SHA384=bd8ebf5091289958b5765da4...
+  MTWILSON_API_URL
+    - The URL used during setup to collect information from HVS.
+    - MTWILSON_API_URL=https://{host}:{port}/mtwilson/v2
+  PROVISION_ATTESTATION*
+    - When 'Y', instructs the installer to provision the host with HVS by  
+      calling 'tagent setup'.  Defaults to 'N'.
+    - Ex. AUTOMATIC_REGISTRATION=Y
+  SAN_LIST*
+    - CSV list that sets the value for SAN list in the TA TLS certificate.
+      Defaults to "127.0.0.1,localhost".
+    - Ex. SAN_LIST=10.123.100.1,201.102.10.22,my.example.com
+  TA_ENABLE_CONSOLE_LOG*
+    - When set to 'true', trust agent logs are redirected to stdout. Defaults 
+      to false.
+    - Ex. TA_ENABLE_CONSOLE_LOG=true
+  TA_SERVER_IDLE_TIMEOUT*
+    - Sets the trust agent service's idle timeout.  Defaults to 10 seconds.
+    - Ex. TA_SERVER_IDLE_TIMEOUT=10
+  TA_SERVER_MAX_HEADER_BYTES*
+    - Sets trust agent service's maximum header bytes.  Defaults to 1MB.
+    - Ex. TA_SERVER_MAX_HEADER_BYTES=1048576
+  TA_SERVER_READ_TIMEOUT*
+    - Sets trust agent service's read timeout.  Defaults to 30 seconds.
+    - Ex. TA_SERVER_READ_TIMEOUT=30
+  TA_SERVER_READ_HEADER_TIMEOUT*
+    - Sets trust agent service's read header timeout.  Defaults to 30 seconds.
+    - Ex. TA_SERVER_READ_HEADER_TIMEOUT=10
+  TA_SERVER_WRITE_TIMEOUT*
+    - Sets trust agent service's write timeout.  Defaults to 10 seconds.
+    - Ex. TA_SERVER_WRITE_TIMEOUT=10
+  TA_TLS_CERT_CN*
+    - Sets the value for Common Name in the TA TLS certificate.  Defaults
+      to "Trust Agent TLS Certificate".
+    - Ex. TA_TLS_CERT_CN=Acme Trust Agent 007
+  TPM_OWNER_SECRET*
+    - When provided, setup uses the 40 character hex string for the TPM
+      owner password.  The TPM owner secret is generated when not provided.
+    - Ex. TPM_OWNER_SECRET=625d6d8a18f98bf764760fa392b8c01be0b4e959
+  TPM_QUOTE_IPV4*
+    - When 'Y', used the local system's ip address a salt when processing
+      TPM quotes.  Defaults to 'N'.
+    - Ex. TPM_QUOTE_IPV4=Y
+  TRUSTAGENT_LOG_LEVEL*
+    - Sets the verbosity level of logging (trace|debug|info|error).  Defaults 
+      to 'info'.
+    - Ex. TRUSTAGENT_LOG_LEVEL=debug
+  TRUSTAGENT_PORT*
+    - The port on which the trust agent service will listen.
+    - Ex. TRUSTAGENT_PORT=10433
+
+  * Indicates the environment variable is optional.`
+
+	fmt.Println(usage)
 }
 
 func updatePlatformInfo() error {
@@ -137,22 +226,16 @@ func updateMeasureLog() error {
 
 func printVersion() {
 
+	versionInfo, err := util.GetVersionInfo()
+	if err != nil {
+		fmt.Fprintf(os.Stderr,"Error while getting version info: %v \n", err)
+		os.Exit(1)
+	}
+
 	if len(os.Args) > 2 && os.Args[2] == "short" {
-		major, err := util.GetMajorVersion()
-		if err != nil {
-			fmt.Fprintf(os.Stderr,"Error while fetching Major version: %v \n", err)
-			os.Exit(1)
-		}
-
-		minor, err := util.GetMinorVersion()
-		if err != nil {
-			fmt.Fprintf(os.Stderr,"Error while fetching Minor version: %v \n", err)
-			os.Exit(1)
-		}
-
-		fmt.Printf("%d.%d\n", major, minor)
+		fmt.Printf("%d.%d\n", versionInfo.Major, versionInfo.Minor)
 	} else {
-		fmt.Printf("tagent %s-%s [%s]\n", util.Version, util.GitHash, util.CommitDate)
+		fmt.Printf(versionInfo.VersionString)
 	}
 }
 

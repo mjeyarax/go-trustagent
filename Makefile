@@ -2,7 +2,7 @@ GITTAG := $(shell git describe --tags --abbrev=0 2> /dev/null)
 GITCOMMIT := $(shell git describe --always)
 GITCOMMITDATE := $(shell git log -1 --date=short --pretty=format:%cd)
 GITBRANCH := $(shell git rev-parse --abbrev-ref HEAD)
-TIMESTAMP := $(shell date --iso=seconds)
+BUILDDATE := $(shell TZ=UTC date +%Y-%m-%dT%H:%M:%SZ)
 VERSION := $(or ${GITTAG}, v1.0.0)
 APPLICATION-AGENT-ARTIFACT = application-agent-4.6-SNAPSHOT-rhel.bin
 GITLAB-TOKEN = gpgtQ5xyjKwDYECNjc9T
@@ -13,7 +13,7 @@ TBOOTXM-PROJECT-ID = 21861
 # See https://gitlab.devtools.intel.com/sst/isecl/lib-java/lib-workload-measurement/commit/db18532cccb1aabce8444b1ed4844bf8e54d8915 ...
 # -fno-strict-overflow -fno-delete-null-pointer-checks -fwrapv -fPIE -fPIC -fstack-protector-strong -O2 -D
 gta:
-	env GOOS=linux go build -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/util.Version=$(VERSION) -X intel/isecl/go-trust-agent/util.GitHash=$(GITCOMMIT) -X intel/isecl/go-trust-agent/util.CommitDate=$(GITCOMMITDATE)" -o out/tagent
+	env GOOS=linux go build -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/util.Version=$(VERSION) -X intel/isecl/go-trust-agent/util.GitHash=$(GITCOMMIT) -X intel/isecl/go-trust-agent/util.BuildDate=$(BUILDDATE)" -o out/tagent
 
 package: gta
 	mkdir -p out/installer

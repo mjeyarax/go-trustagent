@@ -5,17 +5,33 @@
 package util
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
-	
+	"time"
 	"github.com/pkg/errors"
+)
+
+const (
+	TIME_DEFAULT = "1970-01-01T00:00:00-07:00"
 )
 
 var Version = "0.0.0"
 var GitHash = "fffffff"
-var CommitDate = "1970-01-01T00:00:00-00:00"
+var BuildDate = TIME_DEFAULT
 
-func GetMajorVersion() (int, error) {
+type VersionInfo struct {
+	Major int `json:"major"`
+	Minor int `json:"minor"`
+	Patch int `json:"patch"`
+	Commit string `json:"commit"`
+	Built time.Time `json:"built"`
+	VersionString string `json:"version_string"`
+}
+
+var versionInfo *VersionInfo
+
+func parseMajorVersion() (int, error) {
 	log.Trace("util/version:GetMajorVersion() Entering")
 	defer log.Trace("util/version:GetMajorVersion() Leaving")
 
@@ -32,7 +48,7 @@ func GetMajorVersion() (int, error) {
 	return major, nil
 }
 
-func GetMinorVersion() (int, error) {
+func parseMinorVersion() (int, error) {
 	log.Trace("util/version:GetMinorVersion() Entering")
 	defer log.Trace("util/version:GetMinorVersion() Leaving")
 
@@ -56,7 +72,7 @@ func GetMinorVersion() (int, error) {
 	return minor, nil
 }
 
-func GetPatchVersion() (int, error) {
+func parsePatchVersion() (int, error) {
 	log.Trace("util/version:GetPatchVersion() Entering")
 	defer log.Trace("util/version:GetPatchVersion() Leaving")
 
@@ -71,4 +87,39 @@ func GetPatchVersion() (int, error) {
 	}
 
 	return patch, nil
+}
+
+func GetVersionInfo() (*VersionInfo, error) {
+	var err error 
+
+	if versionInfo == nil {
+		vi := VersionInfo{}
+		vi.Major, err = parseMajorVersion()
+		if err != nil {
+			return nil, err
+		}
+
+		vi.Minor, err = parseMinorVersion()
+		if err != nil {
+			return nil, err
+		}
+
+		vi.Patch, err = parsePatchVersion()
+		if err != nil {
+			return nil, err
+		}
+
+		vi.Commit = GitHash
+
+		vi.Built, err = time.Parse(time.RFC3339, BuildDate)
+		if err != nil {
+			return nil, err
+		}
+
+		vi.VersionString = fmt.Sprintf("Trust Agent %s-%s\nBuilt %s\n", Version, GitHash, BuildDate)
+
+		versionInfo = &vi
+	}
+
+	return versionInfo, nil
 }

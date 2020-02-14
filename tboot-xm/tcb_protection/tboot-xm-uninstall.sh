@@ -87,10 +87,39 @@ function which_grub() {
         fi
 }
 
+
+function isRhel8WithoutTboot()
+{
+    uname -r | grep "\.el8" > /dev/null 2>&1
+	local isRhel8=$?
+
+	which txt-stat > /dev/null 2>&1
+	local tbootInstalled=$?
+
+    if [[ $isRhel8 -eq 0 ]]
+	then
+		if [[ $tbootInstalled -ne 0 ]] 
+		then
+			return 0
+		fi
+	fi
+
+	return 1
+}
+
 #Remove the TCB-Protection grub entry
 function remove_grub_entry()
 {
-	if [ `grep -c "$MENUENTRY_PREFIX" $GRUB_ENTRY_FILE` -gt 0 ]
+	if isRhel8WithoutTboot
+	then
+		ENTRY=`grep -l "${MENUENTRY_PREFIX}" /boot/loader/entries/*conf | tail -1`
+		if [ ! -z "$ENTRY" ]
+		then
+			rm "$ENTRY"
+		else
+			echo_failure "Could not locate 'TCB-Protection' entry in /boot/loader/entries"
+		fi
+	elif [ `grep -c "$MENUENTRY_PREFIX" $GRUB_ENTRY_FILE` -gt 0 ]
 	then
 		echo "$MENUENTRY_PREFIX grub entry found"
 		echo "proceeding to remove the grub entry from file $GRUB_ENTRY_FILE"

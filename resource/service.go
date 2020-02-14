@@ -45,6 +45,9 @@ const (
 	postQuotePerm          = "quote:create"
 )
 
+var log = commLog.GetDefaultLogger()
+var secLog = commLog.GetSecurityLogger()
+
 type TrustAgentService struct {
 	port   int
 	router *mux.Router
