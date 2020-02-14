@@ -112,28 +112,24 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 	for _, uuid := range flavorUUIDs {
 		manifestXml, err := manifestsClient.GetManifestXmlById(uuid)
 		if err != nil {
-			log.Errorf("tasks/get-configured-manifest:Run() An error occurred while getting manifest with id '%s': %s", uuid, err)
-			continue
+			return errors.Wrapf(err, "An error occurred while downloading manifest with id '%s'", uuid)
 		}
 
 		err = task.saveManifest(manifestXml)
 		if err != nil {
-			log.Errorf("tasks/get-configured-manifest:Run() An error occurred while saving manifest with id '%s': %s", uuid, err)
-			continue
+			return errors.Wrapf(err, "An error occurred while saving manifest with id '%s'", uuid)
 		}
 	}
 
 	for _, label := range flavorLabels {
 		manifestXml, err := manifestsClient.GetManifestXmlByLabel(label)
 		if err != nil {
-			log.Errorf("tasks/get-configured-manifest:Run() An error occurred while getting manifest with label '%s': %s", label, err)
-			continue
+			return errors.Wrapf(err, "An error occurred while downloading manifest with label '%s'", label)
 		}
 
 		err = task.saveManifest(manifestXml)
 		if err != nil {
-			log.Errorf("tasks/get-configured-manifest:Run() An error occurred while saving manifest with label '%s': %s", label, err)
-			continue
+			return errors.Wrapf(err, "An error occurred while saving manifest with label '%s'", label)
 		}
 	}
 
