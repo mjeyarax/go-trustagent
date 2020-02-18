@@ -571,9 +571,10 @@ func sourceEnvFile(trustagentEnvFile string){
 		if scanner.Text() == "" || strings.HasPrefix("#", scanner.Text()) {
 			continue
 		}
-
-		envKeyPair = strings.Split(scanner.Text(), "=")
-		os.Setenv(envKeyPair[0], envKeyPair[1]) 
+		if strings.Contains(scanner.Text(), "="){
+			envKeyPair = strings.Split(scanner.Text(), "=")
+			os.Setenv(envKeyPair[0], envKeyPair[1]) 
+		}
     }
 }
 
