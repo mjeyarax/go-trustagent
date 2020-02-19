@@ -336,9 +336,9 @@ If the GTA installer is run with a valid 'trustagent.env' file, it will parse th
 | Env Var | Description | Example | Required?|Default|
 |---------|-------------|---------|----------|-------|
 |AAS_API_URL|API URL for Authentication Authorization Service (AAS).|AAS_API_URL=https://{host}:{port}/aas/v1|Yes|NA|
-|AUTOMATIC_REGISTRATION|Automatically registers the host with HVS similar to `tagent setup create-host`.|AUTOMATIC_REGISTRATION=Y|No|N|
-|BEARER_TOKEN|JWT from AAS that contains "install" permissions needed to access ISecL services during provisioning and registration.
-|BEARER_TOKEN=eyJhbGciOiJSUzM4NCIsjdkMTdiNmUz...|Yes|NA|
+|AUTOMATIC_PULL_MANIFEST|Instructs the installer to automatically pull application-manifests from HVS similar to `tagent setup get-configured-manifest`|AUTOMATIC_PULL_MANIFEST=Y|No|N|
+|AUTOMATIC_REGISTRATION|Instructs the installer to automatically register the host with HVS similar to running `tagent setup create-host` and `tagent setup create-host-unique-flavor`.|AUTOMATIC_REGISTRATION=Y|No|N|
+|BEARER_TOKEN|JWT from AAS that contains "install" permissions needed to access ISecL services during provisioning and registration.|BEARER_TOKEN=eyJhbGciOiJSUzM4NCIsjdkMTdiNmUz...|Yes|NA|
 |CMS_BASE_URL|API URL for Certificate Management Service (CMS).|CMS_BASE_URL=https://{host}:{port}/cms/v1|Yes|NA|
 |CMS_TLS_CERT_SHA384|SHA384 Hash sum for verifying the CMS TLS certificate.|CMS_TLS_CERT_SHA384=bd8ebf5091289958b5765da4...|Yes|NA|
 |MTWILSON_API_URL|The url used during setup to request information from HVS.|MTWILSON_API_URL=https://{host}:{port}/mtwilson/v2|Yes|NA|

@@ -101,6 +101,11 @@ Environment variables:
   AAS_API_URL
     - Used by the trust agent service to validate jwt/bearer tokens.
     - Ex. AAS_API_URL=https://{host}:{port}/aas/v1
+  AUTOMATIC_PULL_MANIFEST*
+    - When 'Y', instructs the installer to download application manifests
+      using the FLAVOR_UUIDS or FLAVOR_LABELS environment variables by running
+      'get-configured-manifest'.  Defaults to 'N'.
+    - Ex. AUTOMATIC_PULL_MANIFEST=Y
   AUTOMATIC_REGISTRATION*
     - When 'Y', instructs the installer to register the host with HVS by
       running 'create-host' and 'create-host-unique-flavor'.  Defaults to 'N'.

@@ -432,6 +432,11 @@ if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PR
             tagent setup create-host
             tagent setup create-host-unique-flavor
         fi
+
+        if [[ "$AUTOMATIC_PULL_MANIFEST" == "y" || "$AUTOMATIC_PULL_MANIFEST" == "Y" || "$AUTOMATIC_PULL_MANIFEST" == "yes" ]]; then
+            echo "Automatically pulling application-manifests from HVS..."
+            tagent setup get-configured-manifest
+        fi
     else
         echo_failure "'$TRUSTAGENT_EXE setup' failed"
         exit 1
