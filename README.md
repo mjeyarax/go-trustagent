@@ -21,7 +21,7 @@ The Trust Agent resides on physical servers and enables both remote attestation 
 
 ## Software requirements
 - git
-- go 11.4 or newer
+- go 1.12.12 or newer
 - docker
 
 # Build Instructions
