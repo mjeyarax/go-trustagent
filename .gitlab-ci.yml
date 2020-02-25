@@ -39,7 +39,7 @@ test:
   stage: test
   image: gta-devel
   tags:
-    - gta-unit-test
+    - gta
   script:
     - go test ./... -tags=unit_test -coverpkg=./... -coverprofile out/cover.out
     - go tool cover -func out/cover.out
