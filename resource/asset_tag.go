@@ -5,9 +5,11 @@
 package resource
 
 import (
+	"bytes"
 	"encoding/json"
 	"intel/isecl/go-trust-agent/config"
 	"intel/isecl/lib/common/log/message"
+	"intel/isecl/lib/common/validation"
 	"intel/isecl/lib/tpmprovider"
 	"io/ioutil"
 	"net/http"
@@ -20,7 +22,7 @@ import (
 //  }
 type TagWriteRequest struct {
 	Tag           []byte `json:"tag"`
-	hardware_uuid string `json:"hardware_uuid"`
+	HardwareUUID string `json:"hardware_uuid"`
 }
 
 //
@@ -39,16 +41,30 @@ func setAssetTag(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.Tpm
 		var tagWriteRequest TagWriteRequest
 		tpmSecretKey := cfg.Tpm.OwnerSecretKey
 
+		contentType := httpRequest.Header.Get("Content-Type")
+		if  contentType != "application/json" {
+			log.Errorf("resource/asset_tag:setAssetTag( %s - Invalid content-type '%s'", message.InvalidInputBadParam, contentType)
+			return &endpointError{Message: "Invalid content-type", StatusCode: http.StatusBadRequest}
+		}
+
 		data, err := ioutil.ReadAll(httpRequest.Body)
 		if err != nil {
 			log.WithError(err).Errorf("resource/asset_tag:setAssetTag() %s - Error reading request body for request: %s", message.AppRuntimeErr, httpRequest.URL.Path)
 			return &endpointError{Message: "Error parsing request", StatusCode: http.StatusBadRequest}
 		}
 
-		err = json.Unmarshal(data, &tagWriteRequest)
+		dec := json.NewDecoder(bytes.NewReader(data))
+		dec.DisallowUnknownFields()
+		err = dec.Decode(&tagWriteRequest)
 		if err != nil {
 			secLog.WithError(err).Errorf("resource/asset_tag:setAssetTag() %s - Error marshaling json data: %s for request: %s", message.InvalidInputBadParam, string(data), httpRequest.URL.Path)
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusBadRequest}
+		}
+
+		err = validation.ValidateHardwareUUID(tagWriteRequest.HardwareUUID)
+		if err != nil {
+			log.Errorf("resource/asset_tag:setAssetTag( %s - Invalid hardware_uuid '%s'", message.InvalidInputBadParam, tagWriteRequest.HardwareUUID)
+			return &endpointError{Message: "Invalid hardware_uuid", StatusCode: http.StatusBadRequest}
 		}
 
 		tpm, err := tpmFactory.NewTpmProvider()

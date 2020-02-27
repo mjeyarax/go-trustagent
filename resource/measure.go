@@ -25,12 +25,17 @@ func getApplicationMeasurement() endpointHandler {
 
 		log.Debugf("resource/measure:getApplicationMeasurement() Request: %s", httpRequest.URL.Path)
 
+		contentType := httpRequest.Header.Get("Content-Type")
+		if  contentType != "application/xml" {
+			log.Errorf("resource/measure:getApplicationMeasurement() %s - Invalid content-type '%s'", message.InvalidInputBadParam, contentType)
+			return &endpointError{Message: "Invalid content-type", StatusCode: http.StatusBadRequest}
+		}
+
 		// receive a manifest from hvs in the request body
 		manifestXml, err := ioutil.ReadAll(httpRequest.Body)
 		if err != nil {
 			seclog.WithError(err).Errorf("resource/measure:getApplicationMeasurement() %s - Error reading manifest xml", message.InvalidInputBadParam)
 			return &endpointError{Message: "Error reading manifest xml", StatusCode: http.StatusBadRequest}
-
 		}
 
 		// make sure the xml is well formed, all other validation will be
@@ -45,6 +50,13 @@ func getApplicationMeasurement() endpointHandler {
 		// 'measure' will fail.  for now, create the file before calling 'measure'.
 		if _, err := os.Stat(WML_LOG_FILE); os.IsNotExist(err) {
 			os.OpenFile(WML_LOG_FILE, os.O_RDONLY|os.O_CREATE, 0600)
+		}
+
+		// make sure 'measure' is not a symbolic link before executing it 
+		measureExecutable, err := os.Lstat(constants.TBootXmMeasurePath)
+		if measureExecutable.Mode() & os.ModeSymlink == os.ModeSymlink {
+			secLog.WithError(err).Errorf("resource/measure:getApplicationMeasurement() %s - 'measure' is a symbolic link", message.InvalidInputBadParam)
+			return &endpointError{Message: "Error: Invalid 'measure' file", StatusCode: http.StatusInternalServerError}
 		}
 
 		// call /opt/tbootxml/bin/measure and return the xml from stdout

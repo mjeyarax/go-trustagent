@@ -64,6 +64,13 @@ func getPlatformInfo() endpointHandler {
 
 		log.Debugf("resource/host:getPlatformInfo() Request: %s", httpRequest.URL.Path)
 
+		// HVS does not provide a content-type when calling /host
+		contentType := httpRequest.Header.Get("Content-Type")
+		if  contentType != "" {
+			log.Errorf("resource/host:getPlatformInfo() %s - Invalid content-type '%s'", message.InvalidInputBadParam, contentType)
+			return &endpointError{Message: "Invalid content-type", StatusCode: http.StatusBadRequest}
+		}
+
 		if _, err := os.Stat(constants.PlatformInfoFilePath); os.IsNotExist(err) {
 			log.WithError(err).Errorf("resource/host:getPlatformInfo() %s - %s does not exist", message.AppRuntimeErr, constants.PlatformInfoFilePath)
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}

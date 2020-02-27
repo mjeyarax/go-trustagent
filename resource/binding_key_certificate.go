@@ -23,6 +23,13 @@ func getBindingKeyCertificate() endpointHandler {
 
 		log.Debugf("resource/binding_key_certificate:getBindingKeyCertificate() Request: %s", httpRequest.URL.Path)
 
+		// HVS does not provide a content-type, exlude other values
+		contentType := httpRequest.Header.Get("Content-Type")
+		if  contentType != "" {
+			log.Errorf("resource/binding_key_certificate:getBindingKeyCertificate() %s - Invalid content-type '%s'", message.InvalidInputBadParam, contentType)
+			return &endpointError{Message: "Invalid content-type", StatusCode: http.StatusBadRequest}
+		}
+
 		if _, err := os.Stat(constants.BindingKeyCertificatePath); os.IsNotExist(err) {
 			log.WithError(err).Errorf("resource/binding_key_certificate:getBindingKeyCertificate() %s - %s does not exist", message.AppRuntimeErr, constants.BindingKeyCertificatePath)
 			return &endpointError{Message: "Error processing request", StatusCode: http.StatusInternalServerError}

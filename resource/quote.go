@@ -198,7 +198,7 @@ func (ctx *TpmQuoteContext) getQuote(tpmQuoteRequest *TpmQuoteRequest, tpmQuoteI
 		return err
 	}
 
-	log.Debugf("esource/quote:readEventLog() Providing tpm nonce value '%s', raw[%s]", base64.StdEncoding.EncodeToString(nonce), hex.EncodeToString(nonce))
+	log.Debugf("resource/quote:readEventLog() Providing tpm nonce value '%s', raw[%s]", base64.StdEncoding.EncodeToString(nonce), hex.EncodeToString(nonce))
 
 	quoteBytes, err := ctx.tpm.GetTpmQuote(ctx.cfg.Tpm.AikSecretKey, nonce, tpmQuoteRequest.PcrBanks, tpmQuoteRequest.Pcrs)
 	if err != nil {
@@ -320,8 +320,15 @@ func getTpmQuote(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.Tpm
 	return func(httpWriter http.ResponseWriter, httpRequest *http.Request) error {
 		log.Trace("resource/quote:getTpmQuote() Entering")
 		defer log.Trace("resource/quote:getTpmQuote() Leaving")
+
 		tpmQuoteIpv4 := cfg.TpmQuoteIPv4
 		log.Debugf("resource/quote:getTpmQuote() Request: %s", httpRequest.URL.Path)
+
+		contentType := httpRequest.Header.Get("Content-Type")
+		if  contentType != "application/json" {
+			log.Errorf("resource/quote:getTpmQuote() %s - Invalid content-type '%s'", message.InvalidInputBadParam, contentType)
+			return &endpointError{Message: "Invalid content-type", StatusCode: http.StatusBadRequest}
+		}
 
 		tpm, err := tpmFactory.NewTpmProvider()
 		if err != nil {
@@ -344,7 +351,9 @@ func getTpmQuote(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.Tpm
 			return &endpointError{Message: "Error reading request body", StatusCode: http.StatusBadRequest}
 		}
 
-		err = json.Unmarshal(data, &tpmQuoteRequest)
+		dec := json.NewDecoder(bytes.NewReader(data))
+		dec.DisallowUnknownFields()
+		err = dec.Decode(&tpmQuoteRequest)
 		if err != nil {
 			seclog.WithError(err).Errorf("resource/quote:getTpmQuote() %s - Error marshaling json data: %s", message.InvalidInputProtocolViolation, string(data))
 			return &endpointError{Message: "Error marshaling json data", StatusCode: http.StatusBadRequest}
