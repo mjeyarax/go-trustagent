@@ -34,8 +34,8 @@ package: gta
 	makeself out/installer out/trustagent-$(VERSION).bin "TrustAgent $(VERSION)" ./install.sh
 
 build_test: gta
-	cd resource && go test -c -o ../out/resource.test -tags=unit_test
-	cd tasks && go test -c -o ../out/tasks.test -tags=unit_test
+	export CGO_CFLAGS_ALLOW="-f.*" && cd resource && go test -c -o ../out/resource.test -tags=unit_test
+	export CGO_CFLAGS_ALLOW="-f.*" && cd tasks && go test -c -o ../out/tasks.test -tags=unit_test
 
 all: clean package
 
