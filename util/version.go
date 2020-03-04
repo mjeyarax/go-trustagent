@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	"github.com/pkg/errors"
 )
 
@@ -21,12 +22,12 @@ var GitHash = "fffffff"
 var BuildDate = TIME_DEFAULT
 
 type VersionInfo struct {
-	Major int `json:"major"`
-	Minor int `json:"minor"`
-	Patch int `json:"patch"`
-	Commit string `json:"commit"`
-	Built time.Time `json:"built"`
-	VersionString string `json:"version_string"`
+	Major         int       `json:"major"`
+	Minor         int       `json:"minor"`
+	Patch         int       `json:"patch"`
+	Commit        string    `json:"commit"`
+	Built         time.Time `json:"built"`
+	VersionString string    `json:"version_string"`
 }
 
 var versionInfo *VersionInfo
@@ -90,30 +91,20 @@ func parsePatchVersion() (int, error) {
 }
 
 func GetVersionInfo() (*VersionInfo, error) {
-	var err error 
+	var err error
 
 	if versionInfo == nil {
 		vi := VersionInfo{}
-		vi.Major, err = parseMajorVersion()
-		if err != nil {
-			return nil, err
-		}
 
-		vi.Minor, err = parseMinorVersion()
-		if err != nil {
-			return nil, err
-		}
-
-		vi.Patch, err = parsePatchVersion()
-		if err != nil {
-			return nil, err
-		}
+		vi.Major, _ = parseMajorVersion()
+		vi.Minor, _ = parseMinorVersion()
+		vi.Patch, _ = parsePatchVersion()
 
 		vi.Commit = GitHash
 
 		vi.Built, err = time.Parse(time.RFC3339, BuildDate)
 		if err != nil {
-			return nil, err
+			vi.Built, _ = time.Parse(time.RFC3339, TIME_DEFAULT)
 		}
 
 		vi.VersionString = fmt.Sprintf("Trust Agent %s-%s\nBuilt %s\n", Version, GitHash, BuildDate)

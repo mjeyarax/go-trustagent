@@ -14,7 +14,7 @@ TBOOTXM-PROJECT-ID = 21861
 gta:
 	env GOOS=linux GOSUMDB=off GOPROXY=direct go build -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/util.Version=$(VERSION) -X intel/isecl/go-trust-agent/util.GitHash=$(GITCOMMIT) -X intel/isecl/go-trust-agent/util.BuildDate=$(BUILDDATE)" -o out/tagent
 
-package: gta
+installer: gta
 	mkdir -p out/installer
 	cp dist/linux/tagent.service out/installer/tagent.service
 	cp dist/linux/tagent_init.service out/installer/tagent_init.service
@@ -35,7 +35,7 @@ build_test: gta
 	cd resource && go test -c -o ../out/resource.test -tags=unit_test
 	cd tasks && go test -c -o ../out/tasks.test -tags=unit_test
 
-all: clean package
+all: clean installer
 
 clean:
 	cd tboot-xm && $(MAKE) clean
