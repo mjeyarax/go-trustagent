@@ -17,10 +17,10 @@ require (
 	intel/isecl/lib/tpmprovider v1.0.0
 )
 
-replace intel/isecl/lib/common => github.com/intel-secl/common v2.0
+replace intel/isecl/lib/common => github.com/intel-secl/common v2.0.0
 
-replace intel/isecl/lib/tpmprovider => github.com/intel-secl/tpm-provider v2.0
+replace intel/isecl/lib/tpmprovider => github.com/intel-secl/tpm-provider v2.0.0
 
-replace intel/isecl/lib/platform-info => github.com/intel-secl/platform-info v2.0
+replace intel/isecl/lib/platform-info => github.com/intel-secl/platform-info v2.0.0
 
-replace intel/isecl/lib/clients => github.com/intel-secl/clients v2.0
+replace intel/isecl/lib/clients => github.com/intel-secl/clients v2.0.0
