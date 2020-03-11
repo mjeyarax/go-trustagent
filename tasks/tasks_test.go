@@ -1,7 +1,7 @@
 // +build unit_test
 
 /*
- * Copyright (C) 2019 Intel Corporation
+ * Copyright (C) 2020 Intel Corporation
  * SPDX-License-Identifier: BSD-3-Clause
  */
 package tasks
@@ -81,7 +81,7 @@ func TestTakeOwnership(t *testing.T) {
 // 	assert := assert.New(t)
 
 // 	cfg := &config.TrustAgentConfiguration {}
-// 	cfg.HVS.Url = "https://10.105.168.60:8443/mtwilson/v2"
+// 	cfg.HVS.Url = "https://vs.server.com:8443/mtwilson/v2"
 // 	cfg.HVS.Username = "admin"
 // 	cfg.HVS.Password = "password"
 // 	cfg.HVS.TLS384 = "7ff464fdd47192d7218e9bc7a80043641196762b840c5c79b7fdaaae471cbffb0ee893c23bca63197b8a863f516a7d8b"
@@ -121,9 +121,9 @@ func TestCreateHostExisting(t *testing.T) {
 
 	existingHost := vsclient.Host{
 		Id:               "068b5e88-1886-4ac2-a908-175cf723723d",
-		HostName:         "10.105.167.153",
+		HostName:         "ta.server.com",
 		Description:      "GTA RHEL 8.0",
-		ConnectionString: "https://10.105.167.153:1443",
+		ConnectionString: "https://ta.server.com:1443",
 		HardwareUUID:     "8032632b-8fa4-e811-906e-00163566263e",
 		TlsPolicyId:      "e1a1c631-e006-4ff2-aed1-6b42a2f5be6c",
 	}

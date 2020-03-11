@@ -10,13 +10,12 @@ TBOOTXM-BRANCH = v1.0%2Fgo-trust-agent
 TBOOTXM-PROJECT-ID = 21861
 
 # TODO:  Update make file to support debug/release builds (release build to use secure gcflags)
-# See https://gitlab.devtools.intel.com/sst/isecl/lib-java/lib-workload-measurement/commit/db18532cccb1aabce8444b1ed4844bf8e54d8915 ...
 # -fno-strict-overflow -fno-delete-null-pointer-checks -fwrapv -fPIE -fPIC -fstack-protector-strong -O2 -D
 gta:
 	export CGO_CFLAGS_ALLOW="-f.*"; \
 	env GOOS=linux GOSUMDB=off GOPROXY=direct go build -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/util.Version=$(VERSION) -X intel/isecl/go-trust-agent/util.GitHash=$(GITCOMMIT) -X intel/isecl/go-trust-agent/util.BuildDate=$(BUILDDATE)" -o out/tagent
 
-package: gta
+installer: gta
 	mkdir -p out/installer
 	cp dist/linux/tagent.service out/installer/tagent.service
 	cp dist/linux/tagent_init.service out/installer/tagent_init.service
@@ -37,7 +36,7 @@ build_test: gta
 	export CGO_CFLAGS_ALLOW="-f.*" && cd resource && go test -c -o ../out/resource.test -tags=unit_test
 	export CGO_CFLAGS_ALLOW="-f.*" && cd tasks && go test -c -o ../out/tasks.test -tags=unit_test
 
-all: clean package
+all: clean installer
 
 clean:
 	cd tboot-xm && $(MAKE) clean

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Intel Corporation
+ * Copyright (C) 2020 Intel Corporation
  * SPDX-License-Identifier: BSD-3-Clause
  */
 package vsclient
@@ -67,9 +67,9 @@ type HostsClient interface {
 
 // {
 // 	"id": "068b5e88-1886-4ac2-a908-175cf723723d",
-// 	"host_name": "10.105.167.153",
+// 	"host_name": "ta.server.com",
 // 	"description": "GTA RHEL 8.0",
-// 	"connection_string": "https://10.105.167.153:1443",
+// 	"connection_string": "https://ta.server.com:1443",
 // 	"hardware_uuid": "8032632b-8fa4-e811-906e-00163566263e",
 // 	"tls_policy_id": "e1a1c631-e006-4ff2-aed1-6b42a2f5be6c"
 // }

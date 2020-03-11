@@ -218,7 +218,7 @@ The public certificate of the AAS instance will be provisioned to the TA service
     Output: Quote data in xml format.  Ex...
         <tpm_quote_response>
             <timestamp>1574456312</timestamp>
-            <clientIp>10.105.167.153</clientIp>
+            <clientIp>10.10.10.1</clientIp>
             <errorCode>0</errorCode>
             <errorMessage>OK</errorMessage>
             <aik>MIIDTTCCAbWgAwIBAgIGAW6UufKhMA0GCSqGSIb3DQEBCwUAMBsx...</aik>
@@ -428,6 +428,6 @@ cms:
   baseurl: https://0.0.0.0:8445/cms/v1      # CMS_BASE_URL
   tlscertdigest: 330086b3...ae477c8502      # CMS_TLS_CERT_SHA384
 tls:
-  certsan: 10.105.167.153,localhost         # SAN_LIST
+  certsan: 127.0.0.1,localhost              # SAN_LIST
   certcn: Trust Agent TLS Certificate       # TA_TLS_CERT_CN
 ```

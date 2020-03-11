@@ -21,11 +21,11 @@ The Trust Agent resides on physical servers and enables both remote attestation 
 
 ## Software requirements
 - git
-- go 1.12.12 or newer
+- go >= `go1.12.12` & <= `go1.13.8`
 - docker
 
 # Build Instructions
-GTA use the `tpm-provider` libary to acces the TPM 2.0 device.  The following instructions assume that `gta-devel` docker image and container have been created as described in the 'Build Instructions' section of the `tpm-provider` project (see the README.md in that project for more details).
+GTA use the `tpm-provider` libary to access the TPM 2.0 device.  The following instructions assume that `gta-devel` docker image and container have been created as described in the 'Build Instructions' section of the `tpm-provider` project (see the README.md in that project for more details).
 
 1. cd `/docker_host/go-trust-agent`
 3. `make package`
