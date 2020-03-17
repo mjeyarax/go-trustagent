@@ -93,11 +93,14 @@ func CreateTrustAgentService(config *config.TrustAgentConfiguration, tpmFactory 
 
 	// Register routes...
 	trustAgentService.router = mux.NewRouter()
-	noAuthRouter := trustAgentService.router.PathPrefix("").Subrouter()
-	authRouter := trustAgentService.router.PathPrefix("/v2/").Subrouter()
-	noAuthRouter.HandleFunc("/version", errorHandler(getVersion())).Methods("GET")
-	authRouter.Use(middleware.NewTokenAuth(constants.TrustedJWTSigningCertsDir, constants.TrustedCaCertsDir, fnGetJwtCerts, cacheTime))
+	// ISECL-8715 - Prevent potential open redirects to external URLs
+	trustAgentService.router.SkipClean(true)
 
+	noAuthRouter := trustAgentService.router.PathPrefix("").Subrouter()
+        noAuthRouter.HandleFunc("/version", errorHandler(getVersion())).Methods("GET")
+	authRouter := trustAgentService.router.PathPrefix("/v2/").Subrouter()
+        authRouter.Use(middleware.NewTokenAuth(constants.TrustedJWTSigningCertsDir, constants.TrustedCaCertsDir, fnGetJwtCerts, cacheTime))
+	
 	// use permission-based access control for webservices
 	authRouter.HandleFunc("/aik", errorHandler(requiresPermission(getAik(), []string{getAIKPerm}))).Methods("GET")
 	authRouter.HandleFunc("/host", errorHandler(requiresPermission(getPlatformInfo(), []string{getHostInfoPerm}))).Methods("GET")
