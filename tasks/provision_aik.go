@@ -398,7 +398,7 @@ func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityReq
 	defer tpm.Close()
 
 	// get the aik's public key and populate into the identityRequest
-	aikPublicKeyBytes, err := tpm.GetAikBytes(*task.ownerSecretKey)
+	aikPublicKeyBytes, err := tpm.GetAikBytes()
 	if err != nil {
 		return err
 	}
@@ -409,7 +409,7 @@ func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityReq
 	identityRequest.TpmVersion = "2.0" // Assume TPM 2.0 for GTA (1.2 is no longer supported)
 	identityRequest.AikBlob = new(big.Int).SetInt64(tpmprovider.TPM_HANDLE_AIK).Bytes()
 
-	identityRequest.AikName, err = tpm.GetAikName(*task.ownerSecretKey)
+	identityRequest.AikName, err = tpm.GetAikName()
 	if err != nil {
 		return errors.Wrap(err, "tasks/provision_aik:populateIdentityRequest() Error while retrieving Aik Name from tpm")
 	}
