@@ -50,127 +50,102 @@ Usage:
 
 Available Commands:
 
-  help|-h|-help Show this help message.
-  setup [task]  Run setup task.
-  uninstall     Uninstall trust agent.
-  version       Print build version info.
-  start         Start the trust agent service.
-  stop          Stop the trust agent service.
-  status        Get the status of the trust agent service.
+  help|-h|-help       Show this help message.
+  setup [all] [task]  Run setup task.
+  uninstall           Uninstall trust agent.
+  version             Print build version info.
+  start               Start the trust agent service.
+  stop                Stop the trust agent service.
+  status              Get the status of the trust agent service.
+
+Setup command usage:  tagent setup [task]
 
 Available Tasks for 'setup':
 
-  tagent setup (all)
-    - Runs all setup tasks to provision the trust agent.
-    - Required environment variables:  AAS_API_URL, CMS_BASE_URL, 
-      CMS_TLS_CERT_SHA384, BEARER_TOKEN, MTWILSON_API_URL
-  tagent setup trustagent.env
-    - Runs all setup tasks to provision the trust agent using trustagent.env
-      file for environment variables (the file must contain all of the 
-      required environment variables listed in 'tagent setup (all)'.  See 
-      "Environment variables" below).
-  tagent setup download-ca-cert
-    - Fetches the latest CMS Root CA Certificates, overwriting existing
-      files.
-    - Required environment variables:  BEARER_TOKEN, CMS_BASE_URL
-  tagent setup download-cert
-    - Fetches a signed TLS Certificate from CMS, overwriting existing
-      files.
-    - Required environment variables:  CMS_BASE_URL, CMS_TLS_CERT_SHA384
-  tagent setup update-certificates
-    - Runs 'download-ca-cert' and 'download-cert'
-    - Required environment variables:  CMS_BASE_URL, CMS_TLS_CERT_SHA384,
-      BEARER_TOKEN
-  tagent setup provision-attestation
-    - Runs setup tasks associated with HVS/TPM provisioning.
-    - Required environment variables:  BEARER_TOKEN, MTWILSON_API_URL
-  tagent setup create-host
-    - Registers the trust agent with the verification service.
-    - Required environment variables:  BEARER_TOKEN, MTWILSON_API_URL
-  tagent setup create-host-unique-flavor
-    - Populates the verification service with the host unique flavor
-    - Required environment variables:  BEARER_TOKEN, MTWILSON_API_URL
-  tagent setup get-configured-manifest
-    - Uses environment variables to pull application-integrity.
-      manifests from the verification service.
-    - Required Environment variables:  BEARER_TOKEN, MTWILSON_API_URL,
-      FLAVOR_UUIDS or FLAVOR_LABELS
+  [all] [/path/to/trustagent.env]           - Runs all setup tasks to provision the trust agent. 
+                                              If path to trustagent.env not provided, settings are sourced from the environment.
+                                                    Required environment variables [in env/trustagent.env]:
+                                                       - AAS_API_URL=<url>                                 : AAS API URL
+                                                       - CMS_BASE_URL=<url>                                : CMS API URL
+                                                       - CMS_TLS_CERT_SHA384=<CMS TLS cert sha384 hash>    : to ensure that TA is communicating with the right CMS instance
+                                                       - BEARER_TOKEN=<token>                              : for authenticating with CMS and VS
+                                                       - MTWILSON_API_URL=<url>                            : VS API URL
+                                                    Optional Environment variables:
+                                                       - TA_ENABLE_CONSOLE_LOG=<true/false>                : When 'true', logs are redirected to stdout. Defaults to false.
+                                                       - TA_SERVER_IDLE_TIMEOUT=<t seconds>                : Sets the trust agent service's idle timeout. Defaults to 10 seconds.
+                                                       - TA_SERVER_MAX_HEADER_BYTES=<n bytes>              : Sets trust agent service's maximum header bytes.  Defaults to 1MB.
+                                                       - TA_SERVER_READ_TIMEOUT=<t seconds>                : Sets trust agent service's read timeout.  Defaults to 30 seconds.
+                                                       - TA_SERVER_READ_HEADER_TIMEOUT=<t seconds>         : Sets trust agent service's read header timeout.  Defaults to 30 seconds.
+                                                       - TA_SERVER_WRITE_TIMEOUT=<t seconds>               : Sets trust agent service's write timeout.  Defaults to 10 seconds.
+                                                       - SAN_LIST=<host1,host2.acme.com,...>               : CSV list that sets the value for SAN list in the TA TLS certificate.
+                                                                                                             Defaults to "127.0.0.1,localhost".
+                                                       - TA_TLS_CERT_CN=<Common Name>                      : Sets the value for Common Name in the TA TLS certificate.  Defaults to "Trust Agent TLS Certificate".
+                                                       - TPM_OWNER_SECRET=<40 byte hex>                    : When provided, setup uses the 40 character hex string for the TPM
+                                                                                                             owner password. Auto-generated when not provided.
+                                                       - TPM_QUOTE_IPV4=Y/N                                : When 'Y', used the local system's ip address a salt when processing
+                                                                                                             TPM quotes.  Defaults to 'N'.
+                                                       - TRUSTAGENT_LOG_LEVEL=<trace|debug|info|error>     : Sets the verbosity level of logging. Defaults to 'info'.
+                                                       - TRUSTAGENT_PORT=<portnum>                         : The port on which the trust agent service will listen.
+                                                                                                             Defaults to 1443
 
-Environment variables:
+  download-ca-cert                          - Fetches the latest CMS Root CA Certificates, overwriting existing files.
+                                                    Required environment variables:
+                                                       - CMS_BASE_URL=<url>                                : CMS API URL
+                                                       - CMS_TLS_CERT_SHA384=<CMS TLS cert sha384 hash>    : to ensure that TA is communicating with the right CMS instance
+        
+  download-cert                             - Fetches a signed TLS Certificate from CMS, overwriting existing files.
+                                                    Required environment variables:
+                                                       - CMS_BASE_URL=<url>                                : CMS API URL
+                                                       - BEARER_TOKEN=<token>                              : for authenticating with CMS and VS
+                                                    Optional Environment variables:
+                                                       - SAN_LIST=<host1,host2.acme.com,...>               : CSV list that sets the value for SAN list in the TA TLS certificate.
+                                                                                                             Defaults to "127.0.0.1,localhost".
+                                                       - TA_TLS_CERT_CN=<Common Name>                      : Sets the value for Common Name in the TA TLS certificate.
+                                                                                                             Defaults to "Trust Agent TLS Certificate".
 
-  AAS_API_URL
-    - Used by the trust agent service to validate jwt/bearer tokens.
-    - Ex. AAS_API_URL=https://{host}:{port}/aas/v1
-  AUTOMATIC_PULL_MANIFEST*
-    - When 'Y', instructs the installer to download application manifests
-      using the FLAVOR_UUIDS or FLAVOR_LABELS environment variables by running
-      'get-configured-manifest'.  Defaults to 'N'.
-    - Ex. AUTOMATIC_PULL_MANIFEST=Y
-  AUTOMATIC_REGISTRATION*
-    - When 'Y', instructs the installer to register the host with HVS by
-      running 'create-host' and 'create-host-unique-flavor'.  Defaults to 'N'.
-    - Ex. AUTOMATIC_REGISTRATION=Y
-  BEARER_TOKEN
-    - 'jwt' token used during setup to communicate to CMS and HVS.
-    - Ex. BEARER_TOKEN=eyJhbGciOiJSUzM4NCIsjdkMTdiNmUz...
-  CMS_BASE_URL
-    - URL used by setup to download root-ca and tls certificates from 
-      CMS.
-    - Ex. CMS_BASE_URL=https://{host}:{port}/cms/v1
-  CMS_TLS_CERT_SHA384
-    - SHA384 sum used during setup to secure communications with CMS.
-    - Ex. CMS_TLS_CERT_SHA384=bd8ebf5091289958b5765da4...
-  MTWILSON_API_URL
-    - The URL used during setup to collect information from HVS.
-    - MTWILSON_API_URL=https://{host}:{port}/mtwilson/v2
-  PROVISION_ATTESTATION*
-    - When 'Y', instructs the installer to provision the host with HVS by  
-      calling 'tagent setup'.  Defaults to 'N'.
-    - Ex. AUTOMATIC_REGISTRATION=Y
-  SAN_LIST*
-    - CSV list that sets the value for SAN list in the TA TLS certificate.
-      Defaults to "127.0.0.1,localhost".
-    - Ex. SAN_LIST=10.123.100.1,201.102.10.22,my.example.com
-  TA_ENABLE_CONSOLE_LOG*
-    - When set to 'true', trust agent logs are redirected to stdout. Defaults 
-      to false.
-    - Ex. TA_ENABLE_CONSOLE_LOG=true
-  TA_SERVER_IDLE_TIMEOUT*
-    - Sets the trust agent service's idle timeout.  Defaults to 10 seconds.
-    - Ex. TA_SERVER_IDLE_TIMEOUT=10
-  TA_SERVER_MAX_HEADER_BYTES*
-    - Sets trust agent service's maximum header bytes.  Defaults to 1MB.
-    - Ex. TA_SERVER_MAX_HEADER_BYTES=1048576
-  TA_SERVER_READ_TIMEOUT*
-    - Sets trust agent service's read timeout.  Defaults to 30 seconds.
-    - Ex. TA_SERVER_READ_TIMEOUT=30
-  TA_SERVER_READ_HEADER_TIMEOUT*
-    - Sets trust agent service's read header timeout.  Defaults to 30 seconds.
-    - Ex. TA_SERVER_READ_HEADER_TIMEOUT=10
-  TA_SERVER_WRITE_TIMEOUT*
-    - Sets trust agent service's write timeout.  Defaults to 10 seconds.
-    - Ex. TA_SERVER_WRITE_TIMEOUT=10
-  TA_TLS_CERT_CN*
-    - Sets the value for Common Name in the TA TLS certificate.  Defaults
-      to "Trust Agent TLS Certificate".
-    - Ex. TA_TLS_CERT_CN=Acme Trust Agent 007
-  TPM_OWNER_SECRET*
-    - When provided, setup uses the 40 character hex string for the TPM
-      owner password.  The TPM owner secret is generated when not provided.
-    - Ex. TPM_OWNER_SECRET=625d6d8a18f98bf764760fa392b8c01be0b4e959
-  TPM_QUOTE_IPV4*
-    - When 'Y', used the local system's ip address a salt when processing
-      TPM quotes.  Defaults to 'N'.
-    - Ex. TPM_QUOTE_IPV4=Y
-  TRUSTAGENT_LOG_LEVEL*
-    - Sets the verbosity level of logging (trace|debug|info|error).  Defaults 
-      to 'info'.
-    - Ex. TRUSTAGENT_LOG_LEVEL=debug
-  TRUSTAGENT_PORT*
-    - The port on which the trust agent service will listen.
-    - Ex. TRUSTAGENT_PORT=10433
+  update-certificates                       - Runs 'download-ca-cert' and 'download-cert'
+                                                    Required environment variables:
+                                                        - CMS_BASE_URL=<url>                                : CMS API URL
+                                                        - CMS_TLS_CERT_SHA384=<CMS TLS cert sha384 hash>    : to ensure that TA is communicating with the right CMS instance
+                                                        - BEARER_TOKEN=<token>                              : for authenticating with CMS
+                                                    Optional Environment variables:
+                                                        - SAN_LIST=<host1,host2.acme.com,...>               : CSV list that sets the value for SAN list in the TA TLS certificate.
+                                                                                                              Defaults to "127.0.0.1,localhost".
+                                                        - TA_TLS_CERT_CN=<Common Name>                      : Sets the value for Common Name in the TA TLS certificate.  Defaults to "Trust Agent TLS Certificate".
 
-  * Indicates the environment variable is optional.`
+  provision-attestation                     - Runs setup tasks associated with HVS/TPM provisioning.
+                                                    Required environment variables:
+                                                        - MTWILSON_API_URL=<url>                            : VS API URL
+                                                        - BEARER_TOKEN=<token>                              : for authenticating with VS
+                                                    Optional environment variables:
+                                                        - TPM_OWNER_SECRET=<40 byte hex>                    : When provided, setup uses the 40 character hex string for the TPM
+                                                                                                              owner password. Auto-generated when not provided.
+                                                        - TPM_QUOTE_IPV4='Y'/'N'                            : When 'Y', used the local system's ip address a salt when processing
+                                                                                                              TPM quotes.  Defaults to 'N'.
+
+  create-host                                 - Registers the trust agent with the verification service.
+                                                    Required environment variables:
+                                                        - MTWILSON_API_URL=<url>                            : VS API URL
+                                                        - BEARER_TOKEN=<token>                              : for authenticating with VS
+                                                    Optional environment variables:
+                                                        - TPM_OWNER_SECRET=<40 byte hex>                    : When provided, setup uses the 40 character hex string for the TPM
+                                                                                                              owner password. Auto-generated when not provided.
+                                                        - TPM_QUOTE_IPV4='Y'/'N'                            : When 'Y', used the local system's ip address a salt when processing
+                                                                                                              TPM quotes.  Defaults to 'N'.
+
+  create-host-unique-flavor                 - Populates the verification service with the host unique flavor
+                                                    Required environment variables:
+                                                        - MTWILSON_API_URL=<url>                            : VS API URL
+                                                        - BEARER_TOKEN=<token>                              : for authenticating with VS
+
+  get-configured-manifest                   - Uses environment variables to pull application-integrity 
+                                              manifests from the verification service.
+                                                     Required environment variables:
+                                                        - MTWILSON_API_URL=<url>                            : VS API URL
+                                                        - BEARER_TOKEN=<token>                              : for authenticating with VS
+                                                        - FLAVOR_UUIDS=<uuid1,uuid2,[...]>                  : CSV list of flavor UUIDs
+                                                        - FLAVOR_LABELS=<flavorlabel1,flavorlabel2,[...]>   : CSV list of flavor labels                                                   
+    `
 
 	fmt.Println(usage)
 }
