@@ -7,8 +7,8 @@ package resource
 import (
 	"bytes"
 	"encoding/xml"
-	"intel/isecl/go-trust-agent/constants"
-	"intel/isecl/lib/common/log/message"
+	"intel/isecl/go-trust-agent/v2/constants"
+	"intel/isecl/lib/common/v2/log/message"
 	"io/ioutil"
 	"net/http"
 	"os"

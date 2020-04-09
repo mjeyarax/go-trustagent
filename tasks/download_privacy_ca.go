@@ -6,10 +6,10 @@ package tasks
 
 import (
 	"fmt"
-	"intel/isecl/go-trust-agent/constants"
-	"intel/isecl/go-trust-agent/util"
-	"intel/isecl/go-trust-agent/vsclient"
-	"intel/isecl/lib/common/setup"
+	"intel/isecl/go-trust-agent/v2/constants"
+	"intel/isecl/go-trust-agent/v2/util"
+	"intel/isecl/go-trust-agent/v2/vsclient"
+	"intel/isecl/lib/common/v2/setup"
 	"io/ioutil"
 
 	"github.com/pkg/errors"

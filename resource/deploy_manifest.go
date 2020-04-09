@@ -6,10 +6,10 @@ package resource
 
 import (
 	"encoding/xml"
-	"intel/isecl/go-trust-agent/constants"
-	"intel/isecl/go-trust-agent/vsclient"
-	"intel/isecl/lib/common/validation"
-	"intel/isecl/lib/common/log/message"
+	"intel/isecl/go-trust-agent/v2/constants"
+	"intel/isecl/go-trust-agent/v2/vsclient"
+	"intel/isecl/lib/common/v2/validation"
+	"intel/isecl/lib/common/v2/log/message"
 	"io/ioutil"
 	"net/http"
 	"strings"

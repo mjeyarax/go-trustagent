@@ -5,8 +5,8 @@
 package vsclient
 
 import (
-	"intel/isecl/go-trust-agent/constants"
-	"intel/isecl/lib/clients"
+	"intel/isecl/go-trust-agent/v2/constants"
+	"intel/isecl/lib/clients/v2"
 	"errors"
 	"net/http"
 	"net/url"

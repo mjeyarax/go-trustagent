@@ -7,10 +7,10 @@ package resource
 import (
 	"bytes"
 	"encoding/json"
-	"intel/isecl/go-trust-agent/config"
-	"intel/isecl/lib/common/log/message"
-	"intel/isecl/lib/common/validation"
-	"intel/isecl/lib/tpmprovider"
+	"intel/isecl/go-trust-agent/v2/config"
+	"intel/isecl/lib/common/v2/log/message"
+	"intel/isecl/lib/common/v2/validation"
+	"intel/isecl/lib/tpmprovider/v2"
 	"io/ioutil"
 	"net/http"
 )

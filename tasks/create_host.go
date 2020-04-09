@@ -6,9 +6,9 @@ package tasks
 
 import (
 	"fmt"
-	"intel/isecl/go-trust-agent/util"
-	"intel/isecl/go-trust-agent/vsclient"
-	"intel/isecl/lib/common/setup"
+	"intel/isecl/go-trust-agent/v2/util"
+	"intel/isecl/go-trust-agent/v2/vsclient"
+	"intel/isecl/lib/common/v2/setup"
 	"github.com/pkg/errors"
 )
 

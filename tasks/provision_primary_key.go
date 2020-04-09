@@ -6,8 +6,8 @@ package tasks
 
 import (
 	"fmt"
-	"intel/isecl/lib/common/setup"
-	"intel/isecl/lib/tpmprovider"
+	"intel/isecl/lib/common/v2/setup"
+	"intel/isecl/lib/tpmprovider/v2"
 	
 	"github.com/pkg/errors"
 )
