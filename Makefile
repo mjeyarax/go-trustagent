@@ -13,7 +13,7 @@ TBOOTXM-PROJECT-ID = 21861
 # -fno-strict-overflow -fno-delete-null-pointer-checks -fwrapv -fPIE -fPIC -fstack-protector-strong -O2 -D
 gta:
 	export CGO_CFLAGS_ALLOW="-f.*"; \
-	env GOOS=linux GOSUMDB=off GOPROXY=direct go build -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/util.Version=$(VERSION) -X intel/isecl/go-trust-agent/util.GitHash=$(GITCOMMIT) -X intel/isecl/go-trust-agent/util.BuildDate=$(BUILDDATE)" -o out/tagent
+	env GOOS=linux GOSUMDB=off GOPROXY=direct go build -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/v2/util.Version=$(VERSION) -X intel/isecl/go-trust-agent/v2/util.GitHash=$(GITCOMMIT) -X intel/isecl/go-trust-agent/v2/util.BuildDate=$(BUILDDATE)" -o out/tagent
 
 installer: gta
 	mkdir -p out/installer
