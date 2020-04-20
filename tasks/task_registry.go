@@ -7,13 +7,13 @@ package tasks
 import (
 	"crypto/x509/pkix"
 	"github.com/pkg/errors"
-	commLog "intel/isecl/lib/common/log"
-	"intel/isecl/go-trust-agent/config"
-	"intel/isecl/go-trust-agent/constants"
-	"intel/isecl/go-trust-agent/util"
-	"intel/isecl/go-trust-agent/vsclient"
-	"intel/isecl/lib/common/setup"
-	"intel/isecl/lib/tpmprovider"
+	commLog "intel/isecl/lib/common/v2/log"
+	"intel/isecl/go-trust-agent/v2/config"
+	"intel/isecl/go-trust-agent/v2/constants"
+	"intel/isecl/go-trust-agent/v2/util"
+	"intel/isecl/go-trust-agent/v2/vsclient"
+	"intel/isecl/lib/common/v2/setup"
+	"intel/isecl/lib/tpmprovider/v2"
 	"os"
 )
 

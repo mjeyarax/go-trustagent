@@ -14,10 +14,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"intel/isecl/go-trust-agent/config"
-	"intel/isecl/lib/tpmprovider"
+	"intel/isecl/go-trust-agent/v2/config"
+	"intel/isecl/lib/tpmprovider/v2"
 
-	"intel/isecl/lib/common/middleware"
+	"intel/isecl/lib/common/v2/middleware"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

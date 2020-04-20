@@ -7,7 +7,7 @@
  import (
 	 "fmt"
 	 "io/ioutil"
-	 "intel/isecl/lib/common/log/message"
+	 "intel/isecl/lib/common/v2/log/message"
 	 "net/http"
 
 	 "github.com/pkg/errors"

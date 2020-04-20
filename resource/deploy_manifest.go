@@ -6,10 +6,10 @@ package resource
 
 import (
 	"encoding/xml"
-	"intel/isecl/go-trust-agent/constants"
-	"intel/isecl/go-trust-agent/vsclient"
-	"intel/isecl/lib/common/validation"
-	"intel/isecl/lib/common/log/message"
+	"intel/isecl/go-trust-agent/v2/constants"
+	"intel/isecl/go-trust-agent/v2/vsclient"
+	"intel/isecl/lib/common/v2/validation"
+	"intel/isecl/lib/common/v2/log/message"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -22,6 +22,12 @@ func deployManifest() endpointHandler {
 		defer log.Trace("resource/deploy_manifest:deployManifest() Leaving")
 
 		log.Debugf("resource/deploy_manifest:deployManifest() Request: %s", httpRequest.URL.Path)
+
+		contentType := httpRequest.Header.Get("Content-Type")
+		if  contentType != "application/xml" {
+			log.Errorf("resource/deploy_manifest:deployManifest() %s - Invalid content-type '%s'", message.InvalidInputBadParam, contentType)
+			return &endpointError{Message: "Invalid content-type", StatusCode: http.StatusBadRequest}
+		}
 
 		// receive a manifest from hvs in the request body
 		manifestXml, err := ioutil.ReadAll(httpRequest.Body)

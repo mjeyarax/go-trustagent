@@ -12,7 +12,8 @@ TBOOTXM-PROJECT-ID = 21861
 # TODO:  Update make file to support debug/release builds (release build to use secure gcflags)
 # -fno-strict-overflow -fno-delete-null-pointer-checks -fwrapv -fPIE -fPIC -fstack-protector-strong -O2 -D
 gta:
-	env GOOS=linux GOSUMDB=off GOPROXY=direct go build -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/util.Version=$(VERSION) -X intel/isecl/go-trust-agent/util.GitHash=$(GITCOMMIT) -X intel/isecl/go-trust-agent/util.BuildDate=$(BUILDDATE)" -o out/tagent
+	export CGO_CFLAGS_ALLOW="-f.*"; \
+	env GOOS=linux GOSUMDB=off GOPROXY=direct go build -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/v2/util.Version=$(VERSION) -X intel/isecl/go-trust-agent/v2/util.GitHash=$(GITCOMMIT) -X intel/isecl/go-trust-agent/v2/util.BuildDate=$(BUILDDATE)" -o out/tagent
 
 installer: gta
 	mkdir -p out/installer
@@ -32,8 +33,8 @@ installer: gta
 	makeself out/installer out/trustagent-$(VERSION).bin "TrustAgent $(VERSION)" ./install.sh
 
 build_test: gta
-	cd resource && go test -c -o ../out/resource.test -tags=unit_test
-	cd tasks && go test -c -o ../out/tasks.test -tags=unit_test
+	export CGO_CFLAGS_ALLOW="-f.*" && cd resource && go test -c -o ../out/resource.test -tags=unit_test
+	export CGO_CFLAGS_ALLOW="-f.*" && cd tasks && go test -c -o ../out/tasks.test -tags=unit_test
 
 all: clean installer
 

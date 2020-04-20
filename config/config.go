@@ -6,12 +6,12 @@ package config
 
 import (
 	"fmt"
-	"intel/isecl/go-trust-agent/constants"
-	"intel/isecl/lib/common/setup"
-	"intel/isecl/lib/common/validation"
-	commLog "intel/isecl/lib/common/log"
-	"intel/isecl/lib/common/log/message"
-	commLogInt "intel/isecl/lib/common/log/setup"
+	"intel/isecl/go-trust-agent/v2/constants"
+	"intel/isecl/lib/common/v2/setup"
+	"intel/isecl/lib/common/v2/validation"
+	commLog "intel/isecl/lib/common/v2/log"
+	"intel/isecl/lib/common/v2/log/message"
+	commLogInt "intel/isecl/lib/common/v2/log/setup"
 	"io"
 	"os"
 	"strconv"

@@ -15,13 +15,13 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
-	"intel/isecl/go-trust-agent/constants"
-	"intel/isecl/go-trust-agent/util"
-	"intel/isecl/go-trust-agent/vsclient"
-	"intel/isecl/lib/common/crypt"
-	"intel/isecl/lib/common/setup"
-	"intel/isecl/lib/common/log/message"
-	"intel/isecl/lib/tpmprovider"
+	"intel/isecl/go-trust-agent/v2/constants"
+	"intel/isecl/go-trust-agent/v2/util"
+	"intel/isecl/go-trust-agent/v2/vsclient"
+	"intel/isecl/lib/common/v2/crypt"
+	"intel/isecl/lib/common/v2/setup"
+	"intel/isecl/lib/common/v2/log/message"
+	"intel/isecl/lib/tpmprovider/v2"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -398,7 +398,7 @@ func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityReq
 	defer tpm.Close()
 
 	// get the aik's public key and populate into the identityRequest
-	aikPublicKeyBytes, err := tpm.GetAikBytes(*task.ownerSecretKey)
+	aikPublicKeyBytes, err := tpm.GetAikBytes()
 	if err != nil {
 		return err
 	}
@@ -409,7 +409,7 @@ func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityReq
 	identityRequest.TpmVersion = "2.0" // Assume TPM 2.0 for GTA (1.2 is no longer supported)
 	identityRequest.AikBlob = new(big.Int).SetInt64(tpmprovider.TPM_HANDLE_AIK).Bytes()
 
-	identityRequest.AikName, err = tpm.GetAikName(*task.ownerSecretKey)
+	identityRequest.AikName, err = tpm.GetAikName()
 	if err != nil {
 		return errors.Wrap(err, "tasks/provision_aik:populateIdentityRequest() Error while retrieving Aik Name from tpm")
 	}

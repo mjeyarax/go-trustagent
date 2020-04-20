@@ -8,8 +8,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"intel/isecl/lib/common/validation"
-	"intel/isecl/lib/common/log/message"
+	"intel/isecl/lib/common/v2/validation"
+	"intel/isecl/lib/common/v2/log/message"
 	"io/ioutil"
 	"net/http"
 

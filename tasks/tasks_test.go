@@ -9,10 +9,10 @@ package tasks
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"intel/isecl/go-trust-agent/config"
-	"intel/isecl/go-trust-agent/vsclient"
-	"intel/isecl/lib/common/setup"
-	"intel/isecl/lib/tpmprovider"
+	"intel/isecl/go-trust-agent/v2/config"
+	"intel/isecl/go-trust-agent/v2/vsclient"
+	"intel/isecl/lib/common/v2/setup"
+	"intel/isecl/lib/tpmprovider/v2"
 	"testing"
 )
 

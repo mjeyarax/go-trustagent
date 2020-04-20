@@ -5,10 +5,9 @@
 package tasks
 
 import (
-	"encoding/hex"
 	"fmt"
-	"intel/isecl/lib/common/setup"
-	"intel/isecl/lib/tpmprovider"
+	"intel/isecl/lib/common/v2/setup"
+	"intel/isecl/lib/tpmprovider/v2"
 	
 	"github.com/pkg/errors"
 )
@@ -39,12 +38,7 @@ func (task *ProvisionPrimaryKey) Run(c setup.Context) error {
 	}
 
 	if !exists {
-		ownerSecret, err := hex.DecodeString(*task.ownerSecretKey)
-		if err != nil {
-			return err
-		}
-
-		err = tpm.CreatePrimaryHandle(ownerSecret, tpmprovider.TPM_HANDLE_PRIMARY)
+		err = tpm.CreatePrimaryHandle(*task.ownerSecretKey, tpmprovider.TPM_HANDLE_PRIMARY)
 		if err != nil {
 			log.WithError(err).Error("tasks/provision_primary_key:Run() Error while creating tpm primary handle")
 			return errors.New("Error while creating tpm primary handle")

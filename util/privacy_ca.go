@@ -7,7 +7,7 @@ package util
 import (
 	"crypto/rsa"
 	"crypto/x509"
-	"intel/isecl/go-trust-agent/constants"
+	"intel/isecl/go-trust-agent/v2/constants"
 	"io/ioutil"
 	"os"
 	

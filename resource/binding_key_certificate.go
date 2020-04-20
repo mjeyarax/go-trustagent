@@ -6,8 +6,8 @@ package resource
 
 import (
 	"bytes"
-	"intel/isecl/go-trust-agent/constants"
-	"intel/isecl/lib/common/log/message"
+	"intel/isecl/go-trust-agent/v2/constants"
+	"intel/isecl/lib/common/v2/log/message"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -22,6 +22,13 @@ func getBindingKeyCertificate() endpointHandler {
 		defer log.Trace("resource/binding_key_certificate:getBindingKeyCertificate() Leaving")
 
 		log.Debugf("resource/binding_key_certificate:getBindingKeyCertificate() Request: %s", httpRequest.URL.Path)
+
+		// HVS does not provide a content-type, exlude other values
+		contentType := httpRequest.Header.Get("Content-Type")
+		if  contentType != "" {
+			log.Errorf("resource/binding_key_certificate:getBindingKeyCertificate() %s - Invalid content-type '%s'", message.InvalidInputBadParam, contentType)
+			return &endpointError{Message: "Invalid content-type", StatusCode: http.StatusBadRequest}
+		}
 
 		if _, err := os.Stat(constants.BindingKeyCertificatePath); os.IsNotExist(err) {
 			log.WithError(err).Errorf("resource/binding_key_certificate:getBindingKeyCertificate() %s - %s does not exist", message.AppRuntimeErr, constants.BindingKeyCertificatePath)

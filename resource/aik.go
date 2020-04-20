@@ -8,8 +8,8 @@ import (
 	"bytes"
 	"crypto/x509"
 	"encoding/pem"
-	"intel/isecl/go-trust-agent/constants"
-	"intel/isecl/lib/common/log/message"
+	"intel/isecl/go-trust-agent/v2/constants"
+	"intel/isecl/lib/common/v2/log/message"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -26,6 +26,13 @@ func getAik() endpointHandler {
 		defer log.Trace("resource/aik:getAik() Leaving")
 
 		log.Debugf("resource/aik:getAik() Request: %s", httpRequest.URL.Path)
+
+		// HVS does not provide a content-type to /aik, so only allow the empty string...
+		contentType := httpRequest.Header.Get("Content-Type")
+		if  contentType != "" {
+			log.Errorf("resource/aik:getAik() %s - Invalid content-type '%s'", message.InvalidInputBadParam, contentType)
+			return &endpointError{Message: "Invalid content-type", StatusCode: http.StatusBadRequest}
+		}
 
 		if _, err := os.Stat(constants.AikCert); os.IsNotExist(err) {
 			log.Errorf("resource/aik:getAik() %s - %s does not exist", message.AppRuntimeErr, constants.AikCert)
