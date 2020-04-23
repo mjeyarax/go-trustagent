@@ -1,5 +1,7 @@
 [Unit]
 Description=TrustAgent Initialization
+Wants=docker.service
+After=docker.service
 
 [Service]
 Type=oneshot
