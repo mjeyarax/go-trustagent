@@ -15,12 +15,17 @@ require (
 	intel/isecl/lib/common/v2 v2.1.0
 	intel/isecl/lib/platform-info/v2 v2.1.0
 	intel/isecl/lib/tpmprovider/v2 v2.1.0
+	privacyca v0.0.0
 )
 
 replace intel/isecl/lib/common/v2 => github.com/intel-secl/common/v2 v2.1.0
 
-replace intel/isecl/lib/tpmprovider/v2 => github.com/intel-secl/tpm-provider/v2 v2.1.0
+replace intel/isecl/lib/tpmprovider/v2 => ../tpm-provider
 
 replace intel/isecl/lib/platform-info/v2 => github.com/intel-secl/platform-info/v2 v2.1.0
 
 replace intel/isecl/lib/clients/v2 => github.com/intel-secl/clients/v2 v2.1.0
+
+replace privacyca => ../privacyca
+
+go 1.13

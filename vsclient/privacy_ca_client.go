@@ -11,6 +11,8 @@ import (
 	"intel/isecl/lib/common/v2/log/message"
 	"io/ioutil"
 	"net/http"
+	"privacyca/types"
+
 	"github.com/pkg/errors"
 )
 
@@ -24,27 +26,9 @@ type PrivacyCAClient interface {
 	GetIdentityProofResponse(identityChallengeResponse *IdentityChallengeResponse) (*IdentityProofRequest, error)
 }
 
-// {
-//   "identity_request":{
-//     "tpm_version":"2.0",
-//     "identity_request_blob":[identityRequest blob],
-//     "aik_modulus":[aikModulus blob],
-//     "aik_blob":[aik blob],
-//     "aik_name":[aikName blob]
-//   },
-//   "endorsement_certificate": [blob of endorsement certificate]
-// }
-type IdentityRequest struct {
-	TpmVersion 				string `json:"tpm_version"`
-	IdentityRequestBlock	[]byte `json:"identity_request_blob"`
-	AikModulus				[]byte `json:"aik_modulus"`
-	AikBlob					[]byte `json:"aik_blob"`
-	AikName					[]byte `json:"aik_name"`
-}
-
 type IdentityChallengeRequest struct {
-	IdentityRequest 			IdentityRequest `json:"identity_request"`
-	EndorsementCertificate 		[]byte 			`json:"endorsement_certificate"`
+	IdentityRequest        types.IdentityRequest `json:"identity_request"`
+	EndorsementCertificate []byte                `json:"endorsement_certificate"`
 }
 
 // {
@@ -58,8 +42,8 @@ type IdentityChallengeRequest struct {
 //   "response_to_challenge": [responseToChallenge blob ]
 // }
 type IdentityChallengeResponse struct {
-	IdentityRequest 			IdentityRequest `json:"identity_request"`
-	ResponseToChallenge 		[]byte 			`json:"response_to_challenge"`
+	IdentityRequest     types.IdentityRequest `json:"identity_request"`
+	ResponseToChallenge []byte                `json:"response_to_challenge"`
 }
 
 // {
@@ -80,10 +64,10 @@ type IdentityChallengeResponse struct {
 // 	                                   9Kv5ij8UqHk2P1DzWjCBvwCqHTzRsuf9b9FeT+f4aWgLNQ=="
 // 	}
 type IdentityProofRequest struct {
-	Secret						[]byte `json:"secret"`
-	Credential					[]byte `json:"credential"`
-	SymetricBlob				[]byte `json:"sym_blob"`
-	EndorsementCertificateBlob	[]byte `json:"ek_blob"`
+	Secret                     []byte `json:"secret"`
+	Credential                 []byte `json:"credential"`
+	SymetricBlob               []byte `json:"sym_blob"`
+	EndorsementCertificateBlob []byte `json:"ek_blob"`
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -92,7 +76,7 @@ type IdentityProofRequest struct {
 
 type privacyCAClientImpl struct {
 	httpClient *http.Client
-	cfg *vsClientConfig
+	cfg        *vsClientConfig
 }
 
 func (client *privacyCAClientImpl) DownloadPrivacyCa() ([]byte, error) {
@@ -116,7 +100,7 @@ func (client *privacyCAClientImpl) DownloadPrivacyCa() ([]byte, error) {
 
 		ca, err = ioutil.ReadAll(response.Body)
 		if err != nil {
-			return nil, errors.Wrap(err,"vsclient/privacy_ca_client:DownloadPrivacyCa() Error reading response")
+			return nil, errors.Wrap(err, "vsclient/privacy_ca_client:DownloadPrivacyCa() Error reading response")
 		}
 	}
 
@@ -144,7 +128,7 @@ func (client *privacyCAClientImpl) GetIdentityProofRequest(identityChallengeRequ
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		secLog.Warn(message.BadConnection)
-		return nil, errors.Wrapf(err,"vsclient/privacy_ca_client:GetIdentityProofRequest() Error sending request to %s", url)
+		return nil, errors.Wrapf(err, "vsclient/privacy_ca_client:GetIdentityProofRequest() Error sending request to %s", url)
 	} else {
 		if response.StatusCode != http.StatusOK {
 			b, _ := ioutil.ReadAll(response.Body)

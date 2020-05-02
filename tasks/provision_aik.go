@@ -13,18 +13,20 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"encoding/hex"
-	"encoding/pem"
+
+	//"encoding/pem"
 	"fmt"
 	"intel/isecl/go-trust-agent/v2/constants"
 	"intel/isecl/go-trust-agent/v2/util"
 	"intel/isecl/go-trust-agent/v2/vsclient"
 	"intel/isecl/lib/common/v2/crypt"
-	"intel/isecl/lib/common/v2/setup"
 	"intel/isecl/lib/common/v2/log/message"
+	"intel/isecl/lib/common/v2/setup"
 	"intel/isecl/lib/tpmprovider/v2"
-	"io/ioutil"
 	"math/big"
 	"os"
+	"privacyca"
+	"privacyca/types"
 
 	"github.com/pkg/errors"
 )
@@ -53,10 +55,10 @@ import (
 //-------------------------------------------------------------------------------------------------
 
 type ProvisionAttestationIdentityKey struct {
-	clientFactory vsclient.VSClientFactory
-	tpmFactory tpmprovider.TpmFactory
+	clientFactory  vsclient.VSClientFactory
+	tpmFactory     tpmprovider.TpmFactory
 	ownerSecretKey *string
-	aikSecretKey *string	// out variable that can be set during setup
+	aikSecretKey   *string // out variable that can be set during setup
 }
 
 func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
@@ -64,12 +66,6 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	defer log.Trace("tasks/provision_aik:Run() Leaving")
 	fmt.Println("Running setup task: provision-aik")
 	var err error
-
-	privacyCAClient, err := task.clientFactory.PrivacyCAClient()
-	if err != nil {
-		log.WithError(err).Error("tasks/provision_aik:Run() Could not create privacy- client")
-		return err
-	}
 
 	// generate the aik in the tpm
 	err = task.createAik()
@@ -98,20 +94,43 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error while encrypting the endorsement certificate bytes")
 		return errors.New("Error while encrypting the endorsement certificate bytes")
 	}
+	log.Info("abc1")
+	//block, _ := pem.Decode(ekCertBytes)
+	//log.Info("Error1")
+	var cert *x509.Certificate
+	cert, err = x509.ParseCertificate(ekCertBytes)
+	if err != nil {
+		log.Info("Error2")
+	}
+	rsaPublicKey := cert.PublicKey.(*rsa.PublicKey)
+	log.Info("abc2")
+	identityChallengeRequestBytes, err := crypt.GetRandomBytes(32)
+	if err != nil {
+		return err
+	}
 
+	log.Info("About to process privacyca1")
 	// send the 'challenge request' to HVS and get an 'proof request' back
-	identityProofRequest, err := privacyCAClient.GetIdentityProofRequest(&identityChallengeRequest)
+	identityProofRequest, err := privacyca.ProcessIdentityRequest(identityChallengeRequest.IdentityRequest, rsaPublicKey, identityChallengeRequestBytes)
 	if err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error while getting identity proof request from VS for a given challenge request with ek")
 		return errors.New("Error while getting identity proof request from VS for a given challenge request with ek")
 	}
+	log.Info("===========")
+	log.Infof("secret %v", identityProofRequest.Secret)
+	log.Info("===========")
+	log.Infof("Credential %v", identityProofRequest.Credential)
+	log.Info("===========")
+	log.Info("symblob %v", identityProofRequest.SymetricBlob)
+	log.Info("===========")
 
 	// pass the HVS response to the TPM to 'activate' the 'credential' and decrypt
 	// the nonce created by HVS (IdentityProofRequest 'sym_blob')
-	decrypted1, err := task.activateCredential(identityProofRequest)
+	decrypted1, err := task.activateCredential(&identityProofRequest)
 	if err != nil {
 		return errors.Wrap(err, "tasks/provision_aik:Run() Error while performing activate credential task")
 	}
+	log.Info("activate credential is successful")
 
 	// create an IdentityChallengeResponse to send back to HVS
 	identityChallengeResponse := vsclient.IdentityChallengeResponse{}
@@ -119,54 +138,6 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	if err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error while encrypting nonce")
 		return errors.New("Error while encrypting nonce")
-	}
-
-	// KWT: refactor so that the call to get AIK info is done once
-	err = task.populateIdentityRequest(&identityChallengeResponse.IdentityRequest)
-	if err != nil {
-		log.WithError(err).Error("tasks/provision_aik:Run() Error while populating identity request with identity challenge response")
-		return errors.New("Error while populating identity request with identity challenge response")
-	}
-
-	// send the decrypted nonce data back to HVS and get a 'proof request' back
-	identityProofRequest2, err := privacyCAClient.GetIdentityProofResponse(&identityChallengeResponse)
-	if err != nil {
-		log.WithError(err).Error("tasks/provision_aik:Run() Error while retrieving identity proof response from HVS")
-		return errors.New("Error while retrieving identity proof response from HVS")
-	}
-
-	// decrypt the 'proof request' from HVS into the 'aik' cert
-	decrypted2, err := task.activateCredential(identityProofRequest2)
-	if err != nil {
-		log.WithError(err).Error("tasks/provision_aik:Run() Error while retrieving aik certificate bytes from identity proof request from HVS")
-		return errors.New("Error while retrieving aik certificate bytes from identity proof request from HVS")
-	}
-
-	// make sure the decrypted bytes are a valid certificates...
-	_, err = x509.ParseCertificate(decrypted2)
-	if err != nil {
-		log.WithError(err).Error("tasks/provision_aik:Run() Error while parsing the aik certificate")
-		return errors.New("Error while parsing the aik certificate")
-	}
-
-	// save the aik pem cert to disk
-	err = ioutil.WriteFile(constants.AikCert, decrypted2, 0600)
-	if err != nil {
-		log.WithError(err).Errorf("tasks/provision_aik:Run() Error while writing aik certificate file %s", constants.AikCert)
-		return errors.Errorf("Error while writing aik certificate file %s", constants.AikCert)
-	}
-
-	certOut, err := os.OpenFile(constants.AikCert, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0)
-	if err != nil {
-		log.WithError(err).Error("tasks/provision_aik:Run() Error Could not open file for writing")
-		return errors.New("Error: Could not open file for writing")
-	}
-	defer certOut.Close()
-
-	os.Chmod(constants.AikCert, 0640)
-	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: decrypted2}); err != nil {
-		log.WithError(err).Error("tasks/provision_aik:Run() Error Could not pem encode cert: ")
-		return errors.New("Error: Could not pem encode cert")
 	}
 
 	return nil
@@ -203,7 +174,7 @@ func (task *ProvisionAttestationIdentityKey) createAik() error {
 
 	tpm, err := task.tpmFactory.NewTpmProvider()
 	if err != nil {
-		return errors.Wrap(err,"tasks/provision_aik:createAik() createAik not create TpmProvider")
+		return errors.Wrap(err, "tasks/provision_aik:createAik() createAik not create TpmProvider")
 	}
 
 	defer tpm.Close()
@@ -248,7 +219,7 @@ func (task *ProvisionAttestationIdentityKey) getTpmSymetricKey(key []byte) ([]by
 	// ISECL-7702: Sha1 is being used for compatability with HVS --> needs to be fixed before release
 	ekAsymetricBytes, err := rsa.EncryptOAEP(sha1.New(), bytes.NewBuffer(asymKey), privacyCa, buf.Bytes(), nil)
 	if err != nil {
-		return nil, errors.Wrap(err,"tasks/provision_aik:getTpmSymetricKey() Error encrypting tpm symmetric key")
+		return nil, errors.Wrap(err, "tasks/provision_aik:getTpmSymetricKey() Error encrypting tpm symmetric key")
 	}
 	secLog.Infof("%s tasks/provision_aik:getTpmSymetricKey() Returning encrypted tpm symmetric key", message.EncKeyUsed)
 
@@ -291,7 +262,7 @@ func (task *ProvisionAttestationIdentityKey) getEncryptedBytes(unencrypted []byt
 	// Encrypt the bytes using aes from https://golang.org/pkg/crypto/cipher/#example_NewCBCEncrypter
 	//---------------------------------------------------------------------------------------------
 	if len(unencrypted)%aes.BlockSize != 0 {
-		return nil, errors.Errorf( "tasks/provision_aik:getEncryptedBytes() byte length (%d) is not a multiple of the block size (%d)", len(unencrypted), aes.BlockSize)
+		return nil, errors.Errorf("tasks/provision_aik:getEncryptedBytes() byte length (%d) is not a multiple of the block size (%d)", len(unencrypted), aes.BlockSize)
 	}
 
 	cipherKey, err := crypt.GetRandomBytes(16)
@@ -324,6 +295,7 @@ func (task *ProvisionAttestationIdentityKey) getEncryptedBytes(unencrypted []byt
 	if err != nil {
 		return nil, errors.Wrap(err, "tasks/provision_aik:getEncryptedBytes() Error while retrieving tpm symmetric key")
 	}
+	log.Info("About to process privacyca2")
 
 	//---------------------------------------------------------------------------------------------
 	// The TrustAgent submits a very specific byte sequence for the encrypted 'endorsement_certificate',
@@ -353,6 +325,8 @@ func (task *ProvisionAttestationIdentityKey) getEncryptedBytes(unencrypted []byt
 	// asymBlob (bytes of aysmetric key)
 	// symBlob (bytes of symetric key)
 	//---------------------------------------------------------------------------------------------
+	log.Info("About to process privacyca4")
+
 	buf := new(bytes.Buffer)
 
 	binary.Write(buf, binary.BigEndian, uint32(len(asymmetricBytes))) // length of encrypted symetric key data
@@ -381,18 +355,19 @@ func (task *ProvisionAttestationIdentityKey) getEncryptedBytes(unencrypted []byt
 	// actual bytes
 	binary.Write(buf, binary.BigEndian, asymmetricBytes)
 	binary.Write(buf, binary.BigEndian, symmetricBytes)
+	log.Info("About to process privacyca3")
 
 	b := buf.Bytes()
 	return b, nil
 }
 
-func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityRequest *vsclient.IdentityRequest) error {
+func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityRequest *types.IdentityRequest) error {
 	log.Trace("tasks/provision_aik:populateIdentityRequest() Entering")
 	defer log.Trace("tasks/provision_aik:populateIdentityRequest() Leaving")
 
 	tpm, err := task.tpmFactory.NewTpmProvider()
 	if err != nil {
-		return errors.Wrap(err,"tasks/provision_aik:populateIdentityRequest() Error while creating new TpmProvider")
+		return errors.Wrap(err, "tasks/provision_aik:populateIdentityRequest() Error while creating new TpmProvider")
 	}
 
 	defer tpm.Close()
@@ -437,7 +412,7 @@ func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityReq
 //   - EndorsementKeyBlob:  SHA256 of this node's EK public using the Aik modules
 // - Use the symmetric key to decrypt the nonce (also requires iv) created by PrivacyCa.java::processV20
 //
-func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofRequest *vsclient.IdentityProofRequest) ([]byte, error) {
+func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofRequest *types.IdentityProofRequest) ([]byte, error) {
 	log.Trace("tasks/provision_aik:activateCredential() Entering")
 	defer log.Trace("tasks/provision_aik:activateCredential() Leaving")
 
@@ -459,9 +434,9 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 	if credentialSize == 0 || int(credentialSize) > len(identityProofRequest.Credential) {
 		return nil, errors.Errorf("tasks/provision_aik:activateCredential() Invalid credential size %d", credentialSize)
 	}
-
+	log.Infof("credentialSize %d", int(credentialSize))
 	credentialBytes := buf.Next(int(credentialSize))
-
+	//	credentialBytes = append(credentialBytes, byte(0x33))
 	//
 	// Read the secret bytes similar to credential (i.e. with 2 byte size header)
 	//
@@ -474,15 +449,22 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 
 	secretBytes := buf.Next(int(secretSize))
 	log.Debugf("tasks/provision_aik:activateCredential() secretBytes: %d", len(secretBytes))
-
 	//
 	// Now decrypt the symetric key using ActivateCredential
 	//
+	log.Info("Now decrypt the symetric key using ActivateCredential")
+	log.Infof("credentialBytes %v", credentialBytes)
+	log.Infof("credentialBytes len %d", len(credentialBytes))
+	log.Info("========================")
+	log.Infof("secretBytes %v", secretBytes)
+	log.Infof("secretBytes len %d", len(secretBytes))
+
 	symmetricKey, err := tpm.ActivateCredential(*task.ownerSecretKey, *task.aikSecretKey, credentialBytes, secretBytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "tasks/provision_aik:activateCredential() Error while performing tpm activate credential operation")
 	}
 
+	log.Info("ActivateCredential successful")
 	//   - SymmetricBlob
 	//     - int32 length of encrypted blob
 	//     - TpmKeyParams
@@ -498,7 +480,6 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 	var algoId int32
 	var encSchem int16
 	var sigSchem int16
-	var size int32
 	var iv []byte
 	var encryptedBytes []byte
 
@@ -507,13 +488,12 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 	binary.Read(buf, binary.BigEndian, &algoId)
 	binary.Read(buf, binary.BigEndian, &encSchem)
 	binary.Read(buf, binary.BigEndian, &sigSchem)
-	binary.Read(buf, binary.BigEndian, &size)
 	iv = buf.Next(16)
 	encryptedBytes = buf.Next(int(encryptedBlobLength) - len(iv))
 
 	log.Debugf("tasks/provision_aik:activateCredential() sym_blob[%d]: %s", len(identityProofRequest.SymetricBlob), hex.EncodeToString(identityProofRequest.SymetricBlob))
 	log.Debugf("tasks/provision_aik:activateCredential() symmetric[%d]: %s", len(symmetricKey), hex.EncodeToString(symmetricKey))
-	log.Debugf("tasks/provision_aik:activateCredential() Len[%d], Algo[%d], Enc[%d], sig[%d], size[%d]", encryptedBlobLength, algoId, encSchem, sigSchem, size)
+	log.Debugf("tasks/provision_aik:activateCredential() Len[%d], Algo[%d], Enc[%d], sig[%d]", encryptedBlobLength, algoId, encSchem, sigSchem)
 	log.Debugf("tasks/provision_aik:activateCredential() iv[%d]: %s", len(iv), hex.EncodeToString(iv))
 	log.Debugf("tasks/provision_aik:activateCredential() encrypted[%d]: %s", len(encryptedBytes), hex.EncodeToString(encryptedBytes))
 
@@ -528,10 +508,6 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 
 	mode := cipher.NewCBCDecrypter(block, iv)
 	mode.CryptBlocks(decrypted, encryptedBytes)
-
-	length := len(decrypted)
-	unpadding := int(decrypted[length-1])
-	decrypted = decrypted[:(length - unpadding)]
 
 	return decrypted, nil
 }
