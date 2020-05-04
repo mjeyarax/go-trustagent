@@ -11,6 +11,18 @@ gta:
 	export CGO_CFLAGS_ALLOW="-f.*"; \
 	env GOOS=linux GOSUMDB=off GOPROXY=direct go build -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/v2/util.Version=$(VERSION) -X intel/isecl/go-trust-agent/v2/util.GitHash=$(GITCOMMIT) -X intel/isecl/go-trust-agent/v2/util.BuildDate=$(BUILDDATE)" -o out/tagent
 
+swagger-get:
+	wget https://github.com/go-swagger/go-swagger/releases/download/v0.21.0/swagger_linux_amd64 -O /usr/local/bin/swagger
+	chmod +x /usr/local/bin/swagger
+	wget https://repo1.maven.org/maven2/io/swagger/codegen/v3/swagger-codegen-cli/3.0.16/swagger-codegen-cli-3.0.16.jar -O /usr/local/bin/swagger-codegen-cli.jar
+
+swagger-doc: 
+	mkdir -p out/swagger
+	export CGO_CFLAGS_ALLOW="-f.*"; /usr/local/bin/swagger generate spec -o ./out/swagger/openapi.yml --scan-models
+	java -jar /usr/local/bin/swagger-codegen-cli.jar generate -i ./out/swagger/openapi.yml -o ./out/swagger/ -l html2 -t ./swagger/templates/
+
+swagger: swagger-get swagger-doc
+
 installer: gta
 	mkdir -p out/installer
 	cp dist/linux/tagent.service out/installer/tagent.service
