@@ -279,7 +279,7 @@ func (task *ProvisionAttestationIdentityKey) getEndorsementKeyBytes() ([]byte, e
 }
 
 //
-// Creates a byte structure with encrpted data similar to gov.niarl.his.privacyca.TpmIdentityRequest
+// Creates a byte structure with encrypted data similar to gov.niarl.his.privacyca.TpmIdentityRequest
 //
 // Asymetric encryption:  RSA, RSAESOAEP_SHA1_MGF1?, 2048 (see TpmIdentityRequest.createDefaultAsymAlgorithm)
 // Symetric encryption: 16 random bytes, RSA, TPM_ES_RSAESOAEP_SHA1_MGF1, 2048 (see createDefaultSymAlgorithm)
@@ -287,13 +287,10 @@ func (task *ProvisionAttestationIdentityKey) getEndorsementKeyBytes() ([]byte, e
 func (task *ProvisionAttestationIdentityKey) getEncryptedBytes(unencrypted []byte) ([]byte, error) {
 	log.Trace("tasks/provision_aik:getEncryptedBytes() Entering")
 	defer log.Trace("tasks/provision_aik:getEncryptedBytes() Leaving")
+
 	//---------------------------------------------------------------------------------------------
 	// Encrypt the bytes using aes from https://golang.org/pkg/crypto/cipher/#example_NewCBCEncrypter
 	//---------------------------------------------------------------------------------------------
-	if len(unencrypted)%aes.BlockSize != 0 {
-		return nil, errors.Errorf( "tasks/provision_aik:getEncryptedBytes() byte length (%d) is not a multiple of the block size (%d)", len(unencrypted), aes.BlockSize)
-	}
-
 	cipherKey, err := crypt.GetRandomBytes(16)
 	if err != nil {
 		return nil, err

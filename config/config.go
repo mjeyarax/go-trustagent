@@ -138,7 +138,6 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 		dirty = true
 	} // else := ok (This field may be generated in tasks/take-ownership when not present.)
 
-
 	//---------------------------------------------------------------------------------------------
 	// MTWILSON_API_URL
 	//---------------------------------------------------------------------------------------------

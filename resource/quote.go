@@ -53,7 +53,7 @@ type TpmQuoteResponse struct {
 	ErrorMessage    string   `xml:"errorMessage"`
 	Aik             string   `xml:"aik"`
 	Quote           string   `xml:"quote"`
-	EventLog        string   `xml:"eventLog"`
+	EventLog        *string  `xml:"eventLog,omitempty"`
 	TcbMeasurements struct {
 		XMLName         xml.Name `xml:"tcbMeasurements"`
 		TcbMeasurements []string `xml:"tcbMeasurements"`
@@ -166,7 +166,8 @@ func (ctx *TpmQuoteContext) readEventLog() error {
 	defer log.Trace("resource/quote:readEventLog() Leaving")
 
 	if _, err := os.Stat(constants.MeasureLogFilePath); os.IsNotExist(err) {
-		return err
+		log.Debugf("esource/quote:readEventLog() Event log file '%s' was not present", constants.MeasureLogFilePath)
+		return nil // if the file does not exist, do not include in the quote
 	}
 
 	eventLogBytes, err := ioutil.ReadFile(constants.MeasureLogFilePath)
@@ -187,7 +188,8 @@ func (ctx *TpmQuoteContext) readEventLog() error {
 	xml = strings.Replace(xml, "\t", "", -1)
 	xml = strings.Replace(xml, "\n", "", -1)
 
-	ctx.tpmQuoteResponse.EventLog = base64.StdEncoding.EncodeToString([]byte(xml))
+	eventLog := base64.StdEncoding.EncodeToString([]byte(xml))
+	ctx.tpmQuoteResponse.EventLog = &eventLog
 	return nil
 }
 
@@ -198,7 +200,7 @@ func (ctx *TpmQuoteContext) getQuote(tpmQuoteRequest *TpmQuoteRequest, tpmQuoteI
 		return err
 	}
 
-	log.Debugf("resource/quote:readEventLog() Providing tpm nonce value '%s', raw[%s]", base64.StdEncoding.EncodeToString(nonce), hex.EncodeToString(nonce))
+	log.Debugf("resource/quote:getQuote() Providing tpm nonce value '%s', raw[%s]", base64.StdEncoding.EncodeToString(nonce), hex.EncodeToString(nonce))
 
 	quoteBytes, err := ctx.tpm.GetTpmQuote(ctx.cfg.Tpm.AikSecretKey, nonce, tpmQuoteRequest.PcrBanks, tpmQuoteRequest.Pcrs)
 	if err != nil {

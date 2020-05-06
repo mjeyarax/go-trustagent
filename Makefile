@@ -4,10 +4,6 @@ GITCOMMITDATE := $(shell git log -1 --date=short --pretty=format:%cd)
 GITBRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 BUILDDATE := $(shell TZ=UTC date +%Y-%m-%dT%H:%M:%SZ)
 VERSION := $(or ${GITTAG}, v1.0.0)
-APPLICATION-AGENT-ARTIFACT = application-agent-4.6-SNAPSHOT-rhel.bin
-GITLAB-TOKEN = gpgtQ5xyjKwDYECNjc9T
-TBOOTXM-BRANCH = v1.0%2Fgo-trust-agent
-TBOOTXM-PROJECT-ID = 21861
 
 # TODO:  Update make file to support debug/release builds (release build to use secure gcflags)
 # -fno-strict-overflow -fno-delete-null-pointer-checks -fwrapv -fPIE -fPIC -fstack-protector-strong -O2 -D
