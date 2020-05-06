@@ -8,20 +8,19 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rsa"
-	"crypto/sha1"
 	"crypto/x509"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
+	"intel-secl/pkg/lib/privacyca/tpm2utils"
 	"intel/isecl/go-trust-agent/v2/constants"
 	"intel/isecl/go-trust-agent/v2/util"
 	"intel/isecl/go-trust-agent/v2/vsclient"
 	"intel/isecl/lib/common/v2/crypt"
 	"intel/isecl/lib/common/v2/setup"
-	"intel/isecl/lib/common/v2/log/message"
 	"intel/isecl/lib/tpmprovider/v2"
+	"intel-secl/pkg/lib/models/tpmidentityrequest"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -78,7 +77,7 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	}
 
 	// create an IdentityChallengeRequest and populate it with aik information
-	identityChallengeRequest := vsclient.IdentityChallengeRequest{}
+	identityChallengeRequest := tpmidentityrequest.IdentityChallengePayload{}
 	err = task.populateIdentityRequest(&identityChallengeRequest.IdentityRequest)
 	if err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error while populating identity request")
@@ -92,13 +91,13 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 		return errors.New("Error while getting endorsement certificate in bytes from tpm")
 	}
 
-	// encrypt the EK cert into binary that is acceptable to HVS/NAIRL
-	identityChallengeRequest.EndorsementCertificate, err = task.getEncryptedBytes(ekCertBytes)
+	identityChallengeRequest.TpmSymmetricKeyParams, identityChallengeRequest.SymBlob, err = tpm2utils.GetTpmSymmetricKeyParams(ekCertBytes)
 	if err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error while encrypting the endorsement certificate bytes")
 		return errors.New("Error while encrypting the endorsement certificate bytes")
 	}
-
+	privacyCa, _ := util.GetPrivacyCA()
+	identityChallengeRequest.TpmAsymmetricKeyParams, identityChallengeRequest.AsymBlob, err = tpm2utils.GetTpmAsymmetricKeyParams(identityChallengeRequest.SymBlob, privacyCa)
 	// send the 'challenge request' to HVS and get an 'proof request' back
 	identityProofRequest, err := privacyCAClient.GetIdentityProofRequest(&identityChallengeRequest)
 	if err != nil {
@@ -114,8 +113,14 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	}
 
 	// create an IdentityChallengeResponse to send back to HVS
-	identityChallengeResponse := vsclient.IdentityChallengeResponse{}
-	identityChallengeResponse.ResponseToChallenge, err = task.getEncryptedBytes(decrypted1)
+	identityChallengeResponse := tpmidentityrequest.IdentityChallengePayload{}
+
+	identityChallengeResponse.TpmSymmetricKeyParams, identityChallengeResponse.SymBlob, err = tpm2utils.GetTpmSymmetricKeyParams(decrypted1)
+	if err != nil {
+		log.WithError(err).Error("tasks/provision_aik:Run() Error while encrypting the endorsement certificate bytes")
+		return errors.New("Error while encrypting the endorsement certificate bytes")
+	}
+	identityChallengeResponse.TpmAsymmetricKeyParams, identityChallengeResponse.AsymBlob, err = tpm2utils.GetTpmAsymmetricKeyParams(identityChallengeRequest.SymBlob, privacyCa)
 	if err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error while encrypting nonce")
 		return errors.New("Error while encrypting nonce")
@@ -215,46 +220,6 @@ func (task *ProvisionAttestationIdentityKey) createAik() error {
 	return nil
 }
 
-func (task *ProvisionAttestationIdentityKey) getTpmSymetricKey(key []byte) ([]byte, error) {
-	log.Trace("tasks/provision_aik:getTpmSymetricKey() Entering")
-	defer log.Trace("tasks/provision_aik:getTpmSymetricKey() Leaving")
-
-	privacyCa, err := util.GetPrivacyCA()
-	if err != nil {
-		return nil, errors.Wrap(err, "tasks/provision_aik:getTpmSymetricKey() Error while retrieving PrivacyCA certificate")
-	}
-
-	// EncryptOAEP requires a 20 byte key (not 16)
-	asymKey, err := crypt.GetRandomBytes(20)
-	if err != nil {
-		return nil, err
-	}
-
-	//---------------------------------------------------------------------------------------------
-	// Build the binary structure similar to TpmSymmetricKey.java and encrypt it with the public.
-	// The algorithm meta data fields are set in TpmIdentityRequest.encryptSym()
-	//
-	// byte[] algoId = TpmUtils.intToByteArray(algorithmId);
-	// byte[] encSchm = TpmUtils.shortToByteArray(encScheme);
-	// byte[] size = TpmUtils.shortToByteArray((short)keyBlob.length);
-	// + bytes from 'keblob'
-	//---------------------------------------------------------------------------------------------
-	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, uint32(6))        // TpmKeyParams.TPM_ALG_AES
-	binary.Write(buf, binary.BigEndian, uint16(255))      // TpmKeyParams.TPM_ES_SYM_CBC_PKCS5PAD
-	binary.Write(buf, binary.BigEndian, uint16(len(key))) // length of key
-	binary.Write(buf, binary.BigEndian, key)              // key bytes
-
-	// ISECL-7702: Sha1 is being used for compatability with HVS --> needs to be fixed before release
-	ekAsymetricBytes, err := rsa.EncryptOAEP(sha1.New(), bytes.NewBuffer(asymKey), privacyCa, buf.Bytes(), nil)
-	if err != nil {
-		return nil, errors.Wrap(err,"tasks/provision_aik:getTpmSymetricKey() Error encrypting tpm symmetric key")
-	}
-	secLog.Infof("%s tasks/provision_aik:getTpmSymetricKey() Returning encrypted tpm symmetric key", message.EncKeyUsed)
-
-	return ekAsymetricBytes, nil
-}
-
 func (task *ProvisionAttestationIdentityKey) getEndorsementKeyBytes() ([]byte, error) {
 	log.Trace("tasks/provision_aik:getEndorsementKeyBytes() Entering")
 	defer log.Trace("tasks/provision_aik:getEndorsementKeyBytes() Leaving")
@@ -275,118 +240,9 @@ func (task *ProvisionAttestationIdentityKey) getEndorsementKeyBytes() ([]byte, e
 	}
 
 	return ekCertBytes, nil
-
 }
 
-//
-// Creates a byte structure with encrpted data similar to gov.niarl.his.privacyca.TpmIdentityRequest
-//
-// Asymetric encryption:  RSA, RSAESOAEP_SHA1_MGF1?, 2048 (see TpmIdentityRequest.createDefaultAsymAlgorithm)
-// Symetric encryption: 16 random bytes, RSA, TPM_ES_RSAESOAEP_SHA1_MGF1, 2048 (see createDefaultSymAlgorithm)
-//
-func (task *ProvisionAttestationIdentityKey) getEncryptedBytes(unencrypted []byte) ([]byte, error) {
-	log.Trace("tasks/provision_aik:getEncryptedBytes() Entering")
-	defer log.Trace("tasks/provision_aik:getEncryptedBytes() Leaving")
-	//---------------------------------------------------------------------------------------------
-	// Encrypt the bytes using aes from https://golang.org/pkg/crypto/cipher/#example_NewCBCEncrypter
-	//---------------------------------------------------------------------------------------------
-	if len(unencrypted)%aes.BlockSize != 0 {
-		return nil, errors.Errorf( "tasks/provision_aik:getEncryptedBytes() byte length (%d) is not a multiple of the block size (%d)", len(unencrypted), aes.BlockSize)
-	}
-
-	cipherKey, err := crypt.GetRandomBytes(16)
-	if err != nil {
-		return nil, err
-	}
-
-	block, err := aes.NewCipher(cipherKey)
-	if err != nil {
-		return nil, err
-	}
-
-	iv, err := crypt.GetRandomBytes(16) // aes.Blocksize == 16
-	if err != nil {
-		return nil, err
-	}
-
-	mode := cipher.NewCBCEncrypter(block, iv)
-
-	// this 'hand padding' is necessary for the java/niarl to
-	// successully decrypt the symetric data (ek pub cert)
-	padding := block.BlockSize() - len(unencrypted)%block.BlockSize()
-	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
-	withPadding := append(unencrypted, padtext...)
-
-	symmetricBytes := make([]byte, len(withPadding))
-	mode.CryptBlocks(symmetricBytes, withPadding)
-
-	asymmetricBytes, err := task.getTpmSymetricKey(cipherKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "tasks/provision_aik:getEncryptedBytes() Error while retrieving tpm symmetric key")
-	}
-
-	//---------------------------------------------------------------------------------------------
-	// The TrustAgent submits a very specific byte sequence for the encrypted 'endorsement_certificate',
-	// that must be compatible with HVS...
-	//
-	// - 4 bytes for int length of aysmetric key
-	// - 4 bytes for int length of symetric key
-	// - asymAlgorithmBytes (TpmKeyParams.java from TpmIdentityRequest.java::createDefaultAsymAlgorithm)
-	//   - 4 bytes for int length of 'algoId' (TPM_ALG_RSA: 1)
-	//   - 2 bytes for short length of 'encScheme' (TPM_ES_RSAESOAEP_SHA1_MGF1: 3)
-	//   - 2 bytes for short length of 'sigScheme' (TPM_SS_NONE: 1)
-	//   - 4 bytes for int length of 'sub params length' (12 from TpmRsaKeyparams below)
-	//   - SubParams (TpmRsaKeyParams.java)
-	//     - 4 bytes for int value of 'keylength' (2048)
-	//     - 4 bytes for int value of 'numPrimes' (2)
-	//	   - 4 bytes for int value of 'size' (0 and no exponent set in createDefaultAsymAlgorithm)
-	// symAlgorithmBytes (TpmKeyParams.java from TpmIdentityRequest.java::createDefaultSymAlgorithm)
-	//   - 4 bytes for int length of 'algoId' (TPM_ALG_AES: 6)
-	//   - 2 bytes for short length of 'encScheme' (TPM_ES_SYM_CBC_PKCS5PAD: 255)
-	//   - 2 bytes for short length of 'sigScheme' (TPM_SS_NONE: 1)
-	//   - 4 bytes for int length of 'sub params length' (28 for size of TpmSymmetricKeyParams below)
-	//   - SubParams (TpmSymmetricKeyParams.java)
-	//     - 4 bytes for int value of 'keylength' (128)
-	//     - 4 bytes for int value of 'blockSize' (128)
-	//     - 4 bytes for int value length 'iv' (16 bytes used in TpmIdentityRequest constructor)
-	//	   - 16 bytes for 'iv'
-	// asymBlob (bytes of aysmetric key)
-	// symBlob (bytes of symetric key)
-	//---------------------------------------------------------------------------------------------
-	buf := new(bytes.Buffer)
-
-	binary.Write(buf, binary.BigEndian, uint32(len(asymmetricBytes))) // length of encrypted symetric key data
-	binary.Write(buf, binary.BigEndian, uint32(len(symmetricBytes)))  // length of encrypted ek cert
-
-	// TpmKeyParams.java
-	binary.Write(buf, binary.BigEndian, uint32(1))    // TpmKeyParams.TPM_ALG_RSA
-	binary.Write(buf, binary.BigEndian, uint16(3))    // TpmKeyParams.TPM_ES_RSAESOAEP_SHA1_MGF1
-	binary.Write(buf, binary.BigEndian, uint16(1))    // TPM_SS_NONE
-	binary.Write(buf, binary.BigEndian, uint32(12))   // Size of params
-	binary.Write(buf, binary.BigEndian, uint32(2048)) // Param keylength (2048 RSA)
-	binary.Write(buf, binary.BigEndian, uint32(2))    // Param num of primes
-	binary.Write(buf, binary.BigEndian, uint32(0))    // Param exponent size
-
-	// TpmKeyParams.java
-	binary.Write(buf, binary.BigEndian, uint32(6))   // TpmKeyParams.TPM_ALG_AES
-	binary.Write(buf, binary.BigEndian, uint16(255)) // TpmKeyParams.TPM_ES_SYM_CBC_PKCS5PAD
-	binary.Write(buf, binary.BigEndian, uint16(1))   // TpmKeyParams.TPM_SS_NONE
-	binary.Write(buf, binary.BigEndian, uint32(28))  // Size of params (following data in TpmSymetricKeyParams)
-	// TpmSymetrictKeyParams.java
-	binary.Write(buf, binary.BigEndian, uint32(128))     // Param keylength (128 AES)
-	binary.Write(buf, binary.BigEndian, uint32(128))     // Param block size (128 AES)
-	binary.Write(buf, binary.BigEndian, uint32(len(iv))) // length of iv
-	binary.Write(buf, binary.BigEndian, iv)              // iv (16 bytes)
-
-	// actual bytes
-	binary.Write(buf, binary.BigEndian, asymmetricBytes)
-	binary.Write(buf, binary.BigEndian, symmetricBytes)
-
-	b := buf.Bytes()
-	return b, nil
-}
-
-func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityRequest *vsclient.IdentityRequest) error {
+func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityRequest *tpmidentityrequest.IdentityRequest) error {
 	log.Trace("tasks/provision_aik:populateIdentityRequest() Entering")
 	defer log.Trace("tasks/provision_aik:populateIdentityRequest() Leaving")
 
@@ -437,7 +293,7 @@ func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityReq
 //   - EndorsementKeyBlob:  SHA256 of this node's EK public using the Aik modules
 // - Use the symmetric key to decrypt the nonce (also requires iv) created by PrivacyCa.java::processV20
 //
-func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofRequest *vsclient.IdentityProofRequest) ([]byte, error) {
+func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofRequest *tpmidentityrequest.IdentityProofRequest) ([]byte, error) {
 	log.Trace("tasks/provision_aik:activateCredential() Entering")
 	defer log.Trace("tasks/provision_aik:activateCredential() Leaving")
 
@@ -494,26 +350,15 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 	//       - iv (16 bytes)
 	//       - encrypted byted (encrypted blob length - 16 (iv))
 
-	var encryptedBlobLength int32
-	var algoId int32
-	var encSchem int16
-	var sigSchem int16
-	var size int32
-	var iv []byte
-	var encryptedBytes []byte
+	encryptedBytes := identityProofRequest.SymmetricBlob
+	algoId := identityProofRequest.TpmSymmetricKeyParams.TpmAlg
+	encSchem := identityProofRequest.TpmSymmetricKeyParams.TpmAlgEncScheme
+	sigSchem := identityProofRequest.TpmSymmetricKeyParams.TpmAlgSignatureScheme
+	iv := identityProofRequest.TpmSymmetricKeyParams.IV
 
-	buf = bytes.NewBuffer(identityProofRequest.SymetricBlob)
-	binary.Read(buf, binary.BigEndian, &encryptedBlobLength)
-	binary.Read(buf, binary.BigEndian, &algoId)
-	binary.Read(buf, binary.BigEndian, &encSchem)
-	binary.Read(buf, binary.BigEndian, &sigSchem)
-	binary.Read(buf, binary.BigEndian, &size)
-	iv = buf.Next(16)
-	encryptedBytes = buf.Next(int(encryptedBlobLength) - len(iv))
-
-	log.Debugf("tasks/provision_aik:activateCredential() sym_blob[%d]: %s", len(identityProofRequest.SymetricBlob), hex.EncodeToString(identityProofRequest.SymetricBlob))
+	log.Debugf("tasks/provision_aik:activateCredential() sym_blob[%d]: %s", len(identityProofRequest.SymmetricBlob), hex.EncodeToString(identityProofRequest.SymmetricBlob))
 	log.Debugf("tasks/provision_aik:activateCredential() symmetric[%d]: %s", len(symmetricKey), hex.EncodeToString(symmetricKey))
-	log.Debugf("tasks/provision_aik:activateCredential() Len[%d], Algo[%d], Enc[%d], sig[%d], size[%d]", encryptedBlobLength, algoId, encSchem, sigSchem, size)
+	log.Debugf("tasks/provision_aik:activateCredential() Algo[%d], Enc[%d], sig[%d]", algoId, encSchem, sigSchem)
 	log.Debugf("tasks/provision_aik:activateCredential() iv[%d]: %s", len(iv), hex.EncodeToString(iv))
 	log.Debugf("tasks/provision_aik:activateCredential() encrypted[%d]: %s", len(encryptedBytes), hex.EncodeToString(encryptedBytes))
 
@@ -528,10 +373,6 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 
 	mode := cipher.NewCBCDecrypter(block, iv)
 	mode.CryptBlocks(decrypted, encryptedBytes)
-
-	length := len(decrypted)
-	unpadding := int(decrypted[length-1])
-	decrypted = decrypted[:(length - unpadding)]
 
 	return decrypted, nil
 }
