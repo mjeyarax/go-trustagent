@@ -8,10 +8,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	taModel "github.com/intel-secl/intel-secl/v3/pkg/model/ta"
 	"intel/isecl/lib/common/v2/log/message"
 	"io/ioutil"
 	"net/http"
-	"privacyca/types"
 
 	"github.com/pkg/errors"
 )
@@ -22,52 +22,8 @@ import (
 
 type PrivacyCAClient interface {
 	DownloadPrivacyCa() ([]byte, error)
-	GetIdentityProofRequest(identityChallengeRequest *IdentityChallengeRequest) (*IdentityProofRequest, error)
-	GetIdentityProofResponse(identityChallengeResponse *IdentityChallengeResponse) (*IdentityProofRequest, error)
-}
-
-type IdentityChallengeRequest struct {
-	IdentityRequest        types.IdentityRequest `json:"identity_request"`
-	EndorsementCertificate []byte                `json:"endorsement_certificate"`
-}
-
-// {
-//   "identity_request":{
-//     "tpm_version":"2.0",
-//     "identity_request_blob":[identityRequest blob],
-//     "aik_modulus":[aikModulus blob],
-//     "aik_blob":[aik blob],
-//     "aik_name":[aikName blob]
-//   },
-//   "response_to_challenge": [responseToChallenge blob ]
-// }
-type IdentityChallengeResponse struct {
-	IdentityRequest     types.IdentityRequest `json:"identity_request"`
-	ResponseToChallenge []byte                `json:"response_to_challenge"`
-}
-
-// {
-// 	           "secret"        :      "AAGB9Xr+ti6dsDSph9FqM1tOM8LLWLLhUhb89R6agQ/hA+eQDF2FpcfOM/98J95ywwYpxzYS8N
-// 	                                   x6c7ud5e6SVVgLldcc3/m9xfsCC7tEmfQRyc+pydbgnCHQ9E/TQoyV/VgiE5ssV+lGX171+lN+
-// 	                                   2RSO0HC8er+jN52bh31M4S09sv6+Qk2Fm2efDsF2NbFI4eyLcmtFEwKfDyAiZ3zeXqPNQWpUzV
-// 	                                   ZzR3zfxpd6u6ZonYmfOn/fLDPIHwTFv8cYHSIRailTQXP+VmQuyR7YOI8oe/NC/cr7DIYTJD7G
-// 	                                   LFNDXk+sybf9j9Ttng4RRyb0WXgIcfIWW1oZD+i4wqu9OdV1",
-// 	           "credential"    :      "NAAAIBVuOfmXFbgcbBA2fLtnl38KQ7fIRGwUSf5kQ+UwIAw8ElXsYfoBoUB11BWKkc4uo9WRAA
-// 	                                   AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-// 	                                   AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-// 	           "sym_blob"      :      "AAAAQAAAAAYAAQAAAAAAAMlZgTkKMlujW0vDUrhcE8Ixut12y5yXXP7nyx8wSUSHIaNz419fpy
-// 	                                   AiQdsCG3PMJGvsNtiInB1zjGqQOtt77zM=",
-// 	           "ek_blob"       :      "Tb3zQv6oW8/dUg45qofJFsIZV1XHTADZgeVjH7BI/ph+6ERJTlxBjK7zkxHJh54QlCi5h0f1rM
-// 	                                   kYqtAyCmmyyUdewP4xFaVmjm8JcWaAzeOfb3vhamWr9xGecfJ34D58cy2Att7VAzXoWe2GthAb
-// 	                                   lM+Rjsy9wiXfyOe9IjfC5jngjPHfwyi8IvV+FZHTG8wq7R8lcAQdurMmOzMZJT+vkzBq1TEGLu
-// 	                                   rE3h4Rf84X3H/um4sQ2mqo+r5ZIsm+6lhb6PjU4S9Cp3j4RZ5nU/uVvgTWzviNUPYBbd3AypQo
-// 	                                   9Kv5ij8UqHk2P1DzWjCBvwCqHTzRsuf9b9FeT+f4aWgLNQ=="
-// 	}
-type IdentityProofRequest struct {
-	Secret                     []byte `json:"secret"`
-	Credential                 []byte `json:"credential"`
-	SymetricBlob               []byte `json:"sym_blob"`
-	EndorsementCertificateBlob []byte `json:"ek_blob"`
+	GetIdentityProofRequest(identityChallengeRequest *taModel.IdentityChallengePayload) (*taModel.IdentityProofRequest, error)
+	GetIdentityProofResponse(identityChallengeResponse *taModel.IdentityChallengePayload) (*taModel.IdentityProofRequest, error)
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -107,11 +63,11 @@ func (client *privacyCAClientImpl) DownloadPrivacyCa() ([]byte, error) {
 	return ca, nil
 }
 
-func (client *privacyCAClientImpl) GetIdentityProofRequest(identityChallengeRequest *IdentityChallengeRequest) (*IdentityProofRequest, error) {
+func (client *privacyCAClientImpl) GetIdentityProofRequest(identityChallengeRequest *taModel.IdentityChallengePayload) (*taModel.IdentityProofRequest, error) {
 	log.Trace("vsclient/privacy_ca_client:GetIdentityProofRequest() Entering")
 	defer log.Trace("vsclient/privacy_ca_client:GetIdentityProofRequest() Leaving")
 
-	var identityProofRequest IdentityProofRequest
+	var identityProofRequest taModel.IdentityProofRequest
 
 	jsonData, err := json.Marshal(*identityChallengeRequest)
 	if err != nil {
@@ -149,11 +105,11 @@ func (client *privacyCAClientImpl) GetIdentityProofRequest(identityChallengeRequ
 	return &identityProofRequest, nil
 }
 
-func (client *privacyCAClientImpl) GetIdentityProofResponse(identityChallengeResponse *IdentityChallengeResponse) (*IdentityProofRequest, error) {
+func (client *privacyCAClientImpl) GetIdentityProofResponse(identityChallengeResponse *taModel.IdentityChallengePayload) (*taModel.IdentityProofRequest, error) {
 	log.Trace("vsclient/privacy_ca_client:GetIdentityProofResponse() Entering")
 	defer log.Trace("vsclient/privacy_ca_client:GetIdentityProofResponse() Leaving")
 
-	var identityProofRequest IdentityProofRequest
+	var identityProofRequest taModel.IdentityProofRequest
 
 	jsonData, err := json.Marshal(*identityChallengeResponse)
 	if err != nil {
