@@ -13,14 +13,14 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
-	"intel-secl/pkg/lib/privacyca/tpm2utils"
+	"github.com/intel-secl/intel-secl/v3/pkg/lib/privacyca/tpm2utils"
+	taModel "github.com/intel-secl/intel-secl/v3/pkg/model/ta"
 	"intel/isecl/go-trust-agent/v2/constants"
 	"intel/isecl/go-trust-agent/v2/util"
 	"intel/isecl/go-trust-agent/v2/vsclient"
 	"intel/isecl/lib/common/v2/crypt"
 	"intel/isecl/lib/common/v2/setup"
 	"intel/isecl/lib/tpmprovider/v2"
-	"intel-secl/pkg/lib/models/tpmidentityrequest"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -77,7 +77,7 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	}
 
 	// create an IdentityChallengeRequest and populate it with aik information
-	identityChallengeRequest := tpmidentityrequest.IdentityChallengePayload{}
+	identityChallengeRequest := taModel.IdentityChallengePayload{}
 	err = task.populateIdentityRequest(&identityChallengeRequest.IdentityRequest)
 	if err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error while populating identity request")
@@ -113,7 +113,7 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	}
 
 	// create an IdentityChallengeResponse to send back to HVS
-	identityChallengeResponse := tpmidentityrequest.IdentityChallengePayload{}
+	identityChallengeResponse := taModel.IdentityChallengePayload{}
 
 	identityChallengeResponse.TpmSymmetricKeyParams, identityChallengeResponse.SymBlob, err = tpm2utils.GetTpmSymmetricKeyParams(decrypted1)
 	if err != nil {
@@ -242,7 +242,7 @@ func (task *ProvisionAttestationIdentityKey) getEndorsementKeyBytes() ([]byte, e
 	return ekCertBytes, nil
 }
 
-func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityRequest *tpmidentityrequest.IdentityRequest) error {
+func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityRequest *taModel.IdentityRequest) error {
 	log.Trace("tasks/provision_aik:populateIdentityRequest() Entering")
 	defer log.Trace("tasks/provision_aik:populateIdentityRequest() Leaving")
 
@@ -293,7 +293,7 @@ func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityReq
 //   - EndorsementKeyBlob:  SHA256 of this node's EK public using the Aik modules
 // - Use the symmetric key to decrypt the nonce (also requires iv) created by PrivacyCa.java::processV20
 //
-func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofRequest *tpmidentityrequest.IdentityProofRequest) ([]byte, error) {
+func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofRequest *taModel.IdentityProofRequest) ([]byte, error) {
 	log.Trace("tasks/provision_aik:activateCredential() Entering")
 	defer log.Trace("tasks/provision_aik:activateCredential() Leaving")
 
@@ -351,7 +351,7 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 	//       - encrypted byted (encrypted blob length - 16 (iv))
 
 	encryptedBytes := identityProofRequest.SymmetricBlob
-	algoId := identityProofRequest.TpmSymmetricKeyParams.TpmAlg
+	algoId := identityProofRequest.TpmSymmetricKeyParams.TpmAlgId
 	encSchem := identityProofRequest.TpmSymmetricKeyParams.TpmAlgEncScheme
 	sigSchem := identityProofRequest.TpmSymmetricKeyParams.TpmAlgSignatureScheme
 	iv := identityProofRequest.TpmSymmetricKeyParams.IV
