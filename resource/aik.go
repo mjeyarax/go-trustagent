@@ -51,6 +51,7 @@ func getAik() endpointHandler {
 			return &endpointError{Message: "Error parsing AIK certificate file.", StatusCode: http.StatusInternalServerError}
 		}
 
+
 		httpWriter.WriteHeader(http.StatusOK)
 		_, _ = bytes.NewBuffer(aikDer.Bytes).WriteTo(httpWriter)
 		return nil

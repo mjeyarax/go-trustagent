@@ -8,14 +8,16 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/x509"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/pem"
+	"github.com/intel-secl/intel-secl/v3/pkg/lib/privacyca"
+	"io/ioutil"
 	"math/big"
 
 	//"encoding/pem"
 	"fmt"
-	"github.com/intel-secl/intel-secl/v3/pkg/lib/privacyca"
-	"github.com/intel-secl/intel-secl/v3/pkg/lib/privacyca/tpm2utils"
 	taModel "github.com/intel-secl/intel-secl/v3/pkg/model/ta"
 	"intel/isecl/go-trust-agent/v2/constants"
 	"intel/isecl/go-trust-agent/v2/util"
@@ -85,14 +87,19 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 		return errors.New("Error while getting endorsement certificate in bytes from tpm")
 	}
 
-	identityChallengeRequest.TpmSymmetricKeyParams, identityChallengeRequest.SymBlob, err = tpm2utils.GetTpmSymmetricKeyParams(ekCertBytes)
+	privacyCaCert, _ := util.GetPrivacyCA()
+
+	privacycaTpm2, err := privacyca.NewPrivacyCA(identityChallengeRequest.IdentityRequest)
+	if err != nil{
+		return errors.Wrap(err, "Unable to get new privacyca instance")
+	}
+	identityChallengeRequest, err = privacycaTpm2.GetIdentityChallengeRequest(ekCertBytes, privacyCaCert, identityChallengeRequest.IdentityRequest)
 	if err != nil {
-		log.WithError(err).Error("tasks/provision_aik:Run() Error while encrypting the endorsement certificate bytes")
+		log.WithError(err).Error("tasks/provision_aik:Run() Error while generating identityChallengeRequest")
 		return errors.New("Error while encrypting the endorsement certificate bytes")
 	}
-	privacyCaCert, _ := util.GetPrivacyCA()
-	identityChallengeRequest.TpmAsymmetricKeyParams, identityChallengeRequest.AsymBlob, err = tpm2utils.GetTpmAsymmetricKeyParams(identityChallengeRequest.SymBlob, privacyCaCert)
-	privacyCa, _ := privacyca.NewPrivacyCA(identityChallengeRequest.IdentityRequest)
+
+	log.Info(identityChallengeRequest.TpmAsymmetricKeyParams)
 
 	privacyCAClient, err := task.clientFactory.PrivacyCAClient()
 	if err != nil {
@@ -126,15 +133,58 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	// create an IdentityChallengeResponse to send back to HVS
 	identityChallengeResponse := taModel.IdentityChallengePayload{}
 
-	identityChallengeResponse.TpmSymmetricKeyParams, identityChallengeResponse.SymBlob, err = tpm2utils.GetTpmSymmetricKeyParams(decrypted1)
+	// KWT: refactor so that the call to get AIK info is done once
+	err = task.populateIdentityRequest(&identityChallengeResponse.IdentityRequest)
 	if err != nil {
-		log.WithError(err).Error("tasks/provision_aik:Run() Error while encrypting the endorsement certificate bytes")
-		return errors.New("Error while encrypting the endorsement certificate bytes")
+		log.WithError(err).Error("tasks/provision_aik:Run() Error while populating identity request with identity challenge response")
+		return errors.New("Error while populating identity request with identity challenge response")
 	}
-	identityChallengeResponse.TpmAsymmetricKeyParams, identityChallengeResponse.AsymBlob, err = tpm2utils.GetTpmAsymmetricKeyParams(identityChallengeRequest.SymBlob, privacyCa)
+
+	identityChallengeResponse, err = privacycaTpm2.GetIdentityChallengeRequest(decrypted1, privacyCaCert, identityChallengeResponse.IdentityRequest)
+
+	// send the decrypted nonce data back to HVS and get a 'proof request' back
+	identityProofRequest2, err := privacyCAClient.GetIdentityProofResponse(&identityChallengeResponse)
 	if err != nil {
-		log.WithError(err).Error("tasks/provision_aik:Run() Error while encrypting nonce")
-		return errors.New("Error while encrypting nonce")
+		log.WithError(err).Error("tasks/provision_aik:Run() Error while retrieving identity proof response from HVS")
+		return errors.New("Error while retrieving identity proof response from HVS")
+	}
+
+	// decrypt the 'proof request' from HVS into the 'aik' cert
+	decrypted2, err := task.activateCredential(identityProofRequest2)
+	if err != nil {
+		log.WithError(err).Error("tasks/provision_aik:Run() Error while retrieving aik certificate bytes from identity proof request from HVS")
+		return errors.New("Error while retrieving aik certificate bytes from identity proof request from HVS")
+	}
+
+	// The aik cert bytes is padded before AES CBC encryption, padded bytes must be removed to retrieve the aik certificate bytes
+	length := len(decrypted2)
+	unpadding := int(decrypted2[length-1])
+	decrypted2 = decrypted2[:(length - unpadding)]
+	// make sure the decrypted bytes are a valid certificates...
+	_, err = x509.ParseCertificate(decrypted2)
+	if err != nil {
+		log.WithError(err).Error("tasks/provision_aik:Run() Error while parsing the aik certificate")
+		return errors.New("Error while parsing the aik certificate")
+	}
+
+	// save the aik pem cert to disk
+	err = ioutil.WriteFile(constants.AikCert, decrypted2, 0600)
+	if err != nil {
+		log.WithError(err).Errorf("tasks/provision_aik:Run() Error while writing aik certificate file %s", constants.AikCert)
+		return errors.Errorf("Error while writing aik certificate file %s", constants.AikCert)
+	}
+
+	certOut, err := os.OpenFile(constants.AikCert, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0)
+	if err != nil {
+		log.WithError(err).Error("tasks/provision_aik:Run() Error Could not open file for writing")
+		return errors.New("Error: Could not open file for writing")
+	}
+	defer certOut.Close()
+
+	os.Chmod(constants.AikCert, 0640)
+	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: decrypted2}); err != nil {
+		log.WithError(err).Error("tasks/provision_aik:Run() Error Could not pem encode cert: ")
+		return errors.New("Error: Could not pem encode cert")
 	}
 
 	return nil
