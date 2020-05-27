@@ -12,7 +12,6 @@ import (
 	"intel/isecl/lib/common/v2/log/message"
 	"io/ioutil"
 	"net/http"
-
 	"github.com/pkg/errors"
 )
 
