@@ -10,7 +10,6 @@ import (
 	"crypto/cipher"
 	"crypto/x509"
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/pem"
 	"github.com/intel-secl/intel-secl/v3/pkg/lib/privacyca"
 	"io/ioutil"
