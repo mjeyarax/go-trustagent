@@ -93,13 +93,13 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 		BearerToken:   "",
 		ConsoleWriter: os.Stdout,
 	}
-	/*
+
 	provisionEndorsementKey := ProvisionEndorsementKey{
 		clientFactory: vsClientFactory,
 		tpmFactory: tpmFactory,
 		ownerSecretKey: &cfg.Tpm.OwnerSecretKey,
 	}
-	*/
+
 	provisionAttestationIdentityKey := ProvisionAttestationIdentityKey{
 		clientFactory: vsClientFactory,
 		tpmFactory: tpmFactory,
@@ -119,7 +119,7 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 	registry.taskMap[TakeOwnershipCommand] = []setup.Task{&takeOwnership}
 	registry.taskMap[DownloadRootCACertCommand] = []setup.Task{&downloadRootCACert}
 	registry.taskMap[DownloadCertCommand] = []setup.Task{&downloadTLSCert}
-	//registry.taskMap[ProvisionEndorsementKeyCommand] = []setup.Task{&provisionEndorsementKey}
+	registry.taskMap[ProvisionEndorsementKeyCommand] = []setup.Task{&provisionEndorsementKey}
 	registry.taskMap[ProvisionAttestationIdentityKeyCommand] = []setup.Task{&provisionAttestationIdentityKey}
 	registry.taskMap[DownloadPrivacyCACommand] = []setup.Task{&downloadPrivacyCA}
 	registry.taskMap[ProvisionPrimaryKeyCommand] = []setup.Task{&provisionPrimaryKey}

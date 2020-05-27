@@ -363,11 +363,7 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 	sigSchem := identityProofRequest.TpmSymmetricKeyParams.TpmAlgSignatureScheme
 	iv := identityProofRequest.TpmSymmetricKeyParams.IV
 
-	log.Debugf("tasks/provision_aik:activateCredential() sym_blob[%d]: %s", len(identityProofRequest.SymmetricBlob), hex.EncodeToString(identityProofRequest.SymmetricBlob))
-	log.Debugf("tasks/provision_aik:activateCredential() symmetric[%d]: %s", len(symmetricKey), hex.EncodeToString(symmetricKey))
 	log.Debugf("tasks/provision_aik:activateCredential() Algo[%d], Enc[%d], sig[%d]", algoId, encSchem, sigSchem)
-	log.Debugf("tasks/provision_aik:activateCredential() iv[%d]: %s", len(iv), hex.EncodeToString(iv))
-	log.Debugf("tasks/provision_aik:activateCredential() encrypted[%d]: %s", len(encryptedBytes), hex.EncodeToString(encryptedBytes))
 
 	// decrypt the symblob using the symmetric key
 	block, err := aes.NewCipher(symmetricKey)
