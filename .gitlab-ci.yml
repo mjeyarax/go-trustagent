@@ -9,6 +9,7 @@ before_script:
   - export http_proxy="${HTTP_PROXY}"
   - export https_proxy="${HTTPS_PROXY}"
   - export no_proxy="${NO_PROXY}"
+  - export GITTAG=`git describe --tags --abbrev=0 2> /dev/null`
 
 # the gta-unit-test is a container that remains alive across builds/tests.  clean up
 # the gitlab url otherwise they accumulate and expire, causing pipelines to fail.
@@ -18,7 +19,23 @@ after_script:
 stages:
   - build
   - test
+  - simulator
 
+# invoke the simulator build on 'master' and 'v*/develop' branches,
+# passing the current commit and branch name as variables
+simulator:
+  stage: simulator
+  trigger: 
+    project: sst/isecl/tools/gta-simulator
+    branch: master
+  only: 
+    - master
+    - /^v.*\/develop$
+    - feature/development-simulator
+  variables:
+    GTA_COMMIT: $CI_COMMIT_SHORT_SHA
+    GTA_BRANCH: $CI_COMMIT_BRANCH
+    GTA_TAG: $GITTAG
 
 build:gta:
   stage: build

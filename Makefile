@@ -4,16 +4,24 @@ GITCOMMITDATE := $(shell git log -1 --date=short --pretty=format:%cd)
 GITBRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 BUILDDATE := $(shell TZ=UTC date +%Y-%m-%dT%H:%M:%SZ)
 VERSION := $(or ${GITTAG}, v1.0.0)
-APPLICATION-AGENT-ARTIFACT = application-agent-4.6-SNAPSHOT-rhel.bin
-GITLAB-TOKEN = gpgtQ5xyjKwDYECNjc9T
-TBOOTXM-BRANCH = v1.0%2Fgo-trust-agent
-TBOOTXM-PROJECT-ID = 21861
 
 # TODO:  Update make file to support debug/release builds (release build to use secure gcflags)
 # -fno-strict-overflow -fno-delete-null-pointer-checks -fwrapv -fPIE -fPIC -fstack-protector-strong -O2 -D
 gta:
 	export CGO_CFLAGS_ALLOW="-f.*"; \
 	env GOOS=linux GOSUMDB=off GOPROXY=direct go build -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/v2/util.Version=$(VERSION) -X intel/isecl/go-trust-agent/v2/util.GitHash=$(GITCOMMIT) -X intel/isecl/go-trust-agent/v2/util.BuildDate=$(BUILDDATE)" -o out/tagent
+
+swagger-get:
+	wget https://github.com/go-swagger/go-swagger/releases/download/v0.21.0/swagger_linux_amd64 -O /usr/local/bin/swagger
+	chmod +x /usr/local/bin/swagger
+	wget https://repo1.maven.org/maven2/io/swagger/codegen/v3/swagger-codegen-cli/3.0.16/swagger-codegen-cli-3.0.16.jar -O /usr/local/bin/swagger-codegen-cli.jar
+
+swagger-doc: 
+	mkdir -p out/swagger
+	export CGO_CFLAGS_ALLOW="-f.*"; /usr/local/bin/swagger generate spec -o ./out/swagger/openapi.yml --scan-models
+	java -jar /usr/local/bin/swagger-codegen-cli.jar generate -i ./out/swagger/openapi.yml -o ./out/swagger/ -l html2 -t ./swagger/templates/
+
+swagger: swagger-get swagger-doc
 
 installer: gta
 	mkdir -p out/installer

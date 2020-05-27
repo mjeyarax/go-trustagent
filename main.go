@@ -29,6 +29,7 @@ import (
 	"strings"
 	"syscall"
 	"github.com/pkg/errors"
+	_ "intel/isecl/go-trust-agent/v2/swagger/docs"
 )
 
 var log = commLog.GetDefaultLogger()
