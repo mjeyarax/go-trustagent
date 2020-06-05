@@ -7,6 +7,7 @@ package tasks
 import (
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"intel/isecl/go-trust-agent/v2/constants"
 	"intel/isecl/go-trust-agent/v2/vsclient"
@@ -15,6 +16,7 @@ import (
 	"intel/isecl/lib/tpmprovider/v2"
 	"io/ioutil"
 	"github.com/pkg/errors"
+	"strings"
 )
 
 //-------------------------------------------------------------------------------------------------
@@ -68,12 +70,15 @@ func (task *ProvisionEndorsementKey) Run(c setup.Context) error {
 		return errors.Wrap(err, "Error while downloading endorsement authorities")
 	}
 
-	// make sure manufacture's endorsement key is signed by one of the ea certs
-	// provided by VS.
-	isEkSigned, err = task.isEkSignedByEndorsementAuthority(ekCert, endorsementAuthorities)
-	if err != nil {
-		log.WithError(err).Error("tasks/provision_ek:Run() Error while verifying endorsement certificate is signed by endorsement authorities")
-		return errors.Wrap(err, "Error while verifying endorsement certificate is signed by endorsement authorities")
+	log.Debugf("tasks/provision_ek:Run() ekCert Issuer Name :%s", ekCert.Issuer.CommonName)
+	endorsementCertsToVerify := endorsementAuthorities[strings.Replace(ekCert.Issuer.String(), "\\x00","", -1)]	
+	if endorsementCertsToVerify.Issuer.String() == ""{
+		isEkSigned = false
+		log.WithError(err).Error("tasks/provision_ek:Run() None of the endorsementAuthorities Issuer is matching with ekCert")
+	} else {
+		// make sure manufacture's endorsement key is signed by one of the ea certs
+		// provided by VS.
+		isEkSigned = task.isEkSignedByEndorsementAuthority(ekCert, &endorsementCertsToVerify)
 	}
 
 	// if the ek verifies, we're done/ok
@@ -141,7 +146,7 @@ func (task *ProvisionEndorsementKey) readEndorsementKeyCertificate(tpm tpmprovid
 	return ekCert, nil
 }
 
-func (task *ProvisionEndorsementKey) downloadEndorsementAuthorities() (*x509.CertPool, error) {
+func (task *ProvisionEndorsementKey) downloadEndorsementAuthorities() (map[string]x509.Certificate, error) {
 	log.Trace("tasks/provision_ek:downloadEndorsementAuthorities() Entering")
 	defer log.Trace("tasks/provision_ek:downloadEndorsementAuthorities() Leaving")
 
@@ -155,9 +160,9 @@ func (task *ProvisionEndorsementKey) downloadEndorsementAuthorities() (*x509.Cer
 		return nil, errors.Wrap(err, "tasks/provision_ek:downloadEndorsementAuthorities() Error while downloading endorsement authorities")
 	}
 
-	endorsementAuthorities := x509.NewCertPool()
-	if !endorsementAuthorities.AppendCertsFromPEM(ea) {
-		return nil, errors.New("tasks/provision_ek:downloadEndorsementAuthorities() Error loading endorsement authorities")
+	endorsementAuthorities, err := task.getEndorsementCerts(ea)
+	if err != nil {
+		return nil, errors.Wrapf(err, "tasks/provision_ek:downloadEndorsementAuthorities() Error while retrieving endorsement authorities")
 	}
 
 	err = ioutil.WriteFile(constants.EndorsementAuthoritiesFile, ea, 0644)
@@ -168,31 +173,50 @@ func (task *ProvisionEndorsementKey) downloadEndorsementAuthorities() (*x509.Cer
 	return endorsementAuthorities, nil
 }
 
-func (task *ProvisionEndorsementKey) isEkSignedByEndorsementAuthority(ekCert *x509.Certificate, endorsementAuthorities *x509.CertPool) (bool, error) {
+func (task *ProvisionEndorsementKey) getEndorsementCerts(ea []byte) (map[string]x509.Certificate, error) {
+	log.Trace("tasks/provision_ek:getEndorsementCerts() Entering")
+	defer log.Trace("tasks/provision_ek:getEndorsementCerts() Leaving")
+
+	endorsementCerts := make(map[string]x509.Certificate)
+
+	block, rest := pem.Decode(ea)
+	if block == nil {
+		return nil, errors.New("Unable to decode pem bytes")
+	}
+	ekCertAuth, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, errors.Wrap(err,"Failed to parse certificate 1")
+	}
+	endorsementCerts[strings.Replace(ekCertAuth.Issuer.CommonName, "\\x00","", -1)] = *ekCertAuth
+	if rest == nil {
+		return endorsementCerts, nil
+	}
+
+	for ;len(rest) > 1;{
+		block, rest = pem.Decode(rest)
+		if block == nil {
+			break
+		}
+		ekCertAuth, err = x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			log.WithError(err).Warn("tasks/provision_ek:getEndorsementCerts() Failed to parse certificate")
+			continue
+		}
+		log.Debugf("tasks/provision_ek:getEndorsementCerts() Issuer :%s", ekCertAuth.Subject.String())
+		endorsementCerts[ekCertAuth.Subject.String()] = *ekCertAuth
+	}
+	return endorsementCerts, nil
+}
+
+func (task *ProvisionEndorsementKey) isEkSignedByEndorsementAuthority(ekCert *x509.Certificate, endorsementAuthority *x509.Certificate) bool {
 	log.Trace("tasks/provision_ek:isEkSignedByEndorsementAuthority() Entering")
 	defer log.Trace("tasks/provision_ek:isEkSignedByEndorsementAuthority() Leaving")
-	isEkSigned := false
-
-	opts := x509.VerifyOptions{
-		Roots: endorsementAuthorities,
+	err := ekCert.CheckSignatureFrom(endorsementAuthority)
+	if err != nil{
+		return false
 	}
-
-	_, err := ekCert.Verify(opts)
-
-	if err == nil {
-		isEkSigned = true
-	} else if err.Error() == "x509: unhandled critical extension" {
-		// In at least one case, the cert provided by the TPM contains...
-		//      X509v3 Key Usage: critical
-		// 		Key Encipherment
-		// which causes go to return an 'UnhandledCriticalExtension'
-		// Ignore that error and assume the cert is valid.
-		isEkSigned = true
-	} else {
-		log.Warnf("tasks/provision_ek:isEkSignedByEndorsementAuthority() Failed to verify endorsement authorities: " + err.Error())
-	}
-
-	return isEkSigned, nil
+	log.Debugf("EC is signed by %s", endorsementAuthority.Issuer.String())
+	return true
 }
 
 func (task *ProvisionEndorsementKey) isEkRegisteredWithMtWilson() (bool, error) {
