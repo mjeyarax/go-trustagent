@@ -25,5 +25,5 @@ replace intel/isecl/lib/platform-info/v2 => gitlab.devtools.intel.com/sst/isecl/
 
 replace intel/isecl/lib/clients/v2 => gitlab.devtools.intel.com/sst/isecl/lib/clients.git/v2 v2.2/develop
 
-replace github.com/intel-secl/intel-secl/v3 => gitlab.devtools.intel.com/sst/isecl/intel-secl.git/v3 v3.0/tasks/certify-sk-bk-keys
+replace github.com/intel-secl/intel-secl/v3 => gitlab.devtools.intel.com/sst/isecl/intel-secl.git/v3 v3.0/feature/go-hvs
 

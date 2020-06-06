@@ -12,7 +12,6 @@ import (
 	"encoding/binary"
 	"encoding/pem"
 	"github.com/intel-secl/intel-secl/v3/pkg/lib/privacyca"
-	"io/ioutil"
 	"math/big"
 
 	"fmt"
@@ -96,6 +95,8 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 		log.WithError(err).Error("tasks/provision_aik:Run() Unable to get new privacyca instance")
 		return errors.Wrap(err, "Unable to get new privacyca instance")
 	}
+
+	// Get the Identity challenge request
 	identityChallengeRequest, err = privacycaTpm2.GetIdentityChallengeRequest(ekCertBytes, privacyCaCert, identityChallengeRequest.IdentityRequest)
 	if err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error while encrypting the endorsement certificate bytes")
@@ -159,13 +160,6 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	if err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error while parsing the aik certificate")
 		return errors.New("Error while parsing the aik certificate")
-	}
-
-	// save the aik pem cert to disk
-	err = ioutil.WriteFile(constants.AikCert, decrypted2, 0600)
-	if err != nil {
-		log.WithError(err).Errorf("tasks/provision_aik:Run() Error while writing aik certificate file %s", constants.AikCert)
-		return errors.Errorf("Error while writing aik certificate file %s", constants.AikCert)
 	}
 
 	certOut, err := os.OpenFile(constants.AikCert, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0)
