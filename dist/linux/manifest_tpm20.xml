@@ -7,13 +7,10 @@
    <Dir Exclude="" FilterType="regex" Include=".*" Path="/opt/tbootxm/mkinitrd_files"/>
    <File Path="/opt/tbootxm/bin/.*" SearchType="regex"/>
    <File Path="/opt/tbootxm/dracut_files/.*" SearchType="regex"/>
-   <File Path="/opt/tbootxm/lib/.*" SearchType="regex"/>   
    <File Path="/opt/tbootxm/initrd_hooks/tcb"/>
+   <File Path="/opt/tbootxm/lib/.*" SearchType="regex"/>
    <File Path="/opt/tbootxm/mkinitrd_files/setup-measure_host.sh"/>
    <Dir Exclude="" FilterType="regex" Include=".*" Path="/opt/trustagent/bin"/>
-   <Dir Exclude="" FilterType="regex" Include=".*" Path="/opt/trustagent/share"/>
-   <Symlink Path="/opt/trustagent/bin/tagent"/>
+   <File Path="/opt/trustagent/bin/tagent"/>
    <File Path="/opt/trustagent/bin/.*\.sh" SearchType="regex"/>
-   <Dir Exclude="" FilterType="regex" Include=".*" Path="/opt/trustagent/share/.*" SearchType="regex"/>
-   <File Path="/opt/trustagent/share/hex2bin/bin/hex2bin"/>
 </Manifest>
