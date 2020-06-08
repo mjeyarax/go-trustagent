@@ -185,9 +185,10 @@ func (task *ProvisionEndorsementKey) getEndorsementCerts(ea []byte) (map[string]
 	}
 	ekCertAuth, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return nil, errors.Wrap(err,"Failed to parse certificate 1")
+		log.WithError(err).Warn("tasks/provision_ek:getEndorsementCerts() Failed to parse certificate")
+	} else {
+		endorsementCerts[strings.Replace(ekCertAuth.Issuer.CommonName, "\\x00","", -1)] = *ekCertAuth
 	}
-	endorsementCerts[strings.Replace(ekCertAuth.Issuer.CommonName, "\\x00","", -1)] = *ekCertAuth
 	if rest == nil {
 		return endorsementCerts, nil
 	}
