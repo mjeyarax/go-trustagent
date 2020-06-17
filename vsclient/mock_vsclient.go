@@ -18,9 +18,7 @@ type MockedVSClientFactory struct {
 	MockedHostsClient HostsClient
 	MockedFlavorsClient FlavorsClient
 	MockedManifestsClient ManifestsClient
-	MockedTpmEndorsementClient TpmEndorsementsClient
 	MockedPrivacyCAClient PrivacyCAClient
-	MockedCACertificatesClient CACertificatesClient
 }
 
 func (factory MockedVSClientFactory) HostsClient() (HostsClient, error) {
@@ -35,16 +33,8 @@ func (factory MockedVSClientFactory) ManifestsClient() (ManifestsClient, error) 
 	return factory.MockedManifestsClient, nil
 }
 
-func (factory MockedVSClientFactory) TpmEndorsementsClient() (TpmEndorsementsClient, error) {
-	return factory.MockedTpmEndorsementClient, nil
-}
-
 func (factory MockedVSClientFactory) PrivacyCAClient() (PrivacyCAClient, error) {
 	return factory.MockedPrivacyCAClient, nil
-}
-
-func (factory MockedVSClientFactory) CACertificatesClient() (CACertificatesClient, error) {
-	return factory.MockedCACertificatesClient, nil
 }
 
 //-------------------------------------------------------------------------------------------------

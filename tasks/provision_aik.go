@@ -19,10 +19,9 @@ import (
 	"intel/isecl/go-trust-agent/v2/util"
 	"intel/isecl/go-trust-agent/v2/vsclient"
 	"intel/isecl/lib/common/v2/crypt"
-	"intel/isecl/lib/common/v2/setup"
 	"intel/isecl/lib/common/v2/log/message"
+	"intel/isecl/lib/common/v2/setup"
 	"intel/isecl/lib/tpmprovider/v2"
-	"io/ioutil"
 	"math/big"
 	"os"
 
@@ -86,7 +85,7 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	}
 
 	// get the EK cert from the tpm
-	ekCertBytes, err := task.getEndorsementKeyBytes()
+	ekCertBytes, err := util.GetEndorsementKeyBytes(*task.ownerSecretKey)
 	if err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error while getting endorsement certificate in bytes from tpm")
 		return errors.New("Error while getting endorsement certificate in bytes from tpm")
@@ -149,21 +148,13 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 		return errors.New("Error while parsing the aik certificate")
 	}
 
-	// save the aik pem cert to disk
-	err = ioutil.WriteFile(constants.AikCert, decrypted2, 0600)
-	if err != nil {
-		log.WithError(err).Errorf("tasks/provision_aik:Run() Error while writing aik certificate file %s", constants.AikCert)
-		return errors.Errorf("Error while writing aik certificate file %s", constants.AikCert)
-	}
-
-	certOut, err := os.OpenFile(constants.AikCert, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0)
+	certOut, err := os.OpenFile(constants.AikCert, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0640)
 	if err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error Could not open file for writing")
 		return errors.New("Error: Could not open file for writing")
 	}
 	defer certOut.Close()
 
-	os.Chmod(constants.AikCert, 0640)
 	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: decrypted2}); err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error Could not pem encode cert: ")
 		return errors.New("Error: Could not pem encode cert")
@@ -253,29 +244,6 @@ func (task *ProvisionAttestationIdentityKey) getTpmSymetricKey(key []byte) ([]by
 	secLog.Infof("%s tasks/provision_aik:getTpmSymetricKey() Returning encrypted tpm symmetric key", message.EncKeyUsed)
 
 	return ekAsymetricBytes, nil
-}
-
-func (task *ProvisionAttestationIdentityKey) getEndorsementKeyBytes() ([]byte, error) {
-	log.Trace("tasks/provision_aik:getEndorsementKeyBytes() Entering")
-	defer log.Trace("tasks/provision_aik:getEndorsementKeyBytes() Leaving")
-
-	//---------------------------------------------------------------------------------------------
-	// Get the endorsement key certificate from the tpm
-	//---------------------------------------------------------------------------------------------
-	tpm, err := task.tpmFactory.NewTpmProvider()
-	if err != nil {
-		return nil, errors.Wrap(err, "tasks/provision_aik:getEndorsementKeyBytes() Error while creating NewTpmProvider")
-	}
-
-	defer tpm.Close()
-
-	ekCertBytes, err := tpm.NvRead(*task.ownerSecretKey, tpmprovider.NV_IDX_ENDORSEMENT_KEY)
-	if err != nil {
-		return nil, errors.Wrap(err, "tasks/provision_aik:getEndorsementKeyBytes() Error while performing tpm Nv read operation for getting endorsement certificate in bytes")
-	}
-
-	return ekCertBytes, nil
-
 }
 
 //
