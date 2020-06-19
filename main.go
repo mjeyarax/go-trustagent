@@ -614,7 +614,7 @@ func fetchEndorsementCert(ownerSecret string) error {
 	}
 
 	base64EncodedCert := base64.StdEncoding.EncodeToString(buf.Bytes())
-	fmt.Printf("Issuer: %s\n", ekCert.Issuer.String())
+	fmt.Printf("Issuer: %s\n", ekCert.Issuer.CommonName)
 	fmt.Printf("TPM Endorsment Certificate Base64 Encoded: %s\n", base64EncodedCert)
 	return nil
 }
