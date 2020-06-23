@@ -151,10 +151,7 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	}
 
 	log.Info("tasks/provision_aik:Run() Activate credential is successful for identity challenge response")
-	// The aik cert bytes is padded before AES CBC encryption, padded bytes must be removed to retrieve the aik certificate bytes
-	length := len(decrypted2)
-	unpadding := int(decrypted2[length-1])
-	decrypted2 = decrypted2[:(length - unpadding)]
+	
 	// make sure the decrypted bytes are a valid certificates...
 	_, err = x509.ParseCertificate(decrypted2)
 	if err != nil {
@@ -367,6 +364,10 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 	
 	mode := cipher.NewCBCDecrypter(block, iv)
 	mode.CryptBlocks(decrypted, encryptedBytes)
+
+	length := len(decrypted)
+	unpadding := int(decrypted[length-1])
+	decrypted = decrypted[:(length - unpadding)]
 
 	return decrypted, nil
 }
