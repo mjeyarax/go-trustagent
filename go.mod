@@ -16,6 +16,7 @@ require (
 	intel/isecl/lib/common/v2 v2.2.0
 	intel/isecl/lib/platform-info/v2 v2.2.0
 	intel/isecl/lib/tpmprovider/v2 v2.2.0
+	github.com/intel-secl/intel-secl/v3 v3.0.0
 )
 
 replace intel/isecl/lib/common/v2 => github.com/intel-secl/common/v2 v2.2.0
@@ -24,7 +25,7 @@ replace intel/isecl/lib/tpmprovider/v2 => github.com/intel-secl/tpm-provider/v2 
 
 replace intel/isecl/lib/platform-info/v2 => github.com/intel-secl/platform-info/v2 v2.2.0
 
-replace intel/isecl/lib/clients/v2 => gitlab.devtools.intel.com/sst/isecl/lib/clients.git/v2 v2.2.0
+replace intel/isecl/lib/clients/v2 => github.com/intel-secl/clients/v2 v2.2.0
 
 replace github.com/intel-secl/intel-secl/v3 => gitlab.devtools.intel.com/sst/isecl/intel-secl.git/v3 v3.0/feature/go-hvs
 
