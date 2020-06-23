@@ -8,11 +8,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/intel-secl/intel-secl/v3/pkg/model/hvs"
 	taModel "github.com/intel-secl/intel-secl/v3/pkg/model/ta"
+	"github.com/pkg/errors"
 	"intel/isecl/lib/common/v2/log/message"
 	"io/ioutil"
 	"net/http"
-	"github.com/pkg/errors"
 )
 
 //-------------------------------------------------------------------------------------------------
@@ -40,11 +41,12 @@ func (client *privacyCAClientImpl) DownloadPrivacyCa() ([]byte, error) {
 
 	var ca []byte
 
-	url := fmt.Sprintf("%s/ca-certificates/privacy", client.cfg.BaseURL)
+	url := fmt.Sprintf("%s/ca-certificates/aik", client.cfg.BaseURL)
 	request, _ := http.NewRequest("GET", url, nil)
 	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 
 	response, err := client.httpClient.Do(request)
+	var caCert hvs.CaCertificate
 	if err != nil {
 		secLog.Warn(message.BadConnection)
 		return nil, errors.Wrapf(err, "vsclient/privacy_ca_client:DownloadPrivacyCa() Error while sending request to %s ", url)
@@ -57,9 +59,18 @@ func (client *privacyCAClientImpl) DownloadPrivacyCa() ([]byte, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "vsclient/privacy_ca_client:DownloadPrivacyCa() Error reading response")
 		}
+
+
+		dec := json.NewDecoder(bytes.NewReader(ca))
+		dec.DisallowUnknownFields()
+		err = dec.Decode(&caCert)
+		if err != nil {
+			return nil,  errors.Wrap(err, "vsclient/privacy_ca_client:DownloadPrivacyCa() Error decoding response")
+		}
+
 	}
 
-	return ca, nil
+	return caCert.Certificate, nil
 }
 
 func (client *privacyCAClientImpl) GetIdentityProofRequest(identityChallengeRequest *taModel.IdentityChallengePayload) (*taModel.IdentityProofRequest, error) {

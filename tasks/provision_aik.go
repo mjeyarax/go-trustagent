@@ -78,7 +78,7 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	}
 
 	// get the EK cert from the tpm
-	ekCertBytes, err := task.getEndorsementKeyBytes()
+	ekCertBytes, err := util.GetEndorsementKeyBytes(*task.ownerSecretKey)
 	if err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error while getting endorsement certificate in bytes from tpm")
 		return errors.New("Error while getting endorsement certificate in bytes from tpm")
@@ -162,14 +162,13 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 		return errors.New("Error while parsing the aik certificate")
 	}
 
-	certOut, err := os.OpenFile(constants.AikCert, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0)
+	certOut, err := os.OpenFile(constants.AikCert, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0640)
 	if err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error Could not open file for writing")
 		return errors.New("Error: Could not open file for writing")
 	}
 	defer certOut.Close()
 
-	os.Chmod(constants.AikCert, 0640)
 	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: decrypted2}); err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error Could not pem encode cert: ")
 		return errors.New("Error: Could not pem encode cert")

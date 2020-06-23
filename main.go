@@ -8,11 +8,17 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
+	"github.com/pkg/errors"
 	"intel/isecl/go-trust-agent/v2/config"
 	"intel/isecl/go-trust-agent/v2/constants"
 	"intel/isecl/go-trust-agent/v2/resource"
+	_ "intel/isecl/go-trust-agent/v2/swagger/docs"
 	"intel/isecl/go-trust-agent/v2/tasks"
 	"intel/isecl/go-trust-agent/v2/util"
 	commonExec "intel/isecl/lib/common/v2/exec"
@@ -28,8 +34,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"github.com/pkg/errors"
-	_ "intel/isecl/go-trust-agent/v2/swagger/docs"
 )
 
 var log = commLog.GetDefaultLogger()
@@ -51,13 +55,14 @@ Usage:
 
 Available Commands:
 
-  help|-h|-help       Show this help message.
-  setup [all] [task]  Run setup task.
-  uninstall           Uninstall trust agent.
-  version             Print build version info.
-  start               Start the trust agent service.
-  stop                Stop the trust agent service.
-  status              Get the status of the trust agent service.
+  help|-h|-help                    Show this help message.
+  setup [all] [task]               Run setup task.
+  uninstall                        Uninstall trust agent.
+  version                          Print build version info.
+  start                            Start the trust agent service.
+  stop                             Stop the trust agent service.
+  status                           Get the status of the trust agent service.
+  fetch-ekcert-with-issuer         Print Tpm Endorsement Certificate in Base64 encoded string along with issuer
 
 Setup command usage:  tagent setup [task]
 
@@ -506,7 +511,12 @@ func main() {
 		}
 
 		cfg.PrintConfigSetting(os.Args[2])
-
+	case "fetch-ekcert-with-issuer":
+		err = fetchEndorsementCert(cfg.Tpm.OwnerSecretKey)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "main:main() Error while running trustagent fetch-ekcert-with-issuer %s\n", err.Error())
+			os.Exit(1)
+		}
 	case "uninstall":
 		err = uninstall()
 		if err != nil {
@@ -582,4 +592,29 @@ func run_systemctl(systemCtlCmd string) (string, error) {
 	}
 
 	return string(out), nil
+}
+
+func fetchEndorsementCert(ownerSecret string) error {
+	log.Trace("main:fetchEndorsementCert() Entering")
+        defer log.Trace("main:fetchEndorsementCert() Leaving")
+	ekCertBytes, err := util.GetEndorsementKeyBytes(ownerSecret)
+	if err != nil {
+		log.WithError(err).Error("main:fetchEndorsementCert() Error while getting endorsement certificate in bytes from tpm")
+		return errors.New("Error while getting endorsement certificate in bytes from tpm")
+	}
+	buf := new(bytes.Buffer)
+	if err := pem.Encode(buf, &pem.Block{Type: "CERTIFICATE", Bytes: ekCertBytes}); err != nil {
+		log.WithError(err).Error("main:fetchEndorsementCert() Could not pem encode cert")
+		return errors.New("Could not pem encode cert")
+	}
+	ekCert, err := x509.ParseCertificate(ekCertBytes)
+	if err != nil {
+		log.WithError(err).Error("main:fetchEndorsementCert() Error while parsing endorsement certificate in bytes into x509 certificate")
+		return errors.New("Error while parsing endorsement certificate in bytes into x509 certificate")
+	}
+
+	base64EncodedCert := base64.StdEncoding.EncodeToString(buf.Bytes())
+	fmt.Printf("Issuer: %s\n", ekCert.Issuer.String())
+	fmt.Printf("TPM Endorsment Certificate Base64 Encoded: %s\n", base64EncodedCert)
+	return nil
 }

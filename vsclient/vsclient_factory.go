@@ -16,9 +16,7 @@ type VSClientFactory interface {
 	HostsClient() (HostsClient, error)
 	FlavorsClient() (FlavorsClient, error)
 	ManifestsClient() (ManifestsClient, error)
-	TpmEndorsementsClient() (TpmEndorsementsClient, error)
 	PrivacyCAClient() (PrivacyCAClient, error)
-	CACertificatesClient() (CACertificatesClient, error)
 }
 
 type vsClientConfig struct {
@@ -71,15 +69,6 @@ func (vsClientFactory *defaultVSClientFactory) ManifestsClient() (ManifestsClien
 	return &manifestsClientImpl{httpClient, vsClientFactory.cfg}, nil
 }
 
-func (vsClientFactory *defaultVSClientFactory) TpmEndorsementsClient() (TpmEndorsementsClient, error) {
-	httpClient, err := vsClientFactory.createHttpClient()
-	if err != nil {
-		return nil, err
-	}
-
-	return &tpmEndorsementsClientImpl{httpClient, vsClientFactory.cfg}, nil
-}
-
 func (vsClientFactory *defaultVSClientFactory) PrivacyCAClient() (PrivacyCAClient, error) {
 	httpClient, err := vsClientFactory.createHttpClient()
 	if err != nil {
@@ -87,15 +76,6 @@ func (vsClientFactory *defaultVSClientFactory) PrivacyCAClient() (PrivacyCAClien
 	}
 
 	return &privacyCAClientImpl{httpClient, vsClientFactory.cfg}, nil
-}
-
-func (vsClientFactory *defaultVSClientFactory) CACertificatesClient() (CACertificatesClient, error) {
-	httpClient, err := vsClientFactory.createHttpClient()
-	if err != nil {
-		return nil, err
-	}
-
-	return &caCertificatesClientImpl{httpClient, vsClientFactory.cfg}, nil
 }
 
 func (vsClientFactory *defaultVSClientFactory) createHttpClient() (*http.Client, error) {

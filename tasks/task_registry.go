@@ -29,7 +29,6 @@ const (
 	DownloadRootCACertCommand              = "download-ca-cert"
 	DownloadCertCommand                    = "download-cert"
 	TakeOwnershipCommand                   = "take-ownership"
-	ProvisionEndorsementKeyCommand         = "provision-ek"
 	ProvisionAttestationIdentityKeyCommand = "provision-aik"
 	DownloadPrivacyCACommand               = "download-privacy-ca"
 	ProvisionPrimaryKeyCommand             = "provision-primary-key"
@@ -94,12 +93,6 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 		ConsoleWriter: os.Stdout,
 	}
 
-	provisionEndorsementKey := ProvisionEndorsementKey{
-		clientFactory: vsClientFactory,
-		tpmFactory: tpmFactory,
-		ownerSecretKey: &cfg.Tpm.OwnerSecretKey,
-	}
-
 	provisionAttestationIdentityKey := ProvisionAttestationIdentityKey{
 		clientFactory: vsClientFactory,
 		tpmFactory: tpmFactory,
@@ -119,7 +112,6 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 	registry.taskMap[TakeOwnershipCommand] = []setup.Task{&takeOwnership}
 	registry.taskMap[DownloadRootCACertCommand] = []setup.Task{&downloadRootCACert}
 	registry.taskMap[DownloadCertCommand] = []setup.Task{&downloadTLSCert}
-	registry.taskMap[ProvisionEndorsementKeyCommand] = []setup.Task{&provisionEndorsementKey}
 	registry.taskMap[ProvisionAttestationIdentityKeyCommand] = []setup.Task{&provisionAttestationIdentityKey}
 	registry.taskMap[DownloadPrivacyCACommand] = []setup.Task{&downloadPrivacyCA}
 	registry.taskMap[ProvisionPrimaryKeyCommand] = []setup.Task{&provisionPrimaryKey}
@@ -127,7 +119,6 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 	registry.taskMap[ProvisionAttestationCommand] = [] setup.Task{
 		&downloadPrivacyCA,
 		&takeOwnership,
-		&provisionEndorsementKey,
 		&provisionAttestationIdentityKey,
 		&provisionPrimaryKey,
 	}
@@ -142,7 +133,6 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 		&downloadTLSCert,
 		&downloadPrivacyCA,
 		&takeOwnership,
-		&provisionEndorsementKey,
 		&provisionAttestationIdentityKey,
 		&provisionPrimaryKey,
 	}
