@@ -43,8 +43,8 @@ build:gta:
   tags:
     - gta
   script:
-    - make all
     - make build_test
+    - make all
   artifacts:
     paths:
       - "out/trustagent-*.bin"

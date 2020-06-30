@@ -90,14 +90,14 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 		return errors.Wrap(err, "Error while retrieving privacyca certificate")
 	}
 
-	privacycaTpm2, err := privacyca.NewPrivacyCA(identityChallengeRequest.IdentityRequest)
+	privacyca, err := privacyca.NewPrivacyCA(identityChallengeRequest.IdentityRequest)
 	if err != nil{
 		log.WithError(err).Error("tasks/provision_aik:Run() Unable to get new privacyca instance")
 		return errors.Wrap(err, "Unable to get new privacyca instance")
 	}
 
 	// Get the Identity challenge request
-	identityChallengeRequest, err = privacycaTpm2.GetIdentityChallengeRequest(ekCertBytes, privacyCaCert, identityChallengeRequest.IdentityRequest)
+	identityChallengeRequest, err = privacyca.GetIdentityChallengeRequest(ekCertBytes, privacyCaCert, identityChallengeRequest.IdentityRequest)
 	if err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Error while encrypting the endorsement certificate bytes")
 		return errors.Wrap(err,"Error while encrypting the endorsement certificate bytes")
@@ -134,7 +134,7 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 		return errors.New("Error while populating identity request with identity challenge response")
 	}
 
-	identityChallengeResponse, err = privacycaTpm2.GetIdentityChallengeRequest(decrypted1, privacyCaCert, identityChallengeResponse.IdentityRequest)
+	identityChallengeResponse, err = privacyca.GetIdentityChallengeRequest(decrypted1, privacyCaCert, identityChallengeResponse.IdentityRequest)
 
 	// send the decrypted nonce data back to HVS and get a 'proof request' back
 	identityProofRequest2, err := privacyCAClient.GetIdentityProofResponse(&identityChallengeResponse)
