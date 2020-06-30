@@ -1,7 +1,9 @@
 #--------------------------------------------------------------------------------------------------
 # See 'Readme.md' for information
 #--------------------------------------------------------------------------------------------------
-
+variables:
+  NO_PROXY: "gitlab.devtools.intel.com"
+  
 before_script:
   - git config --global http.proxy "${HTTP_PROXY}"
   - git config --global https.proxy "${HTTPS_PROXY}"
