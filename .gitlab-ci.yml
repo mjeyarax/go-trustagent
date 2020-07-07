@@ -12,6 +12,9 @@ before_script:
   - export https_proxy="${HTTPS_PROXY}"
   - export no_proxy="${NO_PROXY}"
   - export GITTAG=`git describe --tags --abbrev=0 2> /dev/null`
+  - git config --global --unset url."ssh://git@${GITLAB_SERVER}:29418".insteadOf
+  - git config --list
+  - env
 
 # the gta-unit-test is a container that remains alive across builds/tests.  clean up
 # the gitlab url otherwise they accumulate and expire, causing pipelines to fail.
@@ -45,13 +48,11 @@ build:gta:
   tags:
     - gta
   script:
-    - make build_test
     - make all
   artifacts:
     paths:
       - "out/trustagent-*.bin"
       - "out/tagent"
-      - "out/*.test"
     expire_in: 1 week
 
 test:
@@ -60,10 +61,7 @@ test:
   tags:
     - gta
   script:
-    - export CGO_CFLAGS_ALLOW="-f.*"
-    - go test ./... -tags=unit_test -coverpkg=./... -coverprofile out/cover.out
-    - go tool cover -func out/cover.out
-    - go tool cover -html=out/cover.out -o out/cover.html
+    - make unit_test
   artifacts:
     paths:
       - "out/cover.html"      
