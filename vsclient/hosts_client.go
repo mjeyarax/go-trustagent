@@ -79,7 +79,6 @@ type Host struct {
 	Description      string `json:"description"`
 	ConnectionString string `json:"connection_string"`
 	HardwareUUID     string `json:"hardware_uuid"`
-	TlsPolicyId      string `json:"tls_policy_id"`
 }
 
 type HostCollection struct {
@@ -89,14 +88,12 @@ type HostCollection struct {
 type HostCreateCriteria struct {
 	ConnectionString string `json:"connection_string"`
 	HostName         string `json:"host_name"`
-	TlsPolicyId      string `json:"tls_policy_id"`
 }
 
 type HostFilterCriteria struct {
 	Id                  string `json:"id"`
 	NameEqualTo         string `json:"nameEqualTo"`
 	NameContains        string `json:"nameContains"`
-	DescriptionContains string `json:"descriptionContains"`
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -130,10 +127,6 @@ func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteri
 
 	if len(hostFilterCriteria.NameContains) > 0 {
 		query.Add("nameContains", hostFilterCriteria.NameContains)
-	}
-
-	if len(hostFilterCriteria.DescriptionContains) > 0 {
-		query.Add("descriptionContains", hostFilterCriteria.DescriptionContains)
 	}
 
 	if len(query) == 0 {
@@ -230,7 +223,7 @@ func (client *hostsClientImpl) CreateHost(hostCreateCriteria *HostCreateCriteria
 
 	defer response.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
+	if response.StatusCode != http.StatusCreated {
 		return nil, errors.Errorf("vsclient/hosts_client:CreateHost() Request made to %s returned status %d", url, response.StatusCode)
 	}
 

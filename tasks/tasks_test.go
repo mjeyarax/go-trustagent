@@ -125,7 +125,6 @@ func TestCreateHostExisting(t *testing.T) {
 		Description:      "GTA RHEL 8.0",
 		ConnectionString: "https://ta.server.com:1443",
 		HardwareUUID:     "8032632b-8fa4-e811-906e-00163566263e",
-		TlsPolicyId:      "e1a1c631-e006-4ff2-aed1-6b42a2f5be6c",
 	}
 
 	// create mocks that return a host (i.e. it exists in hvs)

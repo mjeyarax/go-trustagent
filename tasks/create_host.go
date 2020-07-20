@@ -54,7 +54,6 @@ func (task *CreateHost) Run(c setup.Context) error {
 		hostCreateCriteria := vsclient.HostCreateCriteria{}
 		hostCreateCriteria.HostName = ip
 		hostCreateCriteria.ConnectionString = task.connectionString
-		hostCreateCriteria.TlsPolicyId = vsclient.TRUST_POLICY_TRUST_FIRST_CERTIFICATE // tlsPolicy.Id
 
 		host, err := hostsClient.CreateHost(&hostCreateCriteria)
 		if err != nil {

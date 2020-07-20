@@ -30,9 +30,8 @@ type FlavorsClient interface {
 
 type FlavorCreateCriteria struct {
 	ConnectionString   string   `json:"connection_string"`
-	FlavorGroupName    string   `json:"flavor_group_name"`
+	FlavorGroupName    string   `json:"flavorgroup_name"`
 	PartialFlavorTypes []string `json:"partial_flavor_types"`
-	TlsPolicyId        string   `json:"tls_policy_id"`
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -68,7 +67,7 @@ func (client *flavorsClientImpl) CreateFlavor(flavorCreateCriteria *FlavorCreate
 
 	defer response.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
+	if response.StatusCode != http.StatusCreated {
 		return nil, errors.Errorf("vsclient/flavors_client:CreateFlavor() request made to %s returned status %d", url, response.StatusCode)
 	}
 

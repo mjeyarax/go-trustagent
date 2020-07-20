@@ -34,7 +34,6 @@ func (task *CreateHostUniqueFlavor) Run(c setup.Context) error {
 		ConnectionString:   task.connectionString,
 		FlavorGroupName:    "",
 		PartialFlavorTypes: []string{vsclient.FLAVOR_HOST_UNIQUE},
-		TlsPolicyId:        vsclient.TRUST_POLICY_TRUST_FIRST_CERTIFICATE,
 	}
 
 	_, err = flavorsClient.CreateFlavor(&flavorCreateCriteria)
