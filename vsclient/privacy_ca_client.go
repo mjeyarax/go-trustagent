@@ -44,6 +44,8 @@ func (client *privacyCAClientImpl) DownloadPrivacyCa() ([]byte, error) {
 	url := fmt.Sprintf("%s/ca-certificates/aik", client.cfg.BaseURL)
 	request, _ := http.NewRequest("GET", url, nil)
 	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
+	request.Header.Set("Accept", "application/json")
+	request.Header.Set("Content-Type", "application/json")
 
 	response, err := client.httpClient.Do(request)
 	var caCert hvs.CaCertificate
@@ -90,6 +92,7 @@ func (client *privacyCAClientImpl) GetIdentityProofRequest(identityChallengeRequ
 	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "application/json")
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
@@ -132,6 +135,7 @@ func (client *privacyCAClientImpl) GetIdentityProofResponse(identityChallengeRes
 	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "application/json")
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {

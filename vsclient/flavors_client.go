@@ -55,6 +55,7 @@ func (client *flavorsClientImpl) CreateFlavor(flavorCreateCriteria *FlavorCreate
 	url := fmt.Sprintf("%s/flavors", client.cfg.BaseURL)
 	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Authorization", "Bearer " + client.cfg.BearerToken)
 
 	log.Debugf("vsclient/flavors_client:CreateFlavor() Posting to url %s, json: %s ", url, string(jsonData))

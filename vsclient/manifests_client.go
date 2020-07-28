@@ -62,6 +62,7 @@ func (client * manifestsClientImpl) getManifestXml(params map[string]string) ([]
 	url := fmt.Sprintf("%s/manifests", client.cfg.BaseURL)
 	request, _:= http.NewRequest("GET", url, nil)
 	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
+	request.Header.Set("Accept", "application/xml")
 
 	query := request.URL.Query()
 

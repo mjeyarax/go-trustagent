@@ -114,6 +114,7 @@ func (client *hostsClientImpl) SearchHosts(hostFilterCriteria *HostFilterCriteri
 	url := fmt.Sprintf("%s/hosts", client.cfg.BaseURL)
 	request, _ := http.NewRequest("GET", url, nil)
 	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
+	request.Header.Set("Accept", "application/json")
 
 	query := request.URL.Query()
 
@@ -210,8 +211,9 @@ func (client *hostsClientImpl) CreateHost(hostCreateCriteria *HostCreateCriteria
 
 	url := fmt.Sprintf("%s/hosts", client.cfg.BaseURL)
 	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "Bearer "+ client.cfg.BearerToken)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "application/json")
 
 	log.Debugf("vsclient/hosts_client:CreateHost() Sending Post request to url %s with json body: %s ", url, string(jsonData))
 
@@ -262,6 +264,8 @@ func (client *hostsClientImpl) UpdateHost(host *Host) (*Host, error) {
 	url := fmt.Sprintf("%s/hosts/%s", client.cfg.BaseURL, host.Id)
 	request, _ := http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
 	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "application/json")
 
 	log.Debugf("vsclient/hosts_client:UpdateHost() Sending PUT request to url %s, json: %s ", url, string(jsonData))
 

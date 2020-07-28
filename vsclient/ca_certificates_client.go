@@ -45,6 +45,7 @@ func (client *caCertificatesClientImpl) DownloadEndorsementAuthorities() ([]byte
 	url := fmt.Sprintf("%s/ca-certificates?domain=ek", client.cfg.BaseURL)
 	request, _ := http.NewRequest("GET", url, nil)
 	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
+	request.Header.Set("Accept", "application/x-pem-file")
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		secLog.Warn(message.BadConnection)

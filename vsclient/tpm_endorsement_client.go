@@ -46,6 +46,7 @@ func (client *tpmEndorsementsClientImpl) IsEkRegistered(hardwareUUID string) (bo
 	url := fmt.Sprintf("%s/tpm-endorsements?hardwareUuidEqualTo=%s", client.cfg.BaseURL, hardwareUUID)
 	request, _ := http.NewRequest("GET", url, nil)
 	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
+	request.Header.Set("Accept", "application/json")
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
@@ -90,6 +91,7 @@ func (client *tpmEndorsementsClientImpl) RegisterEk(tpmEndorsement *TpmEndorseme
 	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	request.Header.Set("Authorization", "Bearer "+client.cfg.BearerToken)
 	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "application/json")
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
