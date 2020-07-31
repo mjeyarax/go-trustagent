@@ -29,7 +29,7 @@ func GetEndorsementKeyBytes(ownerSecretKey string) ([]byte, error) {
 
 	defer tpm.Close()
 
-	ekCertBytes, err := tpm.NvRead(ownerSecretKey, tpmprovider.NV_IDX_ENDORSEMENT_KEY)
+	ekCertBytes, err := tpm.NvRead(ownerSecretKey, tpmprovider.NV_IDX_RSA_ENDORSEMENT_CERTIFICATE)
 	if err != nil {
 		return nil, errors.Wrap(err, "util/endorsement_certificate:GetEndorsementKeyBytes() Error while performing tpm Nv read operation for getting endorsement certificate in bytes")
 	}

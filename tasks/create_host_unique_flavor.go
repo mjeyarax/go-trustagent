@@ -26,8 +26,7 @@ func (task *CreateHostUniqueFlavor) Run(c setup.Context) error {
 
 	flavorsClient, err := task.clientFactory.FlavorsClient()
 	if err != nil {
-		log.WithError(err).Error("tasks/create_host_unique_flavor:Run() Could not create flavor client")
-		return err
+		return errors.Wrap(err, "Could not create flavor client")
 	}
 
 	flavorCreateCriteria := vsclient.FlavorCreateCriteria{
@@ -39,8 +38,7 @@ func (task *CreateHostUniqueFlavor) Run(c setup.Context) error {
 
 	_, err = flavorsClient.CreateFlavor(&flavorCreateCriteria)
 	if err != nil {
-		log.WithError(err).Error("tasks/create_host_unique_flavor:Run() Error while creating host unique flavor")
-		return errors.New("Error while creating host unique flavor")
+		return errors.Wrap(err, "Error while creating host unique flavor")
 	}
 
 	return nil
