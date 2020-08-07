@@ -13,20 +13,15 @@ before_script:
   - git config --list
   - env
 
-# the gta-unit-test is a container that remains alive across builds/tests.  clean up
-# the gitlab url otherwise they accumulate and expire, causing pipelines to fail.
-after_script:
-  - git config --global --unset url."https://gitlab-ci-token:${CI_JOB_TOKEN}@${GITLAB_SERVER}".insteadOf
-
 stages:
   - build
   - test
 
 build:gta:
   stage: build
-  image: gta-devel
+  image: tpm-devel
   tags:
-    - gta
+    - tpm-devel
   script:
     - make all
   artifacts:
@@ -37,9 +32,9 @@ build:gta:
 
 test:
   stage: test
-  image: gta-devel
+  image: tpm-devel
   tags:
-    - gta
+    - tpm-devel
   script:
     - make unit_test
   artifacts:

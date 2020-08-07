@@ -52,10 +52,10 @@ import (
 //-------------------------------------------------------------------------------------------------
 
 type ProvisionAttestationIdentityKey struct {
-	clientFactory vsclient.VSClientFactory
-	tpmFactory tpmprovider.TpmFactory
+	clientFactory  vsclient.VSClientFactory
+	tpmFactory     tpmprovider.TpmFactory
 	ownerSecretKey *string
-	aikSecretKey *string	// out variable that can be set during setup
+	aikSecretKey   *string // out variable that can be set during setup
 }
 
 func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
@@ -69,6 +69,12 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 		return errors.Wrap(err, "Failed to create privacyca-client")
 	}
 
+	// read the EK certificate and fail if not present...
+	ekCertBytes, err := util.GetEndorsementKeyCertificateBytes(*task.ownerSecretKey)
+	if err != nil {
+		return errors.Wrap(err, "Failed to get the endorsement certificate from the TPM")
+	}
+
 	// generate the aik in the tpm
 	err = task.createAik()
 	if err != nil {
@@ -80,12 +86,6 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	err = task.populateIdentityRequest(&identityChallengeRequest.IdentityRequest)
 	if err != nil {
 		return errors.Wrap(err, "Failed to populate the identity request")
-	}
-
-	// get the EK cert from the tpm
-	ekCertBytes, err := util.GetEndorsementKeyBytes(*task.ownerSecretKey)
-	if err != nil {
-		return errors.Wrap(err, "Failed to get the endorsement certificate from the TPM")
 	}
 
 	// encrypt the EK cert into binary that is acceptable to HVS/NAIRL
@@ -173,7 +173,9 @@ func (task *ProvisionAttestationIdentityKey) createAik() error {
 		return errors.New("aikSecretKey cannot be nil")
 	}
 
+	//
 	// if the configuration's aik secret has not been set, do it now...
+	//
 	if *task.aikSecretKey == "" {
 		*task.aikSecretKey, err = crypt.GetHexRandomString(20)
 		log.Debug("tasks/provision_aik:createAik() Generated new AIK secret key")
@@ -181,11 +183,35 @@ func (task *ProvisionAttestationIdentityKey) createAik() error {
 
 	tpm, err := task.tpmFactory.NewTpmProvider()
 	if err != nil {
-		return errors.Wrap(err,"Could not create TpmProvider")
+		return errors.Wrap(err, "Could not create TpmProvider")
 	}
 
 	defer tpm.Close()
-	
+
+	//
+	// Create an EK that will be used to generate the AIK...
+	//
+	err = tpm.CreateEk(*task.ownerSecretKey, tpmprovider.TPM_HANDLE_EK)
+	if err != nil {
+		return errors.Wrap(err, "Error while creating EK")
+	}
+
+	//
+	// Compare the new EK's public key with the public key of the EK Certificate, if they don't
+	// match then report an error to avoid downstream failures when communicating with HVS.
+	//
+	isValidEk, err := tpm.IsValidEk(*task.ownerSecretKey, tpmprovider.TPM_HANDLE_EK, tpmprovider.NV_IDX_RSA_ENDORSEMENT_CERTIFICATE)
+	if err != nil {
+		return errors.Wrap(err, "Error validating EK")
+	}
+
+	if !isValidEk {
+		return errors.Errorf("The EK at handle 0x%x does not have a public key that matches the EK Certificate at 0x%x", tpmprovider.TPM_HANDLE_EK, tpmprovider.NV_IDX_RSA_ENDORSEMENT_CERTIFICATE)
+	}
+
+	//
+	// create the AIK...
+	//
 	err = tpm.CreateAik(*task.ownerSecretKey, *task.aikSecretKey)
 	if err != nil {
 		return errors.Wrap(err, "Error while creating AIK")
@@ -227,7 +253,7 @@ func (task *ProvisionAttestationIdentityKey) getTpmSymetricKey(key []byte) ([]by
 	// ISECL-7702: Sha1 is being used for compatability with HVS --> needs to be fixed before release
 	ekAsymetricBytes, err := rsa.EncryptOAEP(sha1.New(), bytes.NewBuffer(asymKey), privacyCa, buf.Bytes(), nil)
 	if err != nil {
-		return nil, errors.Wrap(err,"Error encrypting tpm symmetric key")
+		return nil, errors.Wrap(err, "Error encrypting tpm symmetric key")
 	}
 	secLog.Infof("%s tasks/provision_aik:getTpmSymetricKey() Returning encrypted tpm symmetric key", message.EncKeyUsed)
 
@@ -345,7 +371,7 @@ func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityReq
 
 	tpm, err := task.tpmFactory.NewTpmProvider()
 	if err != nil {
-		return errors.Wrap(err,"Error while creating new TpmProvider")
+		return errors.Wrap(err, "Error while creating new TpmProvider")
 	}
 
 	defer tpm.Close()
