@@ -34,20 +34,17 @@ func (task *CreateHost) Run(c setup.Context) error {
 
 	hostsClient, err := task.clientFactory.HostsClient()
 	if err != nil {
-		log.WithError(err).Error("tasks/create_host:Run() Could not create host client")
-		return err
+		return errors.Wrap(err, "Could not create host client")
 	}
 
 	ip, err := util.GetLocalIpAsString()
 	if err != nil {
-		log.WithError(err).Error("tasks/create_host:Run() Error while getting Local IP address")
-		return errors.New("Error while getting Local IP address")
+		return errors.Wrap(err, "Error while getting Local IP address")
 	}
 
 	hostCollection, err := hostsClient.SearchHosts(&models.HostFilterCriteria{NameEqualTo: ip})
 	if err != nil {
-		log.WithError(err).Error("tasks/create_host:Run() Error while retrieving host collection")
-		return errors.New("Error while retrieving host collection")
+		return errors.Wrap(err, "Error while retrieving host collection")
 	}
 
 	if len(hostCollection.Hosts) == 0 {
@@ -63,7 +60,6 @@ func (task *CreateHost) Run(c setup.Context) error {
 
 		log.Debugf("tasks/create_host:Run() Successfully created host, host id %s", host.Id)
 	} else {
-		log.WithError(err).Errorf("tasks/create_host:Run() Host with IP address %s already exists", ip)
 		return errors.Errorf("Host with IP address %s already exists", ip)
 	}
 
@@ -78,23 +74,20 @@ func (task *CreateHost) Validate(c setup.Context) error {
 	// Initialize the PrivacyCA client using the factory - this will be reused in Run
 	hostsClient, err := task.clientFactory.HostsClient()
 	if err != nil {
-		log.WithError(err).Error("tasks/create_host:Validate() Could not create host client")
-		return err
+		return errors.Wrap(err, "Could not create host client")
 	}
 
 	ip, err := util.GetLocalIpAsString()
 	if err != nil {
-		log.WithError(err).Error("tasks/create_host:Run() Error while getting Local IP address")
-		return errors.New("Error while getting Local IP address")
+		return errors.Wrap(err, "Error while getting Local IP address")
 	}
 
 	hostCollection, err := hostsClient.SearchHosts(&models.HostFilterCriteria{NameEqualTo: ip})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error searching for host collection")
 	}
 
 	if len(hostCollection.Hosts) == 0 {
-		log.WithError(err).Errorf("tasks/create_host:Run() host with ip '%s' was not create", ip)
 		return errors.Errorf("Host with ip '%s' was not created", ip)
 	}
 

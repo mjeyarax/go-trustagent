@@ -6,7 +6,7 @@ require (
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/intel-secl/intel-secl/v3 v3.0.0
-	github.com/jinzhu/gorm v1.9.12
+	github.com/jinzhu/gorm v1.9.15
 	github.com/openzipkin/zipkin-go v0.1.6 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.4.2
@@ -23,7 +23,7 @@ require (
 
 replace intel/isecl/lib/common/v2 => github.com/intel-secl/common/v2 v2.2.0
 
-replace intel/isecl/lib/tpmprovider/v2 => github.com/intel-secl/tpm-provider/v2 v2.2.0
+replace intel/isecl/lib/tpmprovider/v2 => gitlab.devtools.intel.com/sst/isecl/lib/tpm-provider.git/v2 v3.0/develop
 
 replace intel/isecl/lib/platform-info/v2 => github.com/intel-secl/platform-info/v2 v2.2.0
 

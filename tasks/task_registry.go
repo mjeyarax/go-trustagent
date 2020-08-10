@@ -141,8 +141,7 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 
 	connectionString, err := util.GetConnectionString(cfg.WebService.Port)
 	if err != nil {
-		log.WithError(err).Error("tasks/TaskRegistry/CreateTaskRegistry() Error while getting connection string")
-		return nil, errors.New("Error while getting connection string")
+		return nil, errors.Wrap(err, "Error while getting connection string")
 	}
 
 	registry.taskMap[CreateHostCommand] = []setup.Task{
