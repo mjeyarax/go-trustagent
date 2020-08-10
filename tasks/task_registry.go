@@ -6,12 +6,12 @@ package tasks
 
 import (
 	"crypto/x509/pkix"
+	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
 	"github.com/pkg/errors"
-	commLog "intel/isecl/lib/common/v2/log"
 	"intel/isecl/go-trust-agent/v2/config"
 	"intel/isecl/go-trust-agent/v2/constants"
 	"intel/isecl/go-trust-agent/v2/util"
-	"intel/isecl/go-trust-agent/v2/vsclient"
+	commLog "intel/isecl/lib/common/v2/log"
 	"intel/isecl/lib/common/v2/setup"
 	"intel/isecl/lib/tpmprovider/v2"
 	"os"
@@ -53,9 +53,9 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 	registry.cfg = cfg
 	registry.taskMap = make(map[string][]setup.Task)
 
-	vsClientFactory, err := vsclient.NewVSClientFactory(cfg.HVS.Url, util.GetBearerToken())
+	vsClientFactory, err := hvsclient.NewVSClientFactory(cfg.HVS.Url, util.GetBearerToken(), constants.TrustedCaCertsDir)
 	if err != nil {
-		return nil, errors.Wrap(err, "Could not create the vsclient factory")
+		return nil, errors.Wrap(err, "Could not create the hvsclient factory")
 	}
 
 	tpmFactory, err := tpmprovider.NewTpmFactory()

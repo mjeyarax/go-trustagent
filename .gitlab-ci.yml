@@ -12,7 +12,6 @@ before_script:
   - export https_proxy="${HTTPS_PROXY}"
   - export no_proxy="${NO_PROXY}"
   - export GITTAG=`git describe --tags --abbrev=0 2> /dev/null`
-  - git config --global --unset url."ssh://git@${GITLAB_SERVER}:29418".insteadOf
   - git config --list
   - env
 

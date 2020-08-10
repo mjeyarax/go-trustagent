@@ -6,14 +6,16 @@ package tasks
 
 import (
 	"fmt"
-	"intel/isecl/go-trust-agent/v2/util"
-	"intel/isecl/go-trust-agent/v2/vsclient"
-	"intel/isecl/lib/common/v2/setup"
+	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
+	"github.com/intel-secl/intel-secl/v3/pkg/hvs/domain/models"
+	"github.com/intel-secl/intel-secl/v3/pkg/model/hvs"
 	"github.com/pkg/errors"
+	"intel/isecl/go-trust-agent/v2/util"
+	"intel/isecl/lib/common/v2/setup"
 )
 
 type CreateHost struct {
-	clientFactory vsclient.VSClientFactory
+	clientFactory    hvsclient.HVSClientFactory
 	connectionString string
 }
 
@@ -42,8 +44,7 @@ func (task *CreateHost) Run(c setup.Context) error {
 		return errors.New("Error while getting Local IP address")
 	}
 
-	hostFilterCriteria := vsclient.HostFilterCriteria{NameEqualTo: ip}
-	hostCollection, err := hostsClient.SearchHosts(&hostFilterCriteria)
+	hostCollection, err := hostsClient.SearchHosts(&models.HostFilterCriteria{NameEqualTo: ip})
 	if err != nil {
 		log.WithError(err).Error("tasks/create_host:Run() Error while retrieving host collection")
 		return errors.New("Error while retrieving host collection")
@@ -51,11 +52,11 @@ func (task *CreateHost) Run(c setup.Context) error {
 
 	if len(hostCollection.Hosts) == 0 {
 		// no host present, create a new one
-		hostCreateCriteria := vsclient.HostCreateCriteria{}
-		hostCreateCriteria.HostName = ip
-		hostCreateCriteria.ConnectionString = task.connectionString
-
-		host, err := hostsClient.CreateHost(&hostCreateCriteria)
+		hostCreateReq := hvs.HostCreateRequest{
+			HostName :ip,
+			ConnectionString: task.connectionString,
+		}
+		host, err := hostsClient.CreateHost(&hostCreateReq)
 		if err != nil {
 			return err
 		}
@@ -87,8 +88,7 @@ func (task *CreateHost) Validate(c setup.Context) error {
 		return errors.New("Error while getting Local IP address")
 	}
 
-	hostFilterCriteria := vsclient.HostFilterCriteria{NameEqualTo: ip}
-	hostCollection, err := hostsClient.SearchHosts(&hostFilterCriteria)
+	hostCollection, err := hostsClient.SearchHosts(&models.HostFilterCriteria{NameEqualTo: ip})
 	if err != nil {
 		return err
 	}

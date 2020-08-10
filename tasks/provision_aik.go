@@ -15,10 +15,10 @@ import (
 	"math/big"
 
 	"fmt"
+	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
 	taModel "github.com/intel-secl/intel-secl/v3/pkg/model/ta"
 	"intel/isecl/go-trust-agent/v2/constants"
 	"intel/isecl/go-trust-agent/v2/util"
-	"intel/isecl/go-trust-agent/v2/vsclient"
 	"intel/isecl/lib/common/v2/crypt"
 	"intel/isecl/lib/common/v2/setup"
 	"intel/isecl/lib/tpmprovider/v2"
@@ -51,7 +51,7 @@ import (
 //-------------------------------------------------------------------------------------------------
 
 type ProvisionAttestationIdentityKey struct {
-	clientFactory  vsclient.VSClientFactory
+	clientFactory  hvsclient.HVSClientFactory
 	tpmFactory     tpmprovider.TpmFactory
 	ownerSecretKey *string
 	aikSecretKey   *string // out variable that can be set during setup

@@ -6,9 +6,9 @@ package tasks
 
 import (
 	"fmt"
+	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
 	"intel/isecl/go-trust-agent/v2/constants"
 	"intel/isecl/go-trust-agent/v2/util"
-	"intel/isecl/go-trust-agent/v2/vsclient"
 	"intel/isecl/lib/common/v2/setup"
 	"io/ioutil"
 
@@ -16,7 +16,7 @@ import (
 )
 
 type DownloadPrivacyCA struct {
-	clientFactory   vsclient.VSClientFactory
+	clientFactory hvsclient.HVSClientFactory
 }
 
 // Download's the privacy CA from HVS.

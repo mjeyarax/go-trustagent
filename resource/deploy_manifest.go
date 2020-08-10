@@ -6,10 +6,11 @@ package resource
 
 import (
 	"encoding/xml"
+	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
+	flavorConsts "github.com/intel-secl/intel-secl/v3/pkg/lib/flavor/constants"
 	"intel/isecl/go-trust-agent/v2/constants"
-	"intel/isecl/go-trust-agent/v2/vsclient"
-	"intel/isecl/lib/common/v2/validation"
 	"intel/isecl/lib/common/v2/log/message"
+	"intel/isecl/lib/common/v2/validation"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -37,7 +38,7 @@ func deployManifest() endpointHandler {
 		}
 
 		// make sure the xml is well formed
-		manifest := vsclient.Manifest{}
+		manifest := hvsclient.Manifest{}
 		err = xml.Unmarshal(manifestXml, &manifest)
 		if err != nil {
 			log.Errorf("resource/deploy_manifest:deployManifest() Invalid xml format: %s", err)
@@ -63,8 +64,8 @@ func deployManifest() endpointHandler {
 			return &endpointError{Message: "Error: Invalid manifest labels", StatusCode: http.StatusBadRequest}
 		}
 
-		if strings.Contains(manifest.Label, vsclient.DEFAULT_APPLICATION_FLAVOR_PREFIX) ||
-			strings.Contains(manifest.Label, vsclient.DEFAULT_WORKLOAD_FLAVOR_PREFIX) {
+		if strings.Contains(manifest.Label, flavorConsts.DefaultSoftwareFlavorPrefix) ||
+			strings.Contains(manifest.Label, flavorConsts.DefaultWorkloadFlavorPrefix) {
 			log.Infof("%s: Default flavor's manifest (%s) is part of installation, no need to deploy default flavor's manifest", httpRequest.URL.Path, manifest.Label)
 			return &endpointError{Message: " Default flavor's manifest (%s) is part of installation", StatusCode: http.StatusBadRequest}
 		}

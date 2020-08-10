@@ -6,14 +6,16 @@ package tasks
 
 import (
 	"fmt"
-	"intel/isecl/go-trust-agent/v2/vsclient"
+	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
+	"github.com/intel-secl/intel-secl/v3/pkg/hvs/domain/models"
+	cf "github.com/intel-secl/intel-secl/v3/pkg/lib/flavor/common"
 	"intel/isecl/lib/common/v2/setup"
 
 	"github.com/pkg/errors"
 )
 
 type CreateHostUniqueFlavor struct {
-	clientFactory vsclient.VSClientFactory
+	clientFactory    hvsclient.HVSClientFactory
 	connectionString string
 }
 
@@ -30,10 +32,10 @@ func (task *CreateHostUniqueFlavor) Run(c setup.Context) error {
 		return err
 	}
 
-	flavorCreateCriteria := vsclient.FlavorCreateCriteria{
-		ConnectionString:   task.connectionString,
-		FlavorGroupName:    "",
-		PartialFlavorTypes: []string{vsclient.FLAVOR_HOST_UNIQUE},
+	flavorCreateCriteria := models.FlavorCreateRequest{
+			ConnectionString:       task.connectionString,
+			FlavorgroupName:        "",
+			FlavorParts:            []cf.FlavorPart{cf.FlavorPartHostUnique},
 	}
 
 	_, err = flavorsClient.CreateFlavor(&flavorCreateCriteria)

@@ -29,6 +29,6 @@ replace intel/isecl/lib/platform-info/v2 => github.com/intel-secl/platform-info/
 
 replace intel/isecl/lib/clients/v2 => github.com/intel-secl/clients/v2 v2.2.0
 
-replace github.com/intel-secl/intel-secl/v3 => gitlab.devtools.intel.com/sst/isecl/intel-secl.git/v3 v3.0/feature/go-hvs
+replace github.com/intel-secl/intel-secl/v3 => gitlab.devtools.intel.com/sst/isecl/intel-secl.git/v3 v3.0/develop
 
 replace github.com/vmware/govmomi => github.com/arijit8972/govmomi fix-tpm-attestation-output

@@ -7,11 +7,12 @@ package tasks
 import (
 	"encoding/xml"
 	"fmt"
+	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
+	flavorConsts "github.com/intel-secl/intel-secl/v3/pkg/lib/flavor/constants"
 	"intel/isecl/go-trust-agent/v2/constants"
-	"intel/isecl/go-trust-agent/v2/vsclient"
+	"intel/isecl/lib/common/v2/log/message"
 	"intel/isecl/lib/common/v2/setup"
 	"intel/isecl/lib/common/v2/validation"
-	"intel/isecl/lib/common/v2/log/message"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -20,7 +21,7 @@ import (
 )
 
 type GetConfiguredManifest struct {
-	clientFactory      vsclient.VSClientFactory
+	clientFactory      hvsclient.HVSClientFactory
 	savedManifestFiles []string		// internal task variable that tracks saved manifests (used in Validate())
 }
 
@@ -28,15 +29,15 @@ func (task GetConfiguredManifest) saveManifest(manifestXml []byte) error {
 	log.Trace("tasks/get-configured-manifest:saveManifest() Entering")
 	defer log.Trace("tasks/get-configured-manifest:saveManifest() Leaving")
 	
-	manifest := vsclient.Manifest{}
+	manifest := hvsclient.Manifest{}
 	err := xml.Unmarshal(manifestXml, &manifest)
 	if err != nil {
 		log.WithError(err).Error("tasks/get-configured-manifest:saveManifest() Error while unmarshalling the manifest xml")
 		return errors.New("Error while unmarshalling the manifest xml")
 	}
 
-	if strings.Contains(manifest.Label, vsclient.DEFAULT_APPLICATION_FLAVOR_PREFIX) ||
-		strings.Contains(manifest.Label, vsclient.DEFAULT_WORKLOAD_FLAVOR_PREFIX) {
+	if strings.Contains(manifest.Label, flavorConsts.DefaultSoftwareFlavorPrefix) ||
+		strings.Contains(manifest.Label, flavorConsts.DefaultWorkloadFlavorPrefix) {
 		log.Infof("tasks/get-configured-manifest:saveManifest() Default flavor's manifest (%s) is part of installation, no need to deploy default flavor's manifest", manifest.Label)
 		return nil
 	}
