@@ -33,7 +33,6 @@ func (task *CreateHostUniqueFlavor) Run(c setup.Context) error {
 
 	flavorCreateCriteria := models.FlavorCreateRequest{
 			ConnectionString:       task.connectionString,
-			FlavorgroupName:        "",
 			FlavorParts:            []cf.FlavorPart{cf.FlavorPartHostUnique},
 	}
 
