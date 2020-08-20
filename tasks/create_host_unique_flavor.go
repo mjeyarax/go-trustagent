@@ -9,7 +9,7 @@ import (
 	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
 	"github.com/intel-secl/intel-secl/v3/pkg/hvs/domain/models"
 	cf "github.com/intel-secl/intel-secl/v3/pkg/lib/flavor/common"
-	"intel/isecl/lib/common/v2/setup"
+	"intel/isecl/lib/common/v3/setup"
 
 	"github.com/pkg/errors"
 )

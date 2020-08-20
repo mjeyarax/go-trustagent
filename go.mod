@@ -1,4 +1,4 @@
-module intel/isecl/go-trust-agent/v2
+module intel/isecl/go-trust-agent/v3
 
 require (
 	github.com/apache/thrift v0.12.0 // indirect
@@ -15,19 +15,19 @@ require (
 	golang.org/x/crypto v0.0.0-20191205180655-e7c4368fe9dd
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	gopkg.in/yaml.v2 v2.3.0
-	intel/isecl/lib/clients/v2 v2.2.0
-	intel/isecl/lib/common/v2 v2.2.0
-	intel/isecl/lib/platform-info/v2 v2.2.0
-	intel/isecl/lib/tpmprovider/v2 v2.2.0
+	intel/isecl/lib/clients/v3 v3.0.0
+	intel/isecl/lib/common/v3 v3.0.0
+	intel/isecl/lib/platform-info/v3 v3.0.0
+	intel/isecl/lib/tpmprovider/v3 v3.0.0
 )
 
-replace intel/isecl/lib/common/v2 => github.com/intel-secl/common/v2 v2.2.0
+replace intel/isecl/lib/common/v3 =>  gitlab.devtools.intel.com/sst/isecl/lib/common.git/v3 v3.0/develop
 
-replace intel/isecl/lib/tpmprovider/v2 => gitlab.devtools.intel.com/sst/isecl/lib/tpm-provider.git/v2 v3.0/develop
+replace intel/isecl/lib/tpmprovider/v3 => gitlab.devtools.intel.com/sst/isecl/lib/tpm-provider.git/v3 v3.0/develop
 
-replace intel/isecl/lib/platform-info/v2 => github.com/intel-secl/platform-info/v2 v2.2.0
+replace intel/isecl/lib/platform-info/v3 => gitlab.devtools.intel.com/sst/isecl/lib/platform-info.git/v3 v3.0/develop
 
-replace intel/isecl/lib/clients/v2 => github.com/intel-secl/clients/v2 v2.2.0
+replace intel/isecl/lib/clients/v3 => gitlab.devtools.intel.com/sst/isecl/lib/clients.git/v3 v3.0/develop
 
 replace github.com/intel-secl/intel-secl/v3 => gitlab.devtools.intel.com/sst/isecl/intel-secl.git/v3 v3.0/develop
 

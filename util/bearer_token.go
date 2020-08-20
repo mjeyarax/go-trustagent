@@ -6,7 +6,7 @@ package util
 
 import (
 	"os"
-	"intel/isecl/go-trust-agent/v2/constants"
+	"intel/isecl/go-trust-agent/v3/constants"
 )
 
 func GetBearerToken() (string) {

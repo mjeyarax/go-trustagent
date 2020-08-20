@@ -6,7 +6,7 @@ package util
 
 import (
 	"fmt"
-	commLog "intel/isecl/lib/common/v2/log"
+	commLog "intel/isecl/lib/common/v3/log"
 	"github.com/pkg/errors"
 )
 

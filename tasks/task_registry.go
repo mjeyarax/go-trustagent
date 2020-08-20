@@ -8,12 +8,12 @@ import (
 	"crypto/x509/pkix"
 	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
 	"github.com/pkg/errors"
-	"intel/isecl/go-trust-agent/v2/config"
-	"intel/isecl/go-trust-agent/v2/constants"
-	"intel/isecl/go-trust-agent/v2/util"
-	commLog "intel/isecl/lib/common/v2/log"
-	"intel/isecl/lib/common/v2/setup"
-	"intel/isecl/lib/tpmprovider/v2"
+	"intel/isecl/go-trust-agent/v3/config"
+	"intel/isecl/go-trust-agent/v3/constants"
+	"intel/isecl/go-trust-agent/v3/util"
+	commLog "intel/isecl/lib/common/v3/log"
+	"intel/isecl/lib/common/v3/setup"
+	"intel/isecl/lib/tpmprovider/v3"
 	"os"
 )
 

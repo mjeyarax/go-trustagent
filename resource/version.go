@@ -7,9 +7,9 @@ package resource
 import (
 	"bytes"
 	"encoding/json"
-	"intel/isecl/go-trust-agent/v2/util"
+	"intel/isecl/go-trust-agent/v3/util"
 	"net/http"
-	"intel/isecl/lib/common/v2/log/message"
+	"intel/isecl/lib/common/v3/log/message"
 )
 
 // GetVersion handles GET /version

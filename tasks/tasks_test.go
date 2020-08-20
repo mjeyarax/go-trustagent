@@ -13,9 +13,9 @@ import (
 	"github.com/intel-secl/intel-secl/v3/pkg/model/hvs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"intel/isecl/go-trust-agent/v2/config"
-	"intel/isecl/lib/common/v2/setup"
-	"intel/isecl/lib/tpmprovider/v2"
+	"intel/isecl/go-trust-agent/v3/config"
+	"intel/isecl/lib/common/v3/setup"
+	"intel/isecl/lib/tpmprovider/v3"
 	"testing"
 )
 
