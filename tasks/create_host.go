@@ -15,8 +15,8 @@ import (
 )
 
 type CreateHost struct {
-	clientFactory    hvsclient.HVSClientFactory
-	connectionString string
+	clientFactory  hvsclient.HVSClientFactory
+	trustAgentPort int
 }
 
 //
@@ -37,22 +37,24 @@ func (task *CreateHost) Run(c setup.Context) error {
 		return errors.Wrap(err, "Could not create host client")
 	}
 
-	ip, err := util.GetLocalIpAsString()
+	currentIP, err := util.GetCurrentIP()
 	if err != nil {
-		return errors.Wrap(err, "Error while getting Local IP address")
+		return errors.Wrap(err, "The create-host task requires the CURRENT_IP environment variable")
 	}
 
-	hostCollection, err := hostsClient.SearchHosts(&models.HostFilterCriteria{NameEqualTo: ip})
+	hostCollection, err := hostsClient.SearchHosts(&models.HostFilterCriteria{NameEqualTo: currentIP.String()})
 	if err != nil {
 		return errors.Wrap(err, "Error while retrieving host collection")
 	}
 
 	if len(hostCollection.Hosts) == 0 {
 		// no host present, create a new one
+
 		hostCreateReq := hvs.HostCreateRequest{
-			HostName :ip,
-			ConnectionString: task.connectionString,
+			HostName: currentIP.String(),
+			ConnectionString: util.GetConnectionString(currentIP, task.trustAgentPort),
 		}
+
 		host, err := hostsClient.CreateHost(&hostCreateReq)
 		if err != nil {
 			return err
@@ -60,7 +62,7 @@ func (task *CreateHost) Run(c setup.Context) error {
 
 		log.Debugf("tasks/create_host:Run() Successfully created host, host id %s", host.Id)
 	} else {
-		return errors.Errorf("Host with IP address %s already exists", ip)
+		return errors.Errorf("Host with IP address %s already exists", currentIP.String())
 	}
 
 	return nil
@@ -77,18 +79,18 @@ func (task *CreateHost) Validate(c setup.Context) error {
 		return errors.Wrap(err, "Could not create host client")
 	}
 
-	ip, err := util.GetLocalIpAsString()
+	currentIP, err := util.GetCurrentIP()
 	if err != nil {
-		return errors.Wrap(err, "Error while getting Local IP address")
+		return errors.Wrap(err, "The create-host task requires the CURRENT_IP environment variable")
 	}
 
-	hostCollection, err := hostsClient.SearchHosts(&models.HostFilterCriteria{NameEqualTo: ip})
+	hostCollection, err := hostsClient.SearchHosts(&models.HostFilterCriteria{NameEqualTo: currentIP.String()})
 	if err != nil {
 		return errors.Wrap(err, "Error searching for host collection")
 	}
 
 	if len(hostCollection.Hosts) == 0 {
-		return errors.Errorf("Host with ip '%s' was not created", ip)
+		return errors.Errorf("Host with ip '%s' was not created", currentIP.String())
 	}
 
 	log.Info("tasks/create_host:Validate() Create host setup task was successful.")

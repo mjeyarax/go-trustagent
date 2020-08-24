@@ -8,9 +8,11 @@ package tasks
 
 
 import (
+	"os"
 	"github.com/google/uuid"
 	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
 	"github.com/intel-secl/intel-secl/v3/pkg/model/hvs"
+	"intel/isecl/go-trust-agent/v3/constants"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"intel/isecl/go-trust-agent/v3/config"
@@ -22,7 +24,6 @@ import (
 const (
 	TpmSecretKey   = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
 	AikSecretKey   = "beefbeefbeefbeefbeefbeefbeefbeefbeefbeef"
-	ConnectionString = "intel://10.10.10.1:1443"
 )
 
 func TestTakeOwnership(t *testing.T) {
@@ -111,7 +112,8 @@ func TestCreateHostDefault(t *testing.T) {
 
 	context := setup.Context{}
 
-	createHost := CreateHost{clientFactory: mockedVSClientFactory, connectionString: ConnectionString}
+	os.Setenv(constants.EnvCurrentIP, "99.99.99.99")
+	createHost := CreateHost{clientFactory: mockedVSClientFactory, trustAgentPort: cfg.WebService.Port}
 	err := createHost.Run(context)
 	assert.NoError(err)
 }
@@ -138,7 +140,8 @@ func TestCreateHostExisting(t *testing.T) {
 	mockedVSClientFactory := hvsclient.MockedVSClientFactory {MockedHostsClient : mockedHostsClient}
 
 	context := setup.Context{}
-	createHost := CreateHost{clientFactory: mockedVSClientFactory, connectionString: ConnectionString}
+	os.Setenv(constants.EnvCurrentIP, "99.99.99.99")
+	createHost := CreateHost{clientFactory: mockedVSClientFactory, trustAgentPort: cfg.WebService.Port}
 	err := createHost.Run(context)
 	assert.Error(err)
 }

@@ -34,7 +34,6 @@ const (
 
 type TrustAgentConfiguration struct {
 	configFile        string
-	TpmQuoteIPv4      bool						// TPM_QUOTE_IPV4
 	Logging struct {
 		LogLevel          string				// TRUSTAGENT_LOG_LEVEL
 		LogEnableStdout   bool					// TA_ENABLE_CONSOLE_LOG
@@ -78,7 +77,10 @@ func NewConfigFromYaml(pathToYaml string) (*TrustAgentConfiguration, error) {
 	file, err := os.Open(pathToYaml)
 	if err == nil {
 		defer file.Close()
-		yaml.NewDecoder(file).Decode(&c)
+		err = yaml.NewDecoder(file).Decode(&c)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		// file doesnt exist, create a new blank one
 		c.Logging.LogLevel = logrus.InfoLevel.String()
@@ -262,19 +264,6 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	} else if strings.TrimSpace(cfg.TLS.CertSAN) == "" {
 		fmt.Printf("SAN_LIST not defined, using default value %s\n", constants.DefaultTaTlsSan)
 		cfg.TLS.CertSAN = constants.DefaultTaTlsSan
-	}
-
-	//---------------------------------------------------------------------------------------------
-	// TPM_QUOTE_IPV4
-	//---------------------------------------------------------------------------------------------
-	cfg.TpmQuoteIPv4 = true
-	environmentVariable, err = context.GetenvString("TPM_QUOTE_IPV4", "TPM Quote IPv4 Nonce")
-	if err == nil && environmentVariable != "" {
-		cfg.TpmQuoteIPv4, err = strconv.ParseBool(environmentVariable)
-		if err != nil {
-			log.Info("config/config:LoadEnvironmentVariables() TPM_QUOTE_IPV4 not valid, setting default value true")
-			cfg.TpmQuoteIPv4 = true
-		}
 	}
 
 	//---------------------------------------------------------------------------------------------

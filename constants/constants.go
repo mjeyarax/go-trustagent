@@ -57,6 +57,7 @@ const (
 	EnvAASBaseURL              = "AAS_API_URL"
 	EnvTLSCertCommonName       = "TA_TLS_CERT_CN"
 	EnvCertSanList             = "SAN_LIST"
+	EnvCurrentIP               = "CURRENT_IP"
 	DefaultTaTlsCn             = "Trust Agent TLS Certificate"
 	DefaultTaTlsSan            = "127.0.0.1,localhost"
 	TrustAgentEnvMaxLength     = 10000
