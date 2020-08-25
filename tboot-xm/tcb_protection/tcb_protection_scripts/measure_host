@@ -277,9 +277,9 @@ tpm_extend()
 		image_hash=${image_hash%%</*}
 
 		if [ "$tpm_version" == "1.2" ]; then
-			image_hash=`echo $image_hash | sed 's/\([0-9A-F]\{2\}\)/\\\\\\x\1/gI' | xargs printf | sha1sum - | awk '{ print $1; }'`
+			image_hash=`echo $image_hash | sed 's/\([0-9A-F]\{2\}\)/\\\\\\\\\\x\1/gI' | xargs printf | sha1sum - | awk '{ print $1; }'`
 		else
-			image_hash=`echo $image_hash | sed 's/\([0-9A-F]\{2\}\)/\\\\\\x\1/gI' | xargs printf | sha256sum - | awk '{ print $1; }'`
+			image_hash=`echo $image_hash | sed 's/\([0-9A-F]\{2\}\)/\\\\\\\\\\x\1/gI' | xargs printf | sha256sum - | awk '{ print $1; }'`
 		fi
 		log "image hash : $image_hash"
 

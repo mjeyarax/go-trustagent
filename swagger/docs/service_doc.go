@@ -5,7 +5,7 @@
 package docs
 
 import (
-	"intel/isecl/go-trust-agent/v2/resource"
+	"intel/isecl/go-trust-agent/v3/resource"
 )
 
 // TpmQuoteRequestInfo request payload

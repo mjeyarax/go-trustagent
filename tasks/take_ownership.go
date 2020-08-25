@@ -6,9 +6,9 @@ package tasks
 
 import (
 	"fmt"
-	"intel/isecl/lib/common/v2/crypt"
-	"intel/isecl/lib/common/v2/setup"
-	"intel/isecl/lib/tpmprovider/v2"
+	"intel/isecl/lib/common/v3/crypt"
+	"intel/isecl/lib/common/v3/setup"
+	"intel/isecl/lib/tpmprovider/v3"
 
 	"github.com/pkg/errors"
 )
@@ -27,7 +27,7 @@ func (task *TakeOwnership) Run(c setup.Context) error {
 	fmt.Println("Running setup task: take-ownership")
 
 	if task.ownerSecretKey == nil {
-		return errors.New("ownerSecretKey cannot be nil")
+		return errors.New("The ownerSecretKey cannot be nil")
 	}
 
 	// The OwnerSecretKey is either set via trustagent.env (env var) and trustagent_config.go,
@@ -37,7 +37,7 @@ func (task *TakeOwnership) Run(c setup.Context) error {
 	if *task.ownerSecretKey == "" {
 		newSecretKey, err := crypt.GetHexRandomString(20)
 		if err != nil {
-			return errors.Wrap(err, "tasks/take_ownership:Run() Error while generating a random key")
+			return errors.Wrap(err, "Error while generating a random key")
 		}
 
 		*task.ownerSecretKey = newSecretKey
@@ -50,8 +50,7 @@ func (task *TakeOwnership) Run(c setup.Context) error {
 
 	tpm, err := task.tpmFactory.NewTpmProvider()
 	if err != nil {
-		log.WithError(err).Error("tasks/take_ownership:Run() Error while creating NewTpmProvider")
-		return errors.New("Error while creating NewTpmProvider")
+		return errors.Wrap(err, "Error while creating NewTpmProvider")
 	}
 
 	defer tpm.Close()
@@ -59,8 +58,7 @@ func (task *TakeOwnership) Run(c setup.Context) error {
 	// check if the tpm is already owned with the current secret key (and return)
 	alreadyOwned, err := tpm.IsOwnedWithAuth(*task.ownerSecretKey)
 	if err != nil {
-		log.WithError(err).Error("tasks/take_ownership:Run() Error while checking if the tpm is already owned with the current secret key")
-		return errors.New("Error while checking if the tpm is already owned with the current secret key")
+		return errors.Wrap(err, "Error while checking if the tpm is already owned with the current secret key")
 	}
 
 	if alreadyOwned {
@@ -71,8 +69,7 @@ func (task *TakeOwnership) Run(c setup.Context) error {
 	// tpm is not owned by current secret, take ownership
 	err = tpm.TakeOwnership(*task.ownerSecretKey)
 	if err != nil {
-		log.WithError(err).Error("tasks/take_ownership:Run() Error while performing tpm takeownership operation")
-		return errors.New("Error while performing tpm takeownership operation")
+		return errors.Wrap(err, "Error while performing tpm takeownership operation")
 	}
 
 	return nil
@@ -92,16 +89,14 @@ func (task *TakeOwnership) Validate(c setup.Context) error {
 
 	tpmProvider, err := task.tpmFactory.NewTpmProvider()
 	if err != nil {
-		log.WithError(err).Error("tasks/take_ownership:Validate() Error while creating NewTpmProvider")
-		return errors.New("Error while creating NewTpmProvider")
+		return errors.Wrap(err, "Error while creating NewTpmProvider")
 	}
 
 	defer tpmProvider.Close()
 
 	ok, err := tpmProvider.IsOwnedWithAuth(*task.ownerSecretKey)
 	if err != nil {
-		log.WithError(err).Error("tasks/take_ownership:Validate() Error while checking if the tpm is already owned with the current secret key")
-		return errors.New("Error while checking if the tpm is already owned with the current secret key")
+		return errors.Wrap(err, "Error while checking if the tpm is already owned with the current secret key")
 	}
 
 	if !ok {

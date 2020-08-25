@@ -6,15 +6,17 @@ package tasks
 
 import (
 	"fmt"
-	"intel/isecl/go-trust-agent/v2/vsclient"
-	"intel/isecl/lib/common/v2/setup"
-
+	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
+	"github.com/intel-secl/intel-secl/v3/pkg/hvs/domain/models"
+	cf "github.com/intel-secl/intel-secl/v3/pkg/lib/flavor/common"
+	"intel/isecl/lib/common/v3/setup"
+	"intel/isecl/go-trust-agent/v3/util"
 	"github.com/pkg/errors"
 )
 
 type CreateHostUniqueFlavor struct {
-	clientFactory vsclient.VSClientFactory
-	connectionString string
+	clientFactory  hvsclient.HVSClientFactory
+	trustAgentPort int
 }
 
 // Communicates with HVS to establish the host-unique-flavor from the current compute node.
@@ -26,21 +28,22 @@ func (task *CreateHostUniqueFlavor) Run(c setup.Context) error {
 
 	flavorsClient, err := task.clientFactory.FlavorsClient()
 	if err != nil {
-		log.WithError(err).Error("tasks/create_host_unique_flavor:Run() Could not create flavor client")
-		return err
+		return errors.Wrap(err, "Could not create flavor client")
 	}
 
-	flavorCreateCriteria := vsclient.FlavorCreateCriteria{
-		ConnectionString:   task.connectionString,
-		FlavorGroupName:    "",
-		PartialFlavorTypes: []string{vsclient.FLAVOR_HOST_UNIQUE},
-		TlsPolicyId:        vsclient.TRUST_POLICY_TRUST_FIRST_CERTIFICATE,
+	currentIP, err := util.GetCurrentIP()
+	if err != nil {
+		return errors.Wrap(err, "The create-host-unique-flavor task requires the CURRENT_IP environment variable")
+	}
+
+	flavorCreateCriteria := models.FlavorCreateRequest{
+			ConnectionString: util.GetConnectionString(currentIP, task.trustAgentPort),
+			FlavorParts:      []cf.FlavorPart{cf.FlavorPartHostUnique},
 	}
 
 	_, err = flavorsClient.CreateFlavor(&flavorCreateCriteria)
 	if err != nil {
-		log.WithError(err).Error("tasks/create_host_unique_flavor:Run() Error while creating host unique flavor")
-		return errors.New("Error while creating host unique flavor")
+		return errors.Wrap(err, "Error while creating host unique flavor")
 	}
 
 	return nil

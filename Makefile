@@ -8,8 +8,7 @@ VERSION := $(or ${GITTAG}, v1.0.0)
 # TODO:  Update make file to support debug/release builds (release build to use secure gcflags)
 # -fno-strict-overflow -fno-delete-null-pointer-checks -fwrapv -fPIE -fPIC -fstack-protector-strong -O2 -D
 gta:
-	export CGO_CFLAGS_ALLOW="-f.*"; \
-	env GOOS=linux GOSUMDB=off GOPROXY=direct go build -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/v2/util.Version=$(VERSION) -X intel/isecl/go-trust-agent/v2/util.GitHash=$(GITCOMMIT) -X intel/isecl/go-trust-agent/v2/util.BuildDate=$(BUILDDATE)" -o out/tagent
+	env CGO_CFLAGS_ALLOW="-f.*" GOOS=linux GOSUMDB=off GOPROXY=direct go build -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/v3/util.Version=$(VERSION) -X intel/isecl/go-trust-agent/v3/util.GitHash=$(GITCOMMIT) -X intel/isecl/go-trust-agent/v3/util.BuildDate=$(BUILDDATE)" -o out/tagent
 
 swagger-get:
 	wget https://github.com/go-swagger/go-swagger/releases/download/v0.21.0/swagger_linux_amd64 -O /usr/local/bin/swagger
@@ -40,9 +39,11 @@ installer: gta
 	cp out/tagent out/installer/tagent
 	makeself out/installer out/trustagent-$(VERSION).bin "TrustAgent $(VERSION)" ./install.sh
 
-build_test: gta
-	export CGO_CFLAGS_ALLOW="-f.*" && cd resource && go test -c -o ../out/resource.test -tags=unit_test
-	export CGO_CFLAGS_ALLOW="-f.*" && cd tasks && go test -c -o ../out/tasks.test -tags=unit_test
+unit_test:
+	mkdir -p out
+	env CGO_CFLAGS_ALLOW="-f.*" GOOS=linux GOSUMDB=off GOPROXY=direct go test ./... -tags=unit_test -coverpkg=./... -coverprofile out/cover.out
+	go tool cover -func out/cover.out
+	go tool cover -html=out/cover.out -o out/cover.html
 
 all: clean installer
 

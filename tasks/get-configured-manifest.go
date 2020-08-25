@@ -7,11 +7,12 @@ package tasks
 import (
 	"encoding/xml"
 	"fmt"
-	"intel/isecl/go-trust-agent/v2/constants"
-	"intel/isecl/go-trust-agent/v2/vsclient"
-	"intel/isecl/lib/common/v2/setup"
-	"intel/isecl/lib/common/v2/validation"
-	"intel/isecl/lib/common/v2/log/message"
+	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
+	flavorConsts "github.com/intel-secl/intel-secl/v3/pkg/lib/flavor/constants"
+	"intel/isecl/go-trust-agent/v3/constants"
+	"intel/isecl/lib/common/v3/log/message"
+	"intel/isecl/lib/common/v3/setup"
+	"intel/isecl/lib/common/v3/validation"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -20,7 +21,7 @@ import (
 )
 
 type GetConfiguredManifest struct {
-	clientFactory      vsclient.VSClientFactory
+	clientFactory      hvsclient.HVSClientFactory
 	savedManifestFiles []string		// internal task variable that tracks saved manifests (used in Validate())
 }
 
@@ -28,15 +29,14 @@ func (task GetConfiguredManifest) saveManifest(manifestXml []byte) error {
 	log.Trace("tasks/get-configured-manifest:saveManifest() Entering")
 	defer log.Trace("tasks/get-configured-manifest:saveManifest() Leaving")
 	
-	manifest := vsclient.Manifest{}
+	manifest := hvsclient.Manifest{}
 	err := xml.Unmarshal(manifestXml, &manifest)
 	if err != nil {
-		log.WithError(err).Error("tasks/get-configured-manifest:saveManifest() Error while unmarshalling the manifest xml")
-		return errors.New("Error while unmarshalling the manifest xml")
+		return errors.Wrap(err, "Error while unmarshalling the manifest xml")
 	}
 
-	if strings.Contains(manifest.Label, vsclient.DEFAULT_APPLICATION_FLAVOR_PREFIX) ||
-		strings.Contains(manifest.Label, vsclient.DEFAULT_WORKLOAD_FLAVOR_PREFIX) {
+	if strings.Contains(manifest.Label, flavorConsts.DefaultSoftwareFlavorPrefix) ||
+		strings.Contains(manifest.Label, flavorConsts.DefaultWorkloadFlavorPrefix) {
 		log.Infof("tasks/get-configured-manifest:saveManifest() Default flavor's manifest (%s) is part of installation, no need to deploy default flavor's manifest", manifest.Label)
 		return nil
 	}
@@ -44,8 +44,7 @@ func (task GetConfiguredManifest) saveManifest(manifestXml []byte) error {
 	manifestFile := fmt.Sprintf("%s/manifest_%s.xml", constants.VarDir, manifest.UUID)
 	err = ioutil.WriteFile(manifestFile, manifestXml, 0600)
 	if err != nil {
-		log.WithError(err).Errorf("tasks/get-configured-manifest:saveManifest() Error while writing %s/manifest_%s.xml file", constants.VarDir, manifest.UUID)
-		return errors.Errorf("Error while writing %s/manifest_%s.xml file", constants.VarDir, manifest.UUID)
+		return errors.Wrapf(err, "Error while writing %s/manifest_%s.xml file", constants.VarDir, manifest.UUID)
 	}
 
 	// keep track of which manifests were saved so they can be validated in 'Validate()'
@@ -66,8 +65,7 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 
 	manifestsClient, err := task.clientFactory.ManifestsClient()
 	if err != nil {
-		log.WithError(err).Error("tasks/get-configured-manifest:Run() Could not create manifests client")
-		return err
+		return errors.Wrap(err, "Could not create manifests client")
 	}
 
 	envVar := os.Getenv(constants.FlavorUUIDs)
@@ -82,7 +80,7 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 			err = validation.ValidateUUIDv4(uuid)
 			if err != nil {
 				secLog.Errorf("%s tasks/get-configured-manifest:Run() Flavor UUID:'%s' is not a valid uuid", message.InvalidInputBadParam, uuid)
-				return errors.Errorf("Flavor UUID:'%s' is not a valid uuid", uuid)
+				return errors.Wrapf(err, "Flavor UUID:'%s' is not a valid uuid", uuid)
 			}
 
 			flavorUUIDs = append(flavorUUIDs, uuid)
@@ -102,11 +100,11 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 	err = validation.ValidateStrings(flavorLabels)
 	if err != nil {
 		secLog.Errorf("%s tasks/get-configured-manifest:Run() Flavor Labels:'%s' are not valid labels", message.InvalidInputBadParam, constants.FlavorLabels)
-		return errors.Errorf("Flavor Labels:'%s' are not valid labels", constants.FlavorLabels)
+		return errors.Wrapf(err, "Flavor Labels:'%s' are not valid labels", constants.FlavorLabels)
 	}
 
 	if len(flavorUUIDs) == 0 && len(flavorLabels) == 0 {
-		return errors.Errorf("tasks/get-configured-manifest:Run() No manifests were specified via the '%s' or '%s' environment variables", constants.FlavorUUIDs, constants.FlavorLabels)
+		return errors.Errorf("No manifests were specified via the '%s' or '%s' environment variables", constants.FlavorUUIDs, constants.FlavorLabels)
 	}
 
 	for _, uuid := range flavorUUIDs {
@@ -149,7 +147,6 @@ func (task *GetConfiguredManifest) Validate(c setup.Context) error {
 	}
 
 	if missing {
-		log.Errorf("tasks/get-configured-manifest:Validate() One or more manifest files were not created")
 		return errors.New("One or more manifest files were not created.")
 	}
 

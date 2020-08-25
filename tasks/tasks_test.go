@@ -6,20 +6,24 @@
  */
 package tasks
 
+
 import (
+	"os"
+	"github.com/google/uuid"
+	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
+	"github.com/intel-secl/intel-secl/v3/pkg/model/hvs"
+	"intel/isecl/go-trust-agent/v3/constants"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"intel/isecl/go-trust-agent/v2/config"
-	"intel/isecl/go-trust-agent/v2/vsclient"
-	"intel/isecl/lib/common/v2/setup"
-	"intel/isecl/lib/tpmprovider/v2"
+	"intel/isecl/go-trust-agent/v3/config"
+	"intel/isecl/lib/common/v3/setup"
+	"intel/isecl/lib/tpmprovider/v3"
 	"testing"
 )
 
 const (
 	TpmSecretKey   = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
 	AikSecretKey   = "beefbeefbeefbeefbeefbeefbeefbeefbeefbeef"
-	ConnectionString = "intel://10.10.10.1:1443"
 )
 
 func TestTakeOwnership(t *testing.T) {
@@ -100,15 +104,16 @@ func TestCreateHostDefault(t *testing.T) {
 
 	// create mocks that return no hosts on 'SearchHosts' (i.e. host does not exist in hvs) and
 	// host with an new id for 'CreateHost'
-	mockedHostsClient := new(vsclient.MockedHostsClient)
-	mockedHostsClient.On("SearchHosts", mock.Anything).Return(&vsclient.HostCollection{Hosts: []vsclient.Host{}}, nil)
-	mockedHostsClient.On("CreateHost", mock.Anything).Return(&vsclient.Host{Id: "068b5e88-1886-4ac2-a908-175cf723723f"}, nil)
+	mockedHostsClient := new(hvsclient.MockedHostsClient)
+	mockedHostsClient.On("SearchHosts", mock.Anything).Return(&hvs.HostCollection{Hosts: []*hvs.Host{}}, nil)
+	mockedHostsClient.On("CreateHost", mock.Anything).Return(&hvs.Host{Id: uuid.MustParse("068b5e88-1886-4ac2-a908-175cf723723f")}, nil)
 
-	mockedVSClientFactory := vsclient.MockedVSClientFactory {MockedHostsClient : mockedHostsClient}
+	mockedVSClientFactory := hvsclient.MockedVSClientFactory {MockedHostsClient : mockedHostsClient}
 
 	context := setup.Context{}
 
-	createHost := CreateHost{clientFactory: mockedVSClientFactory, connectionString: ConnectionString}
+	os.Setenv(constants.EnvCurrentIP, "99.99.99.99")
+	createHost := CreateHost{clientFactory: mockedVSClientFactory, trustAgentPort: cfg.WebService.Port}
 	err := createHost.Run(context)
 	assert.NoError(err)
 }
@@ -118,25 +123,25 @@ func TestCreateHostExisting(t *testing.T) {
 
 	cfg := &config.TrustAgentConfiguration{}
 	cfg.WebService.Port = 8045
-
-	existingHost := vsclient.Host{
-		Id:               "068b5e88-1886-4ac2-a908-175cf723723d",
+	hwUuid := uuid.MustParse("8032632b-8fa4-e811-906e-00163566263e")
+	existingHost := hvs.Host{
+		Id:               uuid.MustParse("068b5e88-1886-4ac2-a908-175cf723723d"),
 		HostName:         "ta.server.com",
 		Description:      "GTA RHEL 8.0",
 		ConnectionString: "https://ta.server.com:1443",
-		HardwareUUID:     "8032632b-8fa4-e811-906e-00163566263e",
-		TlsPolicyId:      "e1a1c631-e006-4ff2-aed1-6b42a2f5be6c",
+		HardwareUuid:     &hwUuid,
 	}
 
 	// create mocks that return a host (i.e. it exists in hvs)
-	mockedHostsClient := new(vsclient.MockedHostsClient)
-	mockedHostsClient.On("SearchHosts", mock.Anything).Return(&vsclient.HostCollection{Hosts: []vsclient.Host{existingHost}}, nil)
-	mockedHostsClient.On("CreateHost", mock.Anything).Return(&vsclient.Host{Id: "068b5e88-1886-4ac2-a908-175cf723723f"}, nil)
+	mockedHostsClient := new(hvsclient.MockedHostsClient)
+	mockedHostsClient.On("SearchHosts", mock.Anything).Return(&hvs.HostCollection{Hosts: []*hvs.Host{&existingHost}}, nil)
+	mockedHostsClient.On("CreateHost", mock.Anything).Return(&hvs.Host{Id: uuid.MustParse("068b5e88-1886-4ac2-a908-175cf723723f")}, nil)
 
-	mockedVSClientFactory := vsclient.MockedVSClientFactory {MockedHostsClient : mockedHostsClient}
+	mockedVSClientFactory := hvsclient.MockedVSClientFactory {MockedHostsClient : mockedHostsClient}
 
 	context := setup.Context{}
-	createHost := CreateHost{clientFactory: mockedVSClientFactory, connectionString: ConnectionString}
+	os.Setenv(constants.EnvCurrentIP, "99.99.99.99")
+	createHost := CreateHost{clientFactory: mockedVSClientFactory, trustAgentPort: cfg.WebService.Port}
 	err := createHost.Run(context)
 	assert.Error(err)
 }

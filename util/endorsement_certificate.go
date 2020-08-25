@@ -7,16 +7,16 @@ package util
 
 import (
 	"github.com/pkg/errors"
-	"intel/isecl/lib/tpmprovider/v2"
+	"intel/isecl/lib/tpmprovider/v3"
 )
 
-func GetEndorsementKeyBytes(ownerSecretKey string) ([]byte, error) {
-	log.Trace("util/endorsement_certificate:GetEndorsementKeyBytes() Entering")
-	defer log.Trace("util/endorsement_certificate:GetEndorsementKeyBytes() Leaving")
+func GetEndorsementKeyCertificateBytes(ownerSecretKey string) ([]byte, error) {
+	log.Trace("util/endorsement_certificate:GetEndorsementKeyCertificateBytes() Entering")
+	defer log.Trace("util/endorsement_certificate:GetEndorsementKeyCertificateBytes() Leaving")
 
 	tpmFactory, err := tpmprovider.NewTpmFactory()
 	if err != nil {
-		return nil, errors.Wrap(err, "util/endorsement_certificate:GetEndorsementKeyBytes() Could not create tpm factory")
+		return nil, errors.Wrap(err, "util/endorsement_certificate:GetEndorsementKeyCertificateBytes() Could not create tpm factory")
 	}
 
 	//---------------------------------------------------------------------------------------------
@@ -24,14 +24,24 @@ func GetEndorsementKeyBytes(ownerSecretKey string) ([]byte, error) {
 	//---------------------------------------------------------------------------------------------
 	tpm, err := tpmFactory.NewTpmProvider()
 	if err != nil {
-		return nil, errors.Wrap(err, "util/endorsement_certificate:GetEndorsementKeyBytes() Error while creating NewTpmProvider")
+		return nil, errors.Wrap(err, "util/endorsement_certificate:GetEndorsementKeyCertificateBytes() Error while creating NewTpmProvider")
 	}
 
 	defer tpm.Close()
 
-	ekCertBytes, err := tpm.NvRead(ownerSecretKey, tpmprovider.NV_IDX_ENDORSEMENT_KEY)
+	// check to see if the EK Certificate exists...
+	ekCertificateExists, err := tpm.NvIndexExists(tpmprovider.NV_IDX_RSA_ENDORSEMENT_CERTIFICATE)
 	if err != nil {
-		return nil, errors.Wrap(err, "util/endorsement_certificate:GetEndorsementKeyBytes() Error while performing tpm Nv read operation for getting endorsement certificate in bytes")
+		return nil, errors.Wrap(err, "Error checking if the EK Certificate is present")
+	}
+
+	if !ekCertificateExists {
+		return nil, errors.Errorf("The TPM does not have an RSA EK Certificate at the default index 0x%x", tpmprovider.NV_IDX_RSA_ENDORSEMENT_CERTIFICATE)
+	}
+
+	ekCertBytes, err := tpm.NvRead(ownerSecretKey, tpmprovider.NV_IDX_RSA_ENDORSEMENT_CERTIFICATE)
+	if err != nil {
+		return nil, errors.Wrap(err, "util/endorsement_certificate:GetEndorsementKeyCertificateBytes() Error while performing tpm Nv read operation for getting endorsement certificate in bytes")
 	}
 
 	return ekCertBytes, nil

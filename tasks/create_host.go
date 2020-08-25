@@ -6,15 +6,17 @@ package tasks
 
 import (
 	"fmt"
-	"intel/isecl/go-trust-agent/v2/util"
-	"intel/isecl/go-trust-agent/v2/vsclient"
-	"intel/isecl/lib/common/v2/setup"
+	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
+	"github.com/intel-secl/intel-secl/v3/pkg/hvs/domain/models"
+	"github.com/intel-secl/intel-secl/v3/pkg/model/hvs"
 	"github.com/pkg/errors"
+	"intel/isecl/go-trust-agent/v3/util"
+	"intel/isecl/lib/common/v3/setup"
 )
 
 type CreateHost struct {
-	clientFactory vsclient.VSClientFactory
-	connectionString string
+	clientFactory  hvsclient.HVSClientFactory
+	trustAgentPort int
 }
 
 //
@@ -32,39 +34,35 @@ func (task *CreateHost) Run(c setup.Context) error {
 
 	hostsClient, err := task.clientFactory.HostsClient()
 	if err != nil {
-		log.WithError(err).Error("tasks/create_host:Run() Could not create host client")
-		return err
+		return errors.Wrap(err, "Could not create host client")
 	}
 
-	ip, err := util.GetLocalIpAsString()
+	currentIP, err := util.GetCurrentIP()
 	if err != nil {
-		log.WithError(err).Error("tasks/create_host:Run() Error while getting Local IP address")
-		return errors.New("Error while getting Local IP address")
+		return errors.Wrap(err, "The create-host task requires the CURRENT_IP environment variable")
 	}
 
-	hostFilterCriteria := vsclient.HostFilterCriteria{NameEqualTo: ip}
-	hostCollection, err := hostsClient.SearchHosts(&hostFilterCriteria)
+	hostCollection, err := hostsClient.SearchHosts(&models.HostFilterCriteria{NameEqualTo: currentIP.String()})
 	if err != nil {
-		log.WithError(err).Error("tasks/create_host:Run() Error while retrieving host collection")
-		return errors.New("Error while retrieving host collection")
+		return errors.Wrap(err, "Error while retrieving host collection")
 	}
 
 	if len(hostCollection.Hosts) == 0 {
 		// no host present, create a new one
-		hostCreateCriteria := vsclient.HostCreateCriteria{}
-		hostCreateCriteria.HostName = ip
-		hostCreateCriteria.ConnectionString = task.connectionString
-		hostCreateCriteria.TlsPolicyId = vsclient.TRUST_POLICY_TRUST_FIRST_CERTIFICATE // tlsPolicy.Id
 
-		host, err := hostsClient.CreateHost(&hostCreateCriteria)
+		hostCreateReq := hvs.HostCreateRequest{
+			HostName: currentIP.String(),
+			ConnectionString: util.GetConnectionString(currentIP, task.trustAgentPort),
+		}
+
+		host, err := hostsClient.CreateHost(&hostCreateReq)
 		if err != nil {
 			return err
 		}
 
 		log.Debugf("tasks/create_host:Run() Successfully created host, host id %s", host.Id)
 	} else {
-		log.WithError(err).Errorf("tasks/create_host:Run() Host with IP address %s already exists", ip)
-		return errors.Errorf("Host with IP address %s already exists", ip)
+		return errors.Errorf("Host with IP address %s already exists", currentIP.String())
 	}
 
 	return nil
@@ -78,25 +76,21 @@ func (task *CreateHost) Validate(c setup.Context) error {
 	// Initialize the PrivacyCA client using the factory - this will be reused in Run
 	hostsClient, err := task.clientFactory.HostsClient()
 	if err != nil {
-		log.WithError(err).Error("tasks/create_host:Validate() Could not create host client")
-		return err
+		return errors.Wrap(err, "Could not create host client")
 	}
 
-	ip, err := util.GetLocalIpAsString()
+	currentIP, err := util.GetCurrentIP()
 	if err != nil {
-		log.WithError(err).Error("tasks/create_host:Run() Error while getting Local IP address")
-		return errors.New("Error while getting Local IP address")
+		return errors.Wrap(err, "The create-host task requires the CURRENT_IP environment variable")
 	}
 
-	hostFilterCriteria := vsclient.HostFilterCriteria{NameEqualTo: ip}
-	hostCollection, err := hostsClient.SearchHosts(&hostFilterCriteria)
+	hostCollection, err := hostsClient.SearchHosts(&models.HostFilterCriteria{NameEqualTo: currentIP.String()})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error searching for host collection")
 	}
 
 	if len(hostCollection.Hosts) == 0 {
-		log.WithError(err).Errorf("tasks/create_host:Run() host with ip '%s' was not create", ip)
-		return errors.Errorf("Host with ip '%s' was not created", ip)
+		return errors.Errorf("Host with ip '%s' was not created", currentIP.String())
 	}
 
 	log.Info("tasks/create_host:Validate() Create host setup task was successful.")

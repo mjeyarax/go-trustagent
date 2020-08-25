@@ -6,17 +6,17 @@ package tasks
 
 import (
 	"fmt"
-	"intel/isecl/go-trust-agent/v2/constants"
-	"intel/isecl/go-trust-agent/v2/util"
-	"intel/isecl/go-trust-agent/v2/vsclient"
-	"intel/isecl/lib/common/v2/setup"
+	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
+	"intel/isecl/go-trust-agent/v3/constants"
+	"intel/isecl/go-trust-agent/v3/util"
+	"intel/isecl/lib/common/v3/setup"
 	"io/ioutil"
 
 	"github.com/pkg/errors"
 )
 
 type DownloadPrivacyCA struct {
-	clientFactory   vsclient.VSClientFactory
+	clientFactory hvsclient.HVSClientFactory
 }
 
 // Download's the privacy CA from HVS.
@@ -27,20 +27,17 @@ func (task *DownloadPrivacyCA) Run(c setup.Context) error {
 
 	privacyCAClient, err := task.clientFactory.PrivacyCAClient()
 	if err != nil {
-		log.WithError(err).Error("tasks/download_privacy_ca:Run() Could not create privacy-ca client")
-		return err
+		return errors.Wrap(err, "Could not create privacy-ca client")
 	}
 
 	ca, err := privacyCAClient.DownloadPrivacyCa()
 	if err != nil {
-		log.WithError(err).Error("tasks/download_privacy_ca:Run() Error while downloading privacyCA file")
-		return errors.New("Error while downloading privacyCA file")
+		return errors.Wrap(err, "Error while downloading privacyCA file")
 	}
 
 	err = ioutil.WriteFile(constants.PrivacyCA, ca, 0644)
 	if err != nil {
-		log.WithError(err).Errorf("tasks/download_privacy_ca:Run() Error while writing privacy ca file '%s'", constants.PrivacyCA)
-		return errors.Errorf("Error while writing privacy ca file '%s'", constants.PrivacyCA)
+		return errors.Wrapf(err, "Error while writing privacy ca file '%s'", constants.PrivacyCA)
 	}
 
 	return nil

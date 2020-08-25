@@ -22,7 +22,7 @@
 // swagger:meta
 package docs
 
-import "intel/isecl/go-trust-agent/v2/util"
+import "intel/isecl/go-trust-agent/v3/util"
 
 // VersionResponseInfo response payload
 // swagger:response VersionResponseInfo

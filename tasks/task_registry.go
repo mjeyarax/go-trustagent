@@ -6,14 +6,14 @@ package tasks
 
 import (
 	"crypto/x509/pkix"
+	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
 	"github.com/pkg/errors"
-	commLog "intel/isecl/lib/common/v2/log"
-	"intel/isecl/go-trust-agent/v2/config"
-	"intel/isecl/go-trust-agent/v2/constants"
-	"intel/isecl/go-trust-agent/v2/util"
-	"intel/isecl/go-trust-agent/v2/vsclient"
-	"intel/isecl/lib/common/v2/setup"
-	"intel/isecl/lib/tpmprovider/v2"
+	"intel/isecl/go-trust-agent/v3/config"
+	"intel/isecl/go-trust-agent/v3/constants"
+	"intel/isecl/go-trust-agent/v3/util"
+	commLog "intel/isecl/lib/common/v3/log"
+	"intel/isecl/lib/common/v3/setup"
+	"intel/isecl/lib/tpmprovider/v3"
 	"os"
 )
 
@@ -53,9 +53,9 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 	registry.cfg = cfg
 	registry.taskMap = make(map[string][]setup.Task)
 
-	vsClientFactory, err := vsclient.NewVSClientFactory(cfg.HVS.Url, util.GetBearerToken())
+	vsClientFactory, err := hvsclient.NewVSClientFactory(cfg.HVS.Url, util.GetBearerToken(), constants.TrustedCaCertsDir)
 	if err != nil {
-		return nil, errors.Wrap(err, "Could not create the vsclient factory")
+		return nil, errors.Wrap(err, "Could not create the hvsclient factory")
 	}
 
 	tpmFactory, err := tpmprovider.NewTpmFactory()
@@ -139,23 +139,17 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 
 	// these are individual commands that are not included in default setup tasks
 
-	connectionString, err := util.GetConnectionString(cfg.WebService.Port)
-	if err != nil {
-		log.WithError(err).Error("tasks/TaskRegistry/CreateTaskRegistry() Error while getting connection string")
-		return nil, errors.New("Error while getting connection string")
-	}
-
 	registry.taskMap[CreateHostCommand] = []setup.Task{
 		&CreateHost{
 			clientFactory: vsClientFactory,
-			connectionString: connectionString,
+			trustAgentPort: cfg.WebService.Port,
 		},
 	}
 
 	registry.taskMap[CreateHostUniqueFlavorCommand] = []setup.Task{
 		&CreateHostUniqueFlavor{
 			clientFactory: vsClientFactory,
-			connectionString: connectionString,
+			trustAgentPort: cfg.WebService.Port,
 		},
 	}
 

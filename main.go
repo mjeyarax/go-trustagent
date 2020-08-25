@@ -10,23 +10,23 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"github.com/pkg/errors"
-	"intel/isecl/go-trust-agent/v2/config"
-	"intel/isecl/go-trust-agent/v2/constants"
-	"intel/isecl/go-trust-agent/v2/resource"
-	_ "intel/isecl/go-trust-agent/v2/swagger/docs"
-	"intel/isecl/go-trust-agent/v2/tasks"
-	"intel/isecl/go-trust-agent/v2/util"
-	commonExec "intel/isecl/lib/common/v2/exec"
-	commLog "intel/isecl/lib/common/v2/log"
-	"intel/isecl/lib/common/v2/log/message"
-	"intel/isecl/lib/common/v2/validation"
-	"intel/isecl/lib/platform-info/v2/platforminfo"
-	"intel/isecl/lib/tpmprovider/v2"
+	"intel/isecl/go-trust-agent/v3/config"
+	"intel/isecl/go-trust-agent/v3/constants"
+	"intel/isecl/go-trust-agent/v3/resource"
+	_ "intel/isecl/go-trust-agent/v3/swagger/docs"
+	"intel/isecl/go-trust-agent/v3/tasks"
+	"intel/isecl/go-trust-agent/v3/util"
+	commonExec "intel/isecl/lib/common/v3/exec"
+	commLog "intel/isecl/lib/common/v3/log"
+	"intel/isecl/lib/common/v3/log/message"
+	"intel/isecl/lib/common/v3/validation"
+	"intel/isecl/lib/platform-info/v3/platforminfo"
+	"intel/isecl/lib/tpmprovider/v3"
 	"os"
 	"os/exec"
 	"os/user"
@@ -48,7 +48,7 @@ const (
 
 func printUsage() {
 
-usage := `
+	usage := `
 Usage:
 
   tagent <command> [arguments]
@@ -78,7 +78,7 @@ Available Tasks for 'setup':
                                                        - MTWILSON_API_URL=<url>                            : VS API URL
                                                     Optional Environment variables:
                                                        - TA_ENABLE_CONSOLE_LOG=<true/false>                : When 'true', logs are redirected to stdout. Defaults to false.
-                                                       - TA_SERVER_IDLE_TIMEOUT=<t seconds>                : Sets the trust agent service's idle timeout. Defaults to 10 seconds.
+                                                       - TA_SERVER_IDLE_TIMEOUT=<t sceconds>                : Sets the trust agent service's idle timeout. Defaults to 10 seconds.
                                                        - TA_SERVER_MAX_HEADER_BYTES=<n bytes>              : Sets trust agent service's maximum header bytes.  Defaults to 1MB.
                                                        - TA_SERVER_READ_TIMEOUT=<t seconds>                : Sets trust agent service's read timeout.  Defaults to 30 seconds.
                                                        - TA_SERVER_READ_HEADER_TIMEOUT=<t seconds>         : Sets trust agent service's read header timeout.  Defaults to 30 seconds.
@@ -88,8 +88,6 @@ Available Tasks for 'setup':
                                                        - TA_TLS_CERT_CN=<Common Name>                      : Sets the value for Common Name in the TA TLS certificate.  Defaults to "Trust Agent TLS Certificate".
                                                        - TPM_OWNER_SECRET=<40 byte hex>                    : When provided, setup uses the 40 character hex string for the TPM
                                                                                                              owner password. Auto-generated when not provided.
-                                                       - TPM_QUOTE_IPV4=Y/N                                : When 'Y', used the local system's ip address a salt when processing
-                                                                                                             TPM quotes.  Defaults to 'N'.
                                                        - TRUSTAGENT_LOG_LEVEL=<trace|debug|info|error>     : Sets the verbosity level of logging. Defaults to 'info'.
                                                        - TRUSTAGENT_PORT=<portnum>                         : The port on which the trust agent service will listen.
                                                                                                              Defaults to 1443
@@ -126,23 +124,21 @@ Available Tasks for 'setup':
                                                     Optional environment variables:
                                                         - TPM_OWNER_SECRET=<40 byte hex>                    : When provided, setup uses the 40 character hex string for the TPM
                                                                                                               owner password. Auto-generated when not provided.
-                                                        - TPM_QUOTE_IPV4='Y'/'N'                            : When 'Y', used the local system's ip address a salt when processing
-                                                                                                              TPM quotes.  Defaults to 'N'.
 
   create-host                                 - Registers the trust agent with the verification service.
                                                     Required environment variables:
                                                         - MTWILSON_API_URL=<url>                            : VS API URL
                                                         - BEARER_TOKEN=<token>                              : for authenticating with VS
+                                                        - CURRENT_IP=<ip address of host>                   : IP or hostname of host with which the host will be registered with HVS
                                                     Optional environment variables:
                                                         - TPM_OWNER_SECRET=<40 byte hex>                    : When provided, setup uses the 40 character hex string for the TPM
                                                                                                               owner password. Auto-generated when not provided.
-                                                        - TPM_QUOTE_IPV4='Y'/'N'                            : When 'Y', used the local system's ip address a salt when processing
-                                                                                                              TPM quotes.  Defaults to 'N'.
 
   create-host-unique-flavor                 - Populates the verification service with the host unique flavor
                                                     Required environment variables:
                                                         - MTWILSON_API_URL=<url>                            : VS API URL
                                                         - BEARER_TOKEN=<token>                              : for authenticating with VS
+                                                        - CURRENT_IP=<ip address of host>                   : Used to associate the flavor with the host
 
   get-configured-manifest                   - Uses environment variables to pull application-integrity 
                                               manifests from the verification service.
@@ -214,7 +210,7 @@ func printVersion() {
 
 	versionInfo, err := util.GetVersionInfo()
 	if err != nil {
-		fmt.Fprintf(os.Stderr,"Error while getting version info: %v \n", err)
+		fmt.Fprintf(os.Stderr, "Error while getting version info: %v \n", err)
 		os.Exit(1)
 	}
 
@@ -258,7 +254,7 @@ func uninstall() error {
 		}
 	}
 
-	// always disable 'tagent_init.service' since it is not expected to be running (i.e. it's 
+	// always disable 'tagent_init.service' since it is not expected to be running (i.e. it's
 	// a 'oneshot' service)
 	_, _, _ = commonExec.RunCommandWithTimeout(constants.ServiceDisableInitCommand, 5)
 
@@ -336,7 +332,7 @@ func main() {
 		//
 		// 'tagent init' is run as root (as configured in 'tagent_init.service') to generate
 		// those files and own the files by tagent user.  The 'tagent.service' is configured
-		// to 'Require' 'tagent_init.service' so that running 'systemctl start tagent' will 
+		// to 'Require' 'tagent_init.service' so that running 'systemctl start tagent' will
 		// always run 'tagent_init'.
 		//
 		if currentUser.Username != constants.RootUserName {
@@ -367,7 +363,7 @@ func main() {
 			log.Errorf("main:main() Could not parse tagent user uid '%s'", tagentUser.Uid)
 			os.Exit(1)
 		}
-		
+
 		gid, err := strconv.ParseUint(tagentUser.Gid, 10, 32)
 		if err != nil {
 			log.Errorf("main:main() Could not parse tagent user gid '%s'", tagentUser.Gid)
@@ -390,8 +386,8 @@ func main() {
 		_ = filepath.Walk(constants.LogDir, func(fileName string, info os.FileInfo, err error) error {
 			err = os.Chown(fileName, int(uid), int(gid))
 			if err != nil {
-					log.Errorf("main:main() Could not own file '%s'", fileName)
-					return err
+				log.Errorf("main:main() Could not own file '%s'", fileName)
+				return err
 			}
 
 			return nil
@@ -464,7 +460,6 @@ func main() {
 	case "setup":
 
 		cfg.LogConfiguration(cfg.Logging.LogEnableStdout)
-		// only apply env vars to config before starting 'setup' tasks
 
 		if currentUser.Username != constants.RootUserName {
 			log.Errorf("main:main() 'tagent setup' must be run as root, not  user '%s'\n", currentUser.Username)
@@ -474,10 +469,10 @@ func main() {
 		var setupCommand string
 		var flags []string
 		if len(os.Args) > 2 {
-			if strings.Contains(os.Args[2], "trustagent.env"){
+			if strings.Contains(os.Args[2], "trustagent.env") {
 				sourceEnvFile(os.Args[2])
 				setupCommand = tasks.DefaultSetupCommand
-			} else{
+			} else {
 				setupCommand = os.Args[2]
 				flags = os.Args[2:]
 			}
@@ -485,8 +480,9 @@ func main() {
 			setupCommand = tasks.DefaultSetupCommand
 		}
 
+		// only apply env vars to config when running 'setup' tasks
 		err = cfg.LoadEnvironmentVariables()
-		if err != nil{
+		if err != nil {
 			log.WithError(err).Error("Error loading environment variables")
 			fmt.Fprintf(os.Stderr, "Error loading environment variables\n %v \n\n", err)
 		}
@@ -536,7 +532,7 @@ func main() {
 	}
 }
 
-func sourceEnvFile(trustagentEnvFile string){
+func sourceEnvFile(trustagentEnvFile string) {
 	fi, err := os.Stat(trustagentEnvFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s file does not exist", trustagentEnvFile)
@@ -544,29 +540,29 @@ func sourceEnvFile(trustagentEnvFile string){
 	}
 
 	fileSz := fi.Size()
-	if fileSz == 0 || fileSz > constants.TrustAgentEnvMaxLength{
+	if fileSz == 0 || fileSz > constants.TrustAgentEnvMaxLength {
 		fmt.Fprintf(os.Stderr, "%s file size exceeds maximum length: %d", trustagentEnvFile, constants.TrustAgentEnvMaxLength)
 		os.Exit(1)
 	}
 
-    file, err := os.Open(trustagentEnvFile)
-    if err != nil {
+	file, err := os.Open(trustagentEnvFile)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to open file: %s", trustagentEnvFile)
 		os.Exit(1)
-    }
-    defer file.Close()
+	}
+	defer file.Close()
 
-    scanner := bufio.NewScanner(file)
-    var envKeyPair []string
-    for scanner.Scan() {
+	scanner := bufio.NewScanner(file)
+	var envKeyPair []string
+	for scanner.Scan() {
 		if scanner.Text() == "" || strings.HasPrefix("#", scanner.Text()) {
 			continue
 		}
-		if strings.Contains(scanner.Text(), "="){
+		if strings.Contains(scanner.Text(), "=") {
 			envKeyPair = strings.Split(scanner.Text(), "=")
-			os.Setenv(envKeyPair[0], envKeyPair[1]) 
+			os.Setenv(envKeyPair[0], envKeyPair[1])
 		}
-    }
+	}
 }
 
 func run_systemctl(systemCtlCmd string) (string, error) {
@@ -596,8 +592,8 @@ func run_systemctl(systemCtlCmd string) (string, error) {
 
 func fetchEndorsementCert(ownerSecret string) error {
 	log.Trace("main:fetchEndorsementCert() Entering")
-        defer log.Trace("main:fetchEndorsementCert() Leaving")
-	ekCertBytes, err := util.GetEndorsementKeyBytes(ownerSecret)
+	defer log.Trace("main:fetchEndorsementCert() Leaving")
+	ekCertBytes, err := util.GetEndorsementKeyCertificateBytes(ownerSecret)
 	if err != nil {
 		log.WithError(err).Error("main:fetchEndorsementCert() Error while getting endorsement certificate in bytes from tpm")
 		return errors.New("Error while getting endorsement certificate in bytes from tpm")
