@@ -316,8 +316,8 @@ The following sections are provided as a reference of GTA.
 |`tagent help`|Prints usage to stdout.||
 |`tagent setup` or `tagent setup all`|Runs all setup tasks to provision the host to operate within ISecL (i.e. creates Root-CA/TLS certificates, provisions the TPM with HVS, etc.).  Also supports an option to use an answer file names `trustagent.env` (i.e. `tagent setup trustagent.env`) that will pass environment variables to GTA during setup.  [See Setup](#setup)||
 |`tagent setup provision-attestation`|"Utility" command that provisions the TPM with HVS but does not perform other setup tasks.|MTWISLON_API_URL, BEARER_TOKEN|
-|`tagent setup create-host`|Adds the local host to the list of HVS' known hosts.| MTWILSON_API_URL, BEARER_TOKEN|
-|`tagent setup create-host-unique-flavor`|Registers the local hosts' unique flavor with HVS.| MTWILSON_API_URL, BEARER_TOKEN|
+|`tagent setup create-host`|Adds the local host to the list of HVS' known hosts.| MTWILSON_API_URL, BEARER_TOKEN, CURRENT_IP|
+|`tagent setup create-host-unique-flavor`|Registers the local hosts' unique flavor with HVS.| MTWILSON_API_URL, BEARER_TOKEN, CURRENT_IP|
 |`tagent setup get-configured-manifest`|Using environment variables, adds an application manifest from HVS to the local host to be measured at boot.  When invoked, the setup command will look for a comma seperated list of environment variables with the name 'FLAVOR_UUIDS' or 'FLAVOR_LABELS'.  It will then use that list to pull one or more manifest from HVS into the /opt/trustagent/var directory (so the manifest will be measured at next boot).  | MTWILSON_API_URL, BEARER_TOKEN, (FLAVOR_UUIDS or FLAVOR_LABELS)|
 |`tagent setup download-ca-cert`|Downloads the latest Root-CA certificate from CMS to  `/opt/trustagent/configuration/cacerts`.| CMS_BASE_URL, SAN_LIST, TA_TLS_CERT_CN (optional), BEARER_TOKEN|
 |`tagent setup download-cert`|Downloads TLS certs from CMS and updates the files in `/opt/trustagent/configuration` ( `tls-key.pem` and `tls-cert.pem`).| CMS_BASE_URL, SAN_LIST, TA_TLS_CERT_CN (optional), BEARER_TOKEN|
@@ -341,12 +341,12 @@ If the GTA installer is run with a valid 'trustagent.env' file, it will parse th
 |BEARER_TOKEN|JWT from AAS that contains "install" permissions needed to access ISecL services during provisioning and registration.|BEARER_TOKEN=eyJhbGciOiJSUzM4NCIsjdkMTdiNmUz...|Yes|NA|
 |CMS_BASE_URL|API URL for Certificate Management Service (CMS).|CMS_BASE_URL=https://{host}:{port}/cms/v1|Yes|NA|
 |CMS_TLS_CERT_SHA384|SHA384 Hash sum for verifying the CMS TLS certificate.|CMS_TLS_CERT_SHA384=bd8ebf5091289958b5765da4...|Yes|NA|
+|CURRENT_IP|The ip address of the host required for `create-host` and `create-host-unique-flavor`.|CURRENT_IP=10.99.23.76|No|NA|
 |MTWILSON_API_URL|The url used during setup to request information from HVS.|MTWILSON_API_URL=https://{host}:{port}/mtwilson/v2|Yes|NA|
 |PROVISION_ATTESTATION|When present, enables/disables whether `tagent setup` is called during installation.  If trustagent.env is not present, the value defaults to no ('N').|PROVISION_ATTESTATION=Y|No|N|
 |SAN_LIST|CSV list that sets the value for SAN list in the TA TLS certificate.  Defaults to 127.0.0.1.|SAN_LIST=10.123.100.1,201.102.10.22,mya.example.com|No|"127.0.0.1,localhost"|
 |TA_TLS_CERT_CN|Sets the value for Common Name in the TA TLS certificate.  Defaults to CN=trustagent.|TA_TLS_CERT_CN=Acme Trust Agent 007|No|"Trust Agent TLS Certificate"|
 |TPM_OWNER_SECRET|20 byte hex value to be used as the secret key when taking ownership of the TPM.  *Note: If this field is not specified, GTA will generate a random secret key.*|TPM_OWNER_SECRET=625d6...|No|""|
-|TPM_QUOTE_IPV4|When enabled (`=y`), uses the local system's ip address as a salt when processing a quote nonce.  This field must align with the configuration of HVS.|TPM_QUOTE_IPV4=no|No|N|
 |TA_SERVER_READ_TIMEOUT|Sets tagent server ReadTimeout.  Defaults to 30 seconds.|TA_SERVER_READ_TIMEOUT=30|No|30|
 |TA_SERVER_READ_HEADER_TIMEOUT|Sets `tagent` server ReadHeaderTimeout.  Defaults to 30 seconds. |TA_SERVER_READ_HEADER_TIMEOUT=10|No|10|
 |TA_SERVER_WRITE_TIMEOUT|Sets `tagent` server WriteTimeout.  Defaults to 10 seconds.|TA_SERVER_WRITE_TIMEOUT=10|No|10|
@@ -405,7 +405,6 @@ The GTA installer will update the system with the following dependencies.
 The GTA stores configuration information in /opt/trustagent/configuration/config.yml.  The contents of the file is based on environment variables (`trustagent.env`) provided during `tagent setup`.  The example below includes comments that correlate the configuration item to environment variables defined in `trustagent.env`.
 
 ```
-tpmquoteipv4: true                          # TPM_QUOTE_IPV4
 logging:
   loglevel: info                            # TRUSTAGENT_LOG_LEVEL
   logenablestdout: false                    # TA_ENABLE_CONSOLE_LOG

@@ -13,7 +13,6 @@ import (
 	"encoding/xml"
 	"intel/isecl/go-trust-agent/v2/config"
 	"intel/isecl/go-trust-agent/v2/constants"
-	"intel/isecl/go-trust-agent/v2/util"
 	"intel/isecl/lib/common/v2/log/message"
 	"intel/isecl/lib/tpmprovider/v2"
 	"io/ioutil"
@@ -48,7 +47,6 @@ import (
 type TpmQuoteResponse struct {
 	XMLName         xml.Name `xml:"tpm_quote_response"`
 	TimeStamp       int64    `xml:"timestamp"`
-	ClientIp        string   `xml:"clientIp"`
 	ErrorCode       int      `xml:"errorCode"`
 	ErrorMessage    string   `xml:"errorMessage"`
 	Aik             string   `xml:"aik"`
@@ -84,14 +82,9 @@ type TpmQuoteContext struct {
 	cfg              *config.TrustAgentConfiguration
 }
 
-// HVS generates a 20 byte random nonce that is sent in the tpmQuoteRequest.  However,
-// HVS expects the response nonce (in the TpmQuoteResponse.Quote binary) to be hashed with the bytes
-// of local ip address.  If this isn't performed, HVS will throw an error when the
-// response is received.
-//
-// Also, HVS takes into account the asset tag in the nonce -- it takes the ip hashed nonce
-// and 'extends' it with value of asset tag (i.e. when tags have been set on the trust agent).
-func (ctx *TpmQuoteContext) getNonce(hvsNonce []byte, tpmQuoteIpv4 bool) ([]byte, error) {
+// This function returns the correct nonce based on the presence of an asset tag (i.e. when an asset 
+// tag is present, the nonce is hashed with its value).
+func (ctx *TpmQuoteContext) getNonce(hvsNonce []byte) ([]byte, error) {
 	log.Trace("resource/quote:getNonce() Entering")
 	defer log.Trace("resource/quote:getNonce() Leaving")
 
@@ -101,19 +94,6 @@ func (ctx *TpmQuoteContext) getNonce(hvsNonce []byte, tpmQuoteIpv4 bool) ([]byte
 	hash := sha1.New()
 	hash.Write(hvsNonce)
 	taNonce := hash.Sum(nil)
-
-	hash = sha1.New()
-	hash.Write(taNonce)
-	if tpmQuoteIpv4 {
-		ipBytes, err := util.GetLocalIpAsBytes()
-		if err != nil {
-			return nil, err
-		}
-		hash.Write(ipBytes)
-		log.Debugf("resource/quote:getNonce() Used ip bytes '%s' to extend nonce to '%s', raw[%s]", hex.EncodeToString(ipBytes), base64.StdEncoding.EncodeToString(taNonce), hex.EncodeToString(taNonce))
-	}
-
-	taNonce = hash.Sum(nil)
 
 	if ctx.tpmQuoteResponse.IsTagProvisioned {
 
@@ -130,10 +110,6 @@ func (ctx *TpmQuoteContext) getNonce(hvsNonce []byte, tpmQuoteIpv4 bool) ([]byte
 
 		// similar to HVS' SHA1.digestOf(taNonce).extend(tagBytes)
 		hash := sha1.New()
-		hash.Write(taNonce)
-		taNonce = hash.Sum(nil)
-
-		hash = sha1.New()
 		hash.Write(taNonce)
 		hash.Write(tagBytes)
 		taNonce = hash.Sum(nil)
@@ -193,9 +169,9 @@ func (ctx *TpmQuoteContext) readEventLog() error {
 	return nil
 }
 
-func (ctx *TpmQuoteContext) getQuote(tpmQuoteRequest *TpmQuoteRequest, tpmQuoteIpv4 bool) error {
+func (ctx *TpmQuoteContext) getQuote(tpmQuoteRequest *TpmQuoteRequest) error {
 
-	nonce, err := ctx.getNonce(tpmQuoteRequest.Nonce, tpmQuoteIpv4)
+	nonce, err := ctx.getNonce(tpmQuoteRequest.Nonce)
 	if err != nil {
 		return err
 	}
@@ -265,7 +241,7 @@ func (ctx *TpmQuoteContext) getAssetTags() error {
 	return nil
 }
 
-func (ctx *TpmQuoteContext) createTpmQuote(tpmQuoteRequest *TpmQuoteRequest, tpmQuoteIpv4 bool) error {
+func (ctx *TpmQuoteContext) createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) error {
 	log.Trace("resource/quote:createTpmQuote() Entering")
 	defer log.Trace("resource/quote:createTpmQuote() Leaving")
 
@@ -280,15 +256,9 @@ func (ctx *TpmQuoteContext) createTpmQuote(tpmQuoteRequest *TpmQuoteRequest, tpm
 	}
 
 	// get the quote from tpmprovider
-	err = ctx.getQuote(tpmQuoteRequest, tpmQuoteIpv4)
+	err = ctx.getQuote(tpmQuoteRequest)
 	if err != nil {
 		return errors.Wrap(err, "resource/quote:createTpmQuote() Error while retrieving tpm quote request")
-	}
-
-	// clientIp
-	ctx.tpmQuoteResponse.ClientIp, err = util.GetLocalIpAsString()
-	if err != nil {
-		return errors.Wrap(err, "resource/quote:createTpmQuote() Error while fetching Local IP")
 	}
 
 	// aik --> read from disk and convert to PEM string
@@ -323,7 +293,6 @@ func getTpmQuote(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.Tpm
 		log.Trace("resource/quote:getTpmQuote() Entering")
 		defer log.Trace("resource/quote:getTpmQuote() Leaving")
 
-		tpmQuoteIpv4 := cfg.TpmQuoteIPv4
 		log.Debugf("resource/quote:getTpmQuote() Request: %s", httpRequest.URL.Path)
 
 		contentType := httpRequest.Header.Get("Content-Type")
@@ -367,7 +336,7 @@ func getTpmQuote(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.Tpm
 			return &endpointError{Message: "The TpmQuoteRequest does not contain a nonce", StatusCode: http.StatusBadRequest}
 		}
 
-		err = ctx.createTpmQuote(&tpmQuoteRequest, tpmQuoteIpv4)
+		err = ctx.createTpmQuote(&tpmQuoteRequest)
 		if err != nil {
 			log.WithError(err).Errorf("resource/quote:getTpmQuote() %s - Error while creating the tpm quote", message.AppRuntimeErr)
 			return &endpointError{Message: "Error reading request body", StatusCode: http.StatusInternalServerError}

@@ -7,21 +7,33 @@ package util
 import (
 	"fmt"
 	commLog "intel/isecl/lib/common/v2/log"
+	"intel/isecl/go-trust-agent/v2/constants"
+	"net"
+	"os"
 	"github.com/pkg/errors"
 )
 
 var log = commLog.GetDefaultLogger()
 var secLog = commLog.GetSecurityLogger()
 
-func GetConnectionString(port int) (string, error) {
+func GetCurrentIP() (net.IP, error) {
+
+	currentIP := os.Getenv(constants.EnvCurrentIP)
+	if currentIP == "" {
+		return nil, errors.New("CURRENT_IP is not define in the environment")
+	}
+
+	ip := net.ParseIP(currentIP)
+	if ip == nil {
+		return nil, errors.Errorf("Could not parse ip address '%s'", currentIP)
+	}
+
+	return ip, nil
+}
+
+func GetConnectionString(ip net.IP, port int) string {
 	log.Trace("util/connection_string:GetConnectionString() Entering")
 	defer log.Trace("util/connection_string:GetConnectionString() Leaving")
 
-	ip, err := GetLocalIpAsString()
-	if err != nil {
-		return "", errors.Wrap(err, "util/connection_string:GetConnectionString() Error While retrieving local IP")
-	}
-
-	connectionString := fmt.Sprintf("intel:https://%s:%d", ip, port)
-	return connectionString, nil
+	return fmt.Sprintf("intel:https://%s:%d", ip.String(), port)
 }

@@ -139,22 +139,17 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*T
 
 	// these are individual commands that are not included in default setup tasks
 
-	connectionString, err := util.GetConnectionString(cfg.WebService.Port)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error while getting connection string")
-	}
-
 	registry.taskMap[CreateHostCommand] = []setup.Task{
 		&CreateHost{
 			clientFactory: vsClientFactory,
-			connectionString: connectionString,
+			trustAgentPort: cfg.WebService.Port,
 		},
 	}
 
 	registry.taskMap[CreateHostUniqueFlavorCommand] = []setup.Task{
 		&CreateHostUniqueFlavor{
 			clientFactory: vsClientFactory,
-			connectionString: connectionString,
+			trustAgentPort: cfg.WebService.Port,
 		},
 	}
 

@@ -1,20 +1,20 @@
 /*
 * Copyright (C) 2020 Intel Corporation
 * SPDX-License-Identifier: BSD-3-Clause
- */
+*/
 package tasks
 
 import (
 	"fmt"
 	"intel/isecl/go-trust-agent/v2/vsclient"
 	"intel/isecl/lib/common/v2/setup"
-
+	"intel/isecl/go-trust-agent/v2/util"
 	"github.com/pkg/errors"
 )
 
 type CreateHostUniqueFlavor struct {
-	clientFactory vsclient.VSClientFactory
-	connectionString string
+	clientFactory  vsclient.VSClientFactory
+	trustAgentPort int
 }
 
 // Communicates with HVS to establish the host-unique-flavor from the current compute node.
@@ -29,8 +29,13 @@ func (task *CreateHostUniqueFlavor) Run(c setup.Context) error {
 		return errors.Wrap(err, "Could not create flavor client")
 	}
 
+	currentIP, err := util.GetCurrentIP()
+	if err != nil {
+		return errors.Wrap(err, "The create-host-unique-flavor task requires the CURRENT_IP environment variable")
+	}
+
 	flavorCreateCriteria := vsclient.FlavorCreateCriteria{
-		ConnectionString:   task.connectionString,
+		ConnectionString:   util.GetConnectionString(currentIP, task.trustAgentPort),
 		FlavorGroupName:    "",
 		PartialFlavorTypes: []string{vsclient.FLAVOR_HOST_UNIQUE},
 		TlsPolicyId:        vsclient.TRUST_POLICY_TRUST_FIRST_CERTIFICATE,

@@ -11,15 +11,16 @@ import (
 	"github.com/stretchr/testify/mock"
 	"intel/isecl/go-trust-agent/v2/config"
 	"intel/isecl/go-trust-agent/v2/vsclient"
+	"intel/isecl/go-trust-agent/v2/constants"
 	"intel/isecl/lib/common/v2/setup"
 	"intel/isecl/lib/tpmprovider/v2"
+	"os"
 	"testing"
 )
 
 const (
 	TpmSecretKey   = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
 	AikSecretKey   = "beefbeefbeefbeefbeefbeefbeefbeefbeefbeef"
-	ConnectionString = "intel://10.10.10.1:1443"
 )
 
 func TestTakeOwnership(t *testing.T) {
@@ -108,7 +109,8 @@ func TestCreateHostDefault(t *testing.T) {
 
 	context := setup.Context{}
 
-	createHost := CreateHost{clientFactory: mockedVSClientFactory, connectionString: ConnectionString}
+	os.Setenv(constants.EnvCurrentIP, "99.99.99.99")
+	createHost := CreateHost{clientFactory: mockedVSClientFactory, trustAgentPort: cfg.WebService.Port}
 	err := createHost.Run(context)
 	assert.NoError(err)
 }
@@ -136,7 +138,8 @@ func TestCreateHostExisting(t *testing.T) {
 	mockedVSClientFactory := vsclient.MockedVSClientFactory {MockedHostsClient : mockedHostsClient}
 
 	context := setup.Context{}
-	createHost := CreateHost{clientFactory: mockedVSClientFactory, connectionString: ConnectionString}
+	os.Setenv(constants.EnvCurrentIP, "99.99.99.99")
+	createHost := CreateHost{clientFactory: mockedVSClientFactory, trustAgentPort: cfg.WebService.Port}
 	err := createHost.Run(context)
 	assert.Error(err)
 }

@@ -89,8 +89,6 @@ Available Tasks for 'setup':
                                                        - TA_TLS_CERT_CN=<Common Name>                      : Sets the value for Common Name in the TA TLS certificate.  Defaults to "Trust Agent TLS Certificate".
                                                        - TPM_OWNER_SECRET=<40 byte hex>                    : When provided, setup uses the 40 character hex string for the TPM
                                                                                                              owner password. Auto-generated when not provided.
-                                                       - TPM_QUOTE_IPV4=Y/N                                : When 'Y', used the local system's ip address a salt when processing
-                                                                                                             TPM quotes.  Defaults to 'N'.
                                                        - TRUSTAGENT_LOG_LEVEL=<trace|debug|info|error>     : Sets the verbosity level of logging. Defaults to 'info'.
                                                        - TRUSTAGENT_PORT=<portnum>                         : The port on which the trust agent service will listen.
                                                                                                              Defaults to 1443
@@ -127,23 +125,21 @@ Available Tasks for 'setup':
                                                     Optional environment variables:
                                                         - TPM_OWNER_SECRET=<40 byte hex>                    : When provided, setup uses the 40 character hex string for the TPM
                                                                                                               owner password. Auto-generated when not provided.
-                                                        - TPM_QUOTE_IPV4='Y'/'N'                            : When 'Y', used the local system's ip address a salt when processing
-                                                                                                              TPM quotes.  Defaults to 'N'.
 
   create-host                                 - Registers the trust agent with the verification service.
                                                     Required environment variables:
                                                         - MTWILSON_API_URL=<url>                            : VS API URL
                                                         - BEARER_TOKEN=<token>                              : for authenticating with VS
+														- CURRENT_IP=<ip address of host>                   : IP that HVS will use to communicate with the host
                                                     Optional environment variables:
                                                         - TPM_OWNER_SECRET=<40 byte hex>                    : When provided, setup uses the 40 character hex string for the TPM
                                                                                                               owner password. Auto-generated when not provided.
-                                                        - TPM_QUOTE_IPV4='Y'/'N'                            : When 'Y', used the local system's ip address a salt when processing
-                                                                                                              TPM quotes.  Defaults to 'N'.
 
   create-host-unique-flavor                 - Populates the verification service with the host unique flavor
                                                     Required environment variables:
                                                         - MTWILSON_API_URL=<url>                            : VS API URL
                                                         - BEARER_TOKEN=<token>                              : for authenticating with VS
+														- CURRENT_IP=<ip address of host>                   : IP that HVS will use to communicate with the host
 
   get-configured-manifest                   - Uses environment variables to pull application-integrity 
                                               manifests from the verification service.
@@ -465,7 +461,6 @@ func main() {
 	case "setup":
 
 		cfg.LogConfiguration(cfg.Logging.LogEnableStdout)
-		// only apply env vars to config before starting 'setup' tasks
 
 		if currentUser.Username != constants.RootUserName {
 			log.Errorf("main:main() 'tagent setup' must be run as root, not  user '%s'\n", currentUser.Username)
@@ -486,6 +481,7 @@ func main() {
 			setupCommand = tasks.DefaultSetupCommand
 		}
 
+		// only apply env vars to config when running 'setup' tasks
 		err = cfg.LoadEnvironmentVariables()
 		if err != nil {
 			log.WithError(err).Error("Error loading environment variables")
