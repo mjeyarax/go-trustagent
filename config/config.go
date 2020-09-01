@@ -48,7 +48,7 @@ type TrustAgentConfiguration struct {
 		MaxHeaderBytes    int					// TA_SERVER_MAX_HEADER_BYTES
 	}
 	HVS struct {
-		Url string								// MTWILSON_API_URL
+		Url string								// HVS_URL
 	}
 	Tpm struct {
 		OwnerSecretKey string					// TPM_OWNER_SECRET (generated if not provided during take-ownership)
@@ -141,7 +141,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	} // else := ok (This field may be generated in tasks/take-ownership when not present.)
 
 	//---------------------------------------------------------------------------------------------
-	// MTWILSON_API_URL
+	// HVS_URL
 	//---------------------------------------------------------------------------------------------
 	environmentVariable, err = context.GetenvString(constants.EnvMtwilsonAPIURL, "Verification Service API URL")
 	if environmentVariable != "" && cfg.HVS.Url != environmentVariable {

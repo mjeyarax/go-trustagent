@@ -69,10 +69,10 @@ By default, the `tagent setup` command (or `tagent setup all`) is used during in
 |----|-----------|-------|-----------|
 |download-root-ca-cert|Downloads the root CA certificate from Certificate Management Service (CMS)|Creates a .pem file containing the Root CA certificate chain (root CA and Intermediate CA) in /opt/trustagent/configuration/cacerts/|CMS_BASE_URL, CMS_TLS_CERT_SHA384|
 |download-ca-cert|Generates a asymmetric keypair and obtains the signed TLS certificate for Trust Agent webservice from Certificate CMS|Creates two files in /opt/trustagent/configuration: tls-key.pem containing the private key and tls-cert.pem containing the signed public key TLS cert signed by CMS|CMS_BASE_URL, TA_TLS_CERT_CN (optional), SAN_LIST, BEARER_TOKEN|
-|download-privacy-ca|Downloads a certificate from HVS (/ca-certificates/privacy) which is used to encrypt data during 'provision-aik'. |Creates /opt/trustagent/configuration/privacy-ca.cer.|MTWILSON_API_URL, BEARER_TOKEN|
+|download-privacy-ca|Downloads a certificate from HVS (/ca-certificates/privacy) which is used to encrypt data during 'provision-aik'. |Creates /opt/trustagent/configuration/privacy-ca.cer.|HVS_URL, BEARER_TOKEN|
 |take-ownership|Uses the value of TPM_OWNER_SECRET (or generates a new random secret) to take ownership of the TPM. |Takes ownership of the TPM and saves the secret key in /opt/trustagent/configuration/config.yml.  Fails if the TPM is already owned.|TPM_OWNER_SECRET|
-|provision-ek|Validates the TPM's endorsement key (EK) against the list stored in HVS.|Validates the TPM's EK against the  manufacture certs downloaded from HVS (/ca-certificates?domain=ek).  Stores the manufacture EKs from HVS at /opt/trustagent/configuration/endorsement.pem.  Returns an error if the TPM EK is not valid.  Optionally registers the EK with HVS (if not present).|TPM_OWNER_SECRET, MTWILSON_API_URL, BEARER_TOKEN|
-|provision-aik|Performs dark magic that provisions an AIK with HVS, supporting the ability to collect authenticated tpm quotes. |Generates an AIK secret key that is stored in /opt/trustagent/configuration/config.yml.  Creates /opt/trustagent/configuration/aik.cer that is hosted in the /aik endpoint.|TPM_OWNER_SECRET, MTWILSON_API_URL, BEARER_TOKEN|
+|provision-ek|Validates the TPM's endorsement key (EK) against the list stored in HVS.|Validates the TPM's EK against the  manufacture certs downloaded from HVS (/ca-certificates?domain=ek).  Stores the manufacture EKs from HVS at /opt/trustagent/configuration/endorsement.pem.  Returns an error if the TPM EK is not valid.  Optionally registers the EK with HVS (if not present).|TPM_OWNER_SECRET, HVS_URL, BEARER_TOKEN|
+|provision-aik|Performs dark magic that provisions an AIK with HVS, supporting the ability to collect authenticated tpm quotes. |Generates an AIK secret key that is stored in /opt/trustagent/configuration/config.yml.  Creates /opt/trustagent/configuration/aik.cer that is hosted in the /aik endpoint.|TPM_OWNER_SECRET, HVS_URL, BEARER_TOKEN|
 |provision-primary-key|Allocates a primary key in the TPM used by WLA to create the binding/singing keys.|Allocates a new primary key in the TPM at index 0x81000000.|TPM_OWNER_SECRET|
 
 *Note:  While GTA supports the option of independently executing the tasks below (ex. `tagent setup provision-ek`), it is not recommended due to complex ordering and interdependencies.*
@@ -104,8 +104,8 @@ Provided GTA service is running, the agent can be registered with HVS to support
 
 ### HVS Initiated Registration
 1. Assume the GTA service is started and operational.
-2. Use HVS' `/mtwilson/v2/hosts` (POST) to add the host to HVS' list of known hosts.
-3. Use HVS' `/mtwilson/v2/flavors` (POST) to add the host's flavors to a flavor group in HVS.
+2. Use HVS' `/hvs/v2/hosts` (POST) to add the host to HVS' list of known hosts.
+3. Use HVS' `/hvs/v2/flavors` (POST) to add the host's flavors to a flavor group in HVS.
 
 Once registered/configured with HVS, the host will be available for quotes, asset tagging and other ISecL use cases.
 
@@ -316,9 +316,9 @@ The following sections are provided as a reference of GTA.
 |`tagent help`|Prints usage to stdout.||
 |`tagent setup` or `tagent setup all`|Runs all setup tasks to provision the host to operate within ISecL (i.e. creates Root-CA/TLS certificates, provisions the TPM with HVS, etc.).  Also supports an option to use an answer file names `trustagent.env` (i.e. `tagent setup trustagent.env`) that will pass environment variables to GTA during setup.  [See Setup](#setup)||
 |`tagent setup provision-attestation`|"Utility" command that provisions the TPM with HVS but does not perform other setup tasks.|MTWISLON_API_URL, BEARER_TOKEN|
-|`tagent setup create-host`|Adds the local host to the list of HVS' known hosts.| MTWILSON_API_URL, BEARER_TOKEN, CURRENT_IP|
-|`tagent setup create-host-unique-flavor`|Registers the local hosts' unique flavor with HVS.| MTWILSON_API_URL, BEARER_TOKEN, CURRENT_IP|
-|`tagent setup get-configured-manifest`|Using environment variables, adds an application manifest from HVS to the local host to be measured at boot.  When invoked, the setup command will look for a comma seperated list of environment variables with the name 'FLAVOR_UUIDS' or 'FLAVOR_LABELS'.  It will then use that list to pull one or more manifest from HVS into the /opt/trustagent/var directory (so the manifest will be measured at next boot).  | MTWILSON_API_URL, BEARER_TOKEN, (FLAVOR_UUIDS or FLAVOR_LABELS)|
+|`tagent setup create-host`|Adds the local host to the list of HVS' known hosts.| HVS_URL, BEARER_TOKEN, CURRENT_IP|
+|`tagent setup create-host-unique-flavor`|Registers the local hosts' unique flavor with HVS.| HVS_URL, BEARER_TOKEN, CURRENT_IP|
+|`tagent setup get-configured-manifest`|Using environment variables, adds an application manifest from HVS to the local host to be measured at boot.  When invoked, the setup command will look for a comma seperated list of environment variables with the name 'FLAVOR_UUIDS' or 'FLAVOR_LABELS'.  It will then use that list to pull one or more manifest from HVS into the /opt/trustagent/var directory (so the manifest will be measured at next boot).  | HVS_URL, BEARER_TOKEN, (FLAVOR_UUIDS or FLAVOR_LABELS)|
 |`tagent setup download-ca-cert`|Downloads the latest Root-CA certificate from CMS to  `/opt/trustagent/configuration/cacerts`.| CMS_BASE_URL, SAN_LIST, TA_TLS_CERT_CN (optional), BEARER_TOKEN|
 |`tagent setup download-cert`|Downloads TLS certs from CMS and updates the files in `/opt/trustagent/configuration` ( `tls-key.pem` and `tls-cert.pem`).| CMS_BASE_URL, SAN_LIST, TA_TLS_CERT_CN (optional), BEARER_TOKEN|
 |`tagent setup update-certificates`|"Utility" command used to update the Root-CA and TLS cert.  Combines `tagent setup download-ca-cert` and `tagent setup downaload-ca`.|See `tagent setup download-ca-cert` and `tagent setup download-cert`.|
@@ -342,7 +342,7 @@ If the GTA installer is run with a valid 'trustagent.env' file, it will parse th
 |CMS_BASE_URL|API URL for Certificate Management Service (CMS).|CMS_BASE_URL=https://{host}:{port}/cms/v1|Yes|NA|
 |CMS_TLS_CERT_SHA384|SHA384 Hash sum for verifying the CMS TLS certificate.|CMS_TLS_CERT_SHA384=bd8ebf5091289958b5765da4...|Yes|NA|
 |CURRENT_IP|The ip address of the host requried for `create-host` and `create-host-unique-flavor`.|CURRENT_IP=10.99.23.76|No|NA|
-|MTWILSON_API_URL|The url used during setup to request information from HVS.|MTWILSON_API_URL=https://{host}:{port}/mtwilson/v2|Yes|NA|
+|HVS_URL|The url used during setup to request information from HVS.|HVS_URL=https://{host}:{port}/hvs/v2|Yes|NA|
 |PROVISION_ATTESTATION|When present, enables/disables whether `tagent setup` is called during installation.  If trustagent.env is not present, the value defaults to no ('N').|PROVISION_ATTESTATION=Y|No|N|
 |SAN_LIST|CSV list that sets the value for SAN list in the TA TLS certificate.  Defaults to 127.0.0.1.|SAN_LIST=10.123.100.1,201.102.10.22,mya.example.com|No|"127.0.0.1,localhost"|
 |TA_TLS_CERT_CN|Sets the value for Common Name in the TA TLS certificate.  Defaults to CN=trustagent.|TA_TLS_CERT_CN=Acme Trust Agent 007|No|"Trust Agent TLS Certificate"|
@@ -417,7 +417,7 @@ webservice:
   idletimeout: 10s                          # TA_SERVER_IDLE_TIMEOUT
   maxheaderbytes: 1048576                   # TA_SERVER_MAX_HEADER_BYTES
 hvs:
-  url: https://0.0.0.0:8443/mtwilson/v2     # MTWILSON_API_URL
+  url: https://0.0.0.0:8443/hvs/v2     # HVS_URL
 tpm:
   ownersecretkey: 625d6d8...1be0b4e957      # TPM_OWNER_SECRET
   aiksecretkey: 59acd1367...edcbede60c      # NA, generated by setup

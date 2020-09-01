@@ -75,7 +75,7 @@ Available Tasks for 'setup':
                                                        - CMS_BASE_URL=<url>                                : CMS API URL
                                                        - CMS_TLS_CERT_SHA384=<CMS TLS cert sha384 hash>    : to ensure that TA is communicating with the right CMS instance
                                                        - BEARER_TOKEN=<token>                              : for authenticating with CMS and VS
-                                                       - MTWILSON_API_URL=<url>                            : VS API URL
+                                                       - HVS_URL=<url>                            : VS API URL
                                                     Optional Environment variables:
                                                        - TA_ENABLE_CONSOLE_LOG=<true/false>                : When 'true', logs are redirected to stdout. Defaults to false.
                                                        - TA_SERVER_IDLE_TIMEOUT=<t sceconds>                : Sets the trust agent service's idle timeout. Defaults to 10 seconds.
@@ -119,7 +119,7 @@ Available Tasks for 'setup':
 
   provision-attestation                     - Runs setup tasks associated with HVS/TPM provisioning.
                                                     Required environment variables:
-                                                        - MTWILSON_API_URL=<url>                            : VS API URL
+                                                        - HVS_URL=<url>                            : VS API URL
                                                         - BEARER_TOKEN=<token>                              : for authenticating with VS
                                                     Optional environment variables:
                                                         - TPM_OWNER_SECRET=<40 byte hex>                    : When provided, setup uses the 40 character hex string for the TPM
@@ -127,7 +127,7 @@ Available Tasks for 'setup':
 
   create-host                                 - Registers the trust agent with the verification service.
                                                     Required environment variables:
-                                                        - MTWILSON_API_URL=<url>                            : VS API URL
+                                                        - HVS_URL=<url>                            : VS API URL
                                                         - BEARER_TOKEN=<token>                              : for authenticating with VS
                                                         - CURRENT_IP=<ip address of host>                   : IP or hostname of host with which the host will be registered with HVS
                                                     Optional environment variables:
@@ -136,14 +136,14 @@ Available Tasks for 'setup':
 
   create-host-unique-flavor                 - Populates the verification service with the host unique flavor
                                                     Required environment variables:
-                                                        - MTWILSON_API_URL=<url>                            : VS API URL
+                                                        - HVS_URL=<url>                            : VS API URL
                                                         - BEARER_TOKEN=<token>                              : for authenticating with VS
                                                         - CURRENT_IP=<ip address of host>                   : Used to associate the flavor with the host
 
   get-configured-manifest                   - Uses environment variables to pull application-integrity 
                                               manifests from the verification service.
                                                      Required environment variables:
-                                                        - MTWILSON_API_URL=<url>                            : VS API URL
+                                                        - HVS_URL=<url>                            : VS API URL
                                                         - BEARER_TOKEN=<token>                              : for authenticating with VS
                                                         - FLAVOR_UUIDS=<uuid1,uuid2,[...]>                  : CSV list of flavor UUIDs
                                                         - FLAVOR_LABELS=<flavorlabel1,flavorlabel2,[...]>   : CSV list of flavor labels                                                   

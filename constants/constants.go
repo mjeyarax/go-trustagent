@@ -50,7 +50,7 @@ const (
 	EnvBearerToken             = "BEARER_TOKEN"
 	JWTCertsCacheTime          = "1m"
 	EnvTPMOwnerSecret          = "TPM_OWNER_SECRET"
-	EnvMtwilsonAPIURL          = "MTWILSON_API_URL"
+	EnvMtwilsonAPIURL          = "HVS_URL"
 	EnvTAPort                  = "TRUSTAGENT_PORT"
 	EnvCMSBaseURL              = "CMS_BASE_URL"
 	EnvCMSTLSCertDigest        = "CMS_TLS_CERT_SHA384"

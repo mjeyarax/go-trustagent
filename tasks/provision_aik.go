@@ -11,18 +11,20 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"encoding/pem"
-	"github.com/intel-secl/intel-secl/v3/pkg/lib/privacyca"
 	"math/big"
 
+	"github.com/intel-secl/intel-secl/v3/pkg/lib/privacyca"
+
 	"fmt"
-	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
-	taModel "github.com/intel-secl/intel-secl/v3/pkg/model/ta"
 	"intel/isecl/go-trust-agent/v3/constants"
 	"intel/isecl/go-trust-agent/v3/util"
 	"intel/isecl/lib/common/v3/crypt"
 	"intel/isecl/lib/common/v3/setup"
 	"intel/isecl/lib/tpmprovider/v3"
 	"os"
+
+	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
+	taModel "github.com/intel-secl/intel-secl/v3/pkg/model/ta"
 
 	"github.com/pkg/errors"
 )
@@ -37,12 +39,12 @@ import (
 // The handshake steps are...
 // 1.) Send HVS an IdentityChallengeRequest that contains aik data and encrypted EK data (using HVS'
 // privacy-ca) in niarl binary format.
-//     POST IdentityChallengeRequest to https://server.com:8443/mtwilson/v2/privacyca/identity-challenge-request
+//     POST IdentityChallengeRequest to https://server.com:8443/hvs/v2/privacyca/identity-challenge-request
 // 2.) Receive back an IdentityProofRequest that includes an encrypted nonce that is decrypted by
 // the TPM/aik (via 'ActivateCredential').
 // 3.) Send the nonce back to HVS (encrypted by the HVS privacy-ca). If the nonce checks out, HVS
 // responds with an (encrypted) aik cert that is saved to /opt/trustagent/configuration/aik.cer.
-//    POST 'decrypted bytes' to https://server.com:8443/mtwilson/v2/privacyca/identity-challenge-response
+//    POST 'decrypted bytes' to https://server.com:8443/hvs/v2/privacyca/identity-challenge-response
 //
 // The 'aik.cer' is served via the /v2/aik endpoint and included in /tpm/quote.
 //
@@ -94,7 +96,7 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	}
 
 	privacyca, err := privacyca.NewPrivacyCA(identityChallengeRequest.IdentityRequest)
-	if err != nil{
+	if err != nil {
 		log.WithError(err).Error("tasks/provision_aik:Run() Unable to get new privacyca instance")
 		return errors.Wrap(err, "Unable to get new privacyca instance")
 	}
@@ -143,7 +145,7 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	}
 
 	log.Info("tasks/provision_aik:Run() Activate credential is successful for identity challenge response")
-	
+
 	// make sure the decrypted bytes are a valid certificates...
 	_, err = x509.ParseCertificate(decrypted2)
 	if err != nil {
@@ -354,7 +356,7 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 	}
 
 	decrypted := make([]byte, len(encryptedBytes))
-	
+
 	mode := cipher.NewCBCDecrypter(block, iv)
 	mode.CryptBlocks(decrypted, encryptedBytes)
 

@@ -6,24 +6,24 @@
  */
 package tasks
 
-
 import (
+	"intel/isecl/go-trust-agent/v3/config"
+	"intel/isecl/go-trust-agent/v3/constants"
+	"intel/isecl/lib/common/v3/setup"
+	"intel/isecl/lib/tpmprovider/v3"
 	"os"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
 	"github.com/intel-secl/intel-secl/v3/pkg/model/hvs"
-	"intel/isecl/go-trust-agent/v3/constants"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"intel/isecl/go-trust-agent/v3/config"
-	"intel/isecl/lib/common/v3/setup"
-	"intel/isecl/lib/tpmprovider/v3"
-	"testing"
 )
 
 const (
-	TpmSecretKey   = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
-	AikSecretKey   = "beefbeefbeefbeefbeefbeefbeefbeefbeefbeef"
+	TpmSecretKey = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+	AikSecretKey = "beefbeefbeefbeefbeefbeefbeefbeefbeefbeef"
 )
 
 func TestTakeOwnership(t *testing.T) {
@@ -85,7 +85,7 @@ func TestTakeOwnership(t *testing.T) {
 // 	assert := assert.New(t)
 
 // 	cfg := &config.TrustAgentConfiguration {}
-// 	cfg.HVS.Url = "https://vs.server.com:8443/mtwilson/v2"
+// 	cfg.HVS.Url = "https://vs.server.com:8443/hvs/v2"
 // 	cfg.HVS.Username = "admin"
 // 	cfg.HVS.Password = "password"
 // 	cfg.HVS.TLS384 = "7ff464fdd47192d7218e9bc7a80043641196762b840c5c79b7fdaaae471cbffb0ee893c23bca63197b8a863f516a7d8b"
@@ -108,7 +108,7 @@ func TestCreateHostDefault(t *testing.T) {
 	mockedHostsClient.On("SearchHosts", mock.Anything).Return(&hvs.HostCollection{Hosts: []*hvs.Host{}}, nil)
 	mockedHostsClient.On("CreateHost", mock.Anything).Return(&hvs.Host{Id: uuid.MustParse("068b5e88-1886-4ac2-a908-175cf723723f")}, nil)
 
-	mockedVSClientFactory := hvsclient.MockedVSClientFactory {MockedHostsClient : mockedHostsClient}
+	mockedVSClientFactory := hvsclient.MockedVSClientFactory{MockedHostsClient: mockedHostsClient}
 
 	context := setup.Context{}
 
@@ -137,7 +137,7 @@ func TestCreateHostExisting(t *testing.T) {
 	mockedHostsClient.On("SearchHosts", mock.Anything).Return(&hvs.HostCollection{Hosts: []*hvs.Host{&existingHost}}, nil)
 	mockedHostsClient.On("CreateHost", mock.Anything).Return(&hvs.Host{Id: uuid.MustParse("068b5e88-1886-4ac2-a908-175cf723723f")}, nil)
 
-	mockedVSClientFactory := hvsclient.MockedVSClientFactory {MockedHostsClient : mockedHostsClient}
+	mockedVSClientFactory := hvsclient.MockedVSClientFactory{MockedHostsClient: mockedHostsClient}
 
 	context := setup.Context{}
 	os.Setenv(constants.EnvCurrentIP, "99.99.99.99")

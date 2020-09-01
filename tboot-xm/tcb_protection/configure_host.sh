@@ -30,11 +30,11 @@ function help_instruction()
 {
         echo 'Usage ./configure_host.sh [Options] '
         echo ""
-	echo "This script needs to run on the TXT enabled host machine on which TCB-protection needs tobe enabled."
+	echo "This script needs to run on the TXT enabled host machine on which TCB-protection needs to be enabled."
 	echo ""
 	echo "This script does following functions"
         echo "1. Asks for manifest file location"
-        echo "2. Gether partition information"
+        echo "2. Gather partition information"
         echo "3. Generate kernel argument for TCB-protection enabled initrd"
         echo "4. Create a grub menuentry for TCB-Protection"
         echo "5. Add grub menuentry in /etc/grub.d/40_custom and update grub"

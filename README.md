@@ -7,7 +7,7 @@ The Trust Agent resides on physical servers and enables both remote attestation 
 - RESTful APIs for easy and versatile access to above features
 
 ## System Requirements
-- RHEL 8.0
+- RHEL 8.0 or greater
 - TPM 2.0 device
 - Packages
     - tpm2-abrmd (v2.0.x)
@@ -17,7 +17,7 @@ The Trust Agent resides on physical servers and enables both remote attestation 
     - compat-openssl10 (v1.0.x)
 - Proxy settings if applicable
 
-*See [docs/install.md](doc/install.md) for additional installation instructions.*
+*See [docs/install.md](doc/INSTALL.md) for additional installation instructions.*
 
 ## Software requirements
 - git
@@ -25,13 +25,13 @@ The Trust Agent resides on physical servers and enables both remote attestation 
 - docker
 
 # Build Instructions
-GTA use the `tpm-provider` libary to access the TPM 2.0 device.  The following instructions assume that `gta-devel` docker image and container have been created as described in the 'Build Instructions' section of the `tpm-provider` project (see the README.md in that project for more details).
+GTA use the `tpm-provider` library to access the TPM 2.0 device.  The following instructions assume that `gta-devel` docker image and container have been created as described in the 'Build Instructions' section of the `tpm-provider` project (see the README.md in that project for more details).
 
 1. cd `/docker_host/go-trust-agent`
 3. `make package`
 4. `tagent` and `trustagent-v1.0.0.bin` will be in the /out subdirectory
 
-Note: The `gta-devel` docker contianer can be used in this fashion to build GTA, but cannot be used to run or debug GTA because `tpm2-abrmd` must run as a service under `systemd`.  See `Unit Testing and TPM Simulator` in the `tpm-provider` project for instructions to run `systemd`, `tpm2-abrmd` and the TPM simulator in the `gta-devel` container.
+Note: The `gta-devel` docker container can be used in this fashion to build GTA, but cannot be used to run or debug GTA because `tpm2-abrmd` must run as a service under `systemd`.  See `Unit Testing and TPM Simulator` in the `tpm-provider` project for instructions to run `systemd`, `tpm2-abrmd` and the TPM simulator in the `gta-devel` container.
 
 # Links
 - [Installation instructions](doc/INSTALL.md)

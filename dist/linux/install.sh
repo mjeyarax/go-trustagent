@@ -1,3 +1,4 @@
+#!/bin/bash
 #--------------------------------------------------------------------------------------------------
 # T R U S T A G E N T   I N S T A L L E R
 #
@@ -12,7 +13,6 @@
 #    Otherwise, exit with a message that the user must provision the trust agent and start the
 #    service.
 #--------------------------------------------------------------------------------------------------
-#!/bin/bash
 # TERM_DISPLAY_MODE can be "plain" or "color"
 
 TERM_DISPLAY_MODE=color
@@ -338,7 +338,7 @@ chmod 755 $TRUSTAGENT_BIN/*
 # TODO:  Resolve this in lib-workload-measure (hard coded path)
 chmod 1777 /tmp
 
-# TODO:  remove the depdendency that tpmextend has on the tpm version in /opt/trustagent/configuration/tpm-version
+# TODO:  remove the dependency that tpmextend has on the tpm version in /opt/trustagent/configuration/tpm-version
 if [ -f "$TRUSTAGENT_CFG_DIR/tpm-version" ]; then
     rm -f $TRUSTAGENT_CFG_DIR/tpm-version
 fi
@@ -359,10 +359,10 @@ if [[ ${DOCKER} == "false" ]]; then
     TBOOTXM_PACKAGE=`ls -1 application-agent*.bin 2>/dev/null | tail -n 1`
     if [ -z "$TBOOTXM_PACKAGE" ]; then
       echo_failure "Failed to find application-agent installer package"
-      exit -1
+      exit 1
     fi
     ./$TBOOTXM_PACKAGE
-    if [ $? -ne 0 ]; then echo_failure "Failed to install application-agent"; exit -1; fi
+    if [ $? -ne 0 ]; then echo_failure "Failed to install application-agent"; exit 1; fi
   fi
 fi
 
@@ -392,7 +392,7 @@ systemctl daemon-reload
 # 5. If automatic provisioning is enabled, do it here...
 #--------------------------------------------------------------------------------------------------
 if [[ "$PROVISION_ATTESTATION" == "y" || "$PROVISION_ATTESTATION" == "Y" || "$PROVISION_ATTESTATION" == "yes" ]]; then
-    echo "Automatic provisioning is enabled, using mtwilson url $MTWILSON_API_URL"
+    echo "Automatic provisioning is enabled, using HVS url $HVS_URL"
 
     # make sure that tpm2-abrmd is running before running 'tagent setup'
     systemctl status $TPM2_ABRMD_SERVICE 2>&1 >/dev/null

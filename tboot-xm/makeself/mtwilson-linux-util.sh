@@ -3420,7 +3420,7 @@ print_env_summary_report() {
 
 mtwilson_running() {
   echo "Checking if mtwilson is running." >> $INSTALL_LOG_FILE
-  MTWILSON_API_BASEURL=${MTWILSON_API_BASEURL:-"https://127.0.0.1:8443/mtwilson/v2"}
+  MTWILSON_API_BASEURL=${MTWILSON_API_BASEURL:-"https://127.0.0.1:8443/hvs/v2"}
   MTWILSON_RUNNING=""
   
   MTWILSON_API_BASEURL_V2=`echo $MTWILSON_API_BASEURL | sed 's/\/mtwilson\/v1/\/mtwilson\/v2/'`
