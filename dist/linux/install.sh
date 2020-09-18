@@ -82,7 +82,7 @@ TRUSTAGENT_LOG_DIR=/var/log/trustagent
 TRUSTAGENT_CFG_DIR=$TRUSTAGENT_HOME/configuration
 TRUSTAGENT_VAR_DIR=$TRUSTAGENT_HOME/var/
 TRUSTAGENT_YUM_PACKAGES="tpm2-tss-2.0.0-4.el8.x86_64 tpm2-abrmd-2.1.1-3.el8.x86_64 dmidecode compat-openssl10 logrotate redhat-lsb-core"
-TBOOT_DEPENDENCY="tboot-1.9.7"
+TBOOT_DEPENDENCY="tboot-1.9.*"
 TPM2_ABRMD_SERVICE=tpm2-abrmd.service
 
 #--------------------------------------------------------------------------------------------------
@@ -111,7 +111,7 @@ if [ $? -eq 0 ]; then
     rpm -qa | grep ${TBOOT_DEPENDENCY} >/dev/null
     if [ $? -ne 0 ]; then
       echo_failure "tboot must be installed on non SUEFI systems."
-      return 1
+      exit 1
     fi
 fi
 
