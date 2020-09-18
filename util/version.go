@@ -20,6 +20,7 @@ const (
 var Version = "0.0.0"
 var GitHash = "fffffff"
 var BuildDate = TIME_DEFAULT
+var Branch = ""
 
 type VersionInfo struct {
 	Major         int       `json:"major"`
@@ -108,6 +109,9 @@ func GetVersionInfo() (*VersionInfo, error) {
 		}
 
 		vi.VersionString = fmt.Sprintf("Trust Agent %s-%s\nBuilt %s\n", Version, GitHash, BuildDate)
+		if Branch != "" {
+			vi.VersionString += fmt.Sprintf("Branch '%s'\n", Branch)
+		}
 
 		versionInfo = &vi
 	}

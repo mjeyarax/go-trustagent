@@ -154,15 +154,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	//---------------------------------------------------------------------------------------------
 	port := 0
 	port, err = context.GetenvInt(constants.EnvTAPort, "Trust Agent Listener Port")
-	if port > 0 {
-		port, err = strconv.Atoi(environmentVariable)
-		if err != nil {
-			return errors.Wrapf(err, "Setup error: Invalid TRUSTAGENT_PORT value '%s'", environmentVariable)
-		}
-	}
-
-	// always apply the default port of 1443
-	if port == 0 {
+	if port == 0 { // zero indicates the env was not present
 		port = constants.DefaultPort
 	}
 

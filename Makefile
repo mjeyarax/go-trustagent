@@ -1,14 +1,14 @@
 GITTAG := $(shell git describe --tags --abbrev=0 2> /dev/null)
 GITCOMMIT := $(shell git describe --always)
 GITCOMMITDATE := $(shell git log -1 --date=short --pretty=format:%cd)
-GITBRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+GITBRANCH := $(CI_COMMIT_BRANCH)
 BUILDDATE := $(shell TZ=UTC date +%Y-%m-%dT%H:%M:%SZ)
 VERSION := $(or ${GITTAG}, v1.0.0)
 
 # TODO:  Update make file to support debug/release builds (release build to use secure gcflags)
 # -fno-strict-overflow -fno-delete-null-pointer-checks -fwrapv -fPIE -fPIC -fstack-protector-strong -O2 -D
 gta:
-	env CGO_CFLAGS_ALLOW="-f.*" GOOS=linux GOSUMDB=off GOPROXY=direct go build -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/v3/util.Version=$(VERSION) -X intel/isecl/go-trust-agent/v3/util.GitHash=$(GITCOMMIT) -X intel/isecl/go-trust-agent/v3/util.BuildDate=$(BUILDDATE)" -o out/tagent
+	env CGO_CFLAGS_ALLOW="-f.*" GOOS=linux GOSUMDB=off GOPROXY=direct go build -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/v3/util.Branch=$(GITBRANCH) -X intel/isecl/go-trust-agent/v3/util.Version=$(VERSION) -X intel/isecl/go-trust-agent/v3/util.GitHash=$(GITCOMMIT) -X intel/isecl/go-trust-agent/v3/util.BuildDate=$(BUILDDATE)" -o out/tagent
 
 swagger-get:
 	wget https://github.com/go-swagger/go-swagger/releases/download/v0.21.0/swagger_linux_amd64 -O /usr/local/bin/swagger
@@ -39,7 +39,10 @@ installer: gta
 	cp out/tagent out/installer/tagent
 	makeself out/installer out/trustagent-$(VERSION).bin "TrustAgent $(VERSION)" ./install.sh
 
-unit_test:
+unit_test_bin:
+	env CGO_CFLAGS_ALLOW="-f.*" GOOS=linux GOSUMDB=off GOPROXY=direct go build -tags=unit_test -gcflags=all="-N -l" -ldflags "-X intel/isecl/go-trust-agent/v3/util.Branch=$(GITBRANCH) -X intel/isecl/go-trust-agent/v3/util.Version=$(VERSION) -X intel/isecl/go-trust-agent/v3/util.GitHash=$(GITCOMMIT) -X intel/isecl/go-trust-agent/v3/util.BuildDate=$(BUILDDATE)" -o out/tagent
+
+unit_test: unit_test_bin
 	mkdir -p out
 	env CGO_CFLAGS_ALLOW="-f.*" GOOS=linux GOSUMDB=off GOPROXY=direct go test ./... -tags=unit_test -coverpkg=./... -coverprofile out/cover.out
 	go tool cover -func out/cover.out
