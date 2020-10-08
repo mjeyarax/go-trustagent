@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"github.com/pkg/errors"
 	"intel/isecl/go-trust-agent/v3/config"
 	"intel/isecl/go-trust-agent/v3/constants"
 	"intel/isecl/go-trust-agent/v3/resource"
@@ -34,6 +33,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/pkg/errors"
 )
 
 var log = commLog.GetDefaultLogger()
@@ -64,33 +65,32 @@ Available Commands:
   status                           Get the status of the trust agent service.
   fetch-ekcert-with-issuer         Print Tpm Endorsement Certificate in Base64 encoded string along with issuer
 
-Setup command usage:  tagent setup [task]
+Setup command usage:  tagent setup [cmd] [-f <env-file>]
 
-Available Tasks for 'setup':
+Available Tasks for 'setup', all commands support env file flag
 
-  [all] [/path/to/trustagent.env]           - Runs all setup tasks to provision the trust agent. 
-                                              If path to trustagent.env not provided, settings are sourced from the environment.
-                                                    Required environment variables [in env/trustagent.env]:
-                                                       - AAS_API_URL=<url>                                 : AAS API URL
-                                                       - CMS_BASE_URL=<url>                                : CMS API URL
-                                                       - CMS_TLS_CERT_SHA384=<CMS TLS cert sha384 hash>    : to ensure that TA is communicating with the right CMS instance
-                                                       - BEARER_TOKEN=<token>                              : for authenticating with CMS and VS
-                                                       - HVS_URL=<url>                            : VS API URL
-                                                    Optional Environment variables:
-                                                       - TA_ENABLE_CONSOLE_LOG=<true/false>                : When 'true', logs are redirected to stdout. Defaults to false.
-                                                       - TA_SERVER_IDLE_TIMEOUT=<t sceconds>                : Sets the trust agent service's idle timeout. Defaults to 10 seconds.
-                                                       - TA_SERVER_MAX_HEADER_BYTES=<n bytes>              : Sets trust agent service's maximum header bytes.  Defaults to 1MB.
-                                                       - TA_SERVER_READ_TIMEOUT=<t seconds>                : Sets trust agent service's read timeout.  Defaults to 30 seconds.
-                                                       - TA_SERVER_READ_HEADER_TIMEOUT=<t seconds>         : Sets trust agent service's read header timeout.  Defaults to 30 seconds.
-                                                       - TA_SERVER_WRITE_TIMEOUT=<t seconds>               : Sets trust agent service's write timeout.  Defaults to 10 seconds.
-                                                       - SAN_LIST=<host1,host2.acme.com,...>               : CSV list that sets the value for SAN list in the TA TLS certificate.
-                                                                                                             Defaults to "127.0.0.1,localhost".
-                                                       - TA_TLS_CERT_CN=<Common Name>                      : Sets the value for Common Name in the TA TLS certificate.  Defaults to "Trust Agent TLS Certificate".
-                                                       - TPM_OWNER_SECRET=<40 byte hex>                    : When provided, setup uses the 40 character hex string for the TPM
-                                                                                                             owner password. Auto-generated when not provided.
-                                                       - TRUSTAGENT_LOG_LEVEL=<trace|debug|info|error>     : Sets the verbosity level of logging. Defaults to 'info'.
-                                                       - TRUSTAGENT_PORT=<portnum>                         : The port on which the trust agent service will listen.
-                                                                                                             Defaults to 1443
+   all                                      - Runs all setup tasks to provision the trust agent. This command can be omitted with running only tagent setup
+                                                Required environment variables [in env/trustagent.env]:
+                                                  - AAS_API_URL=<url>                                 : AAS API URL
+                                                  - CMS_BASE_URL=<url>                                : CMS API URL
+                                                  - CMS_TLS_CERT_SHA384=<CMS TLS cert sha384 hash>    : to ensure that TA is communicating with the right CMS instance
+                                                  - BEARER_TOKEN=<token>                              : for authenticating with CMS and VS
+                                                  - HVS_URL=<url>                            : VS API URL
+                                                Optional Environment variables:
+                                                  - TA_ENABLE_CONSOLE_LOG=<true/false>                : When 'true', logs are redirected to stdout. Defaults to false.
+                                                  - TA_SERVER_IDLE_TIMEOUT=<t seconds>                : Sets the trust agent service's idle timeout. Defaults to 10 seconds.
+                                                  - TA_SERVER_MAX_HEADER_BYTES=<n bytes>              : Sets trust agent service's maximum header bytes.  Defaults to 1MB.
+                                                  - TA_SERVER_READ_TIMEOUT=<t seconds>                : Sets trust agent service's read timeout.  Defaults to 30 seconds.
+                                                  - TA_SERVER_READ_HEADER_TIMEOUT=<t seconds>         : Sets trust agent service's read header timeout.  Defaults to 30 seconds.
+                                                  - TA_SERVER_WRITE_TIMEOUT=<t seconds>               : Sets trust agent service's write timeout.  Defaults to 10 seconds.
+                                                  - SAN_LIST=<host1,host2.acme.com,...>               : CSV list that sets the value for SAN list in the TA TLS certificate.
+                                                                                                        Defaults to "127.0.0.1,localhost".
+                                                  - TA_TLS_CERT_CN=<Common Name>                      : Sets the value for Common Name in the TA TLS certificate.  Defaults to "Trust Agent TLS Certificate".
+                                                  - TPM_OWNER_SECRET=<40 byte hex>                    : When provided, setup uses the 40 character hex string for the TPM
+                                                                                                        owner password. Auto-generated when not provided.
+                                                  - TRUSTAGENT_LOG_LEVEL=<trace|debug|info|error>     : Sets the verbosity level of logging. Defaults to 'info'.
+                                                  - TRUSTAGENT_PORT=<portnum>                         : The port on which the trust agent service will listen.
+                                                                                                        Defaults to 1443
 
   download-ca-cert                          - Fetches the latest CMS Root CA Certificates, overwriting existing files.
                                                     Required environment variables:
@@ -466,18 +466,36 @@ func main() {
 			os.Exit(1)
 		}
 
-		var setupCommand string
-		var flags []string
+		setupCommand := tasks.DefaultSetupCommand
+		flags := os.Args[1:]
+		//  len(os.Args) == 2 means the command is "tagent setup"
 		if len(os.Args) > 2 {
-			if strings.Contains(os.Args[2], "trustagent.env") {
-				sourceEnvFile(os.Args[2])
-				setupCommand = tasks.DefaultSetupCommand
+			// tagent setup -f <filename>
+			if os.Args[2] == "-f" {
+				if len(os.Args) > 3 {
+					sourceEnvFile(os.Args[3])
+				} else {
+					log.Errorf("main:main() 'tagent setup' -f used but no filename given")
+					os.Exit(1)
+				}
 			} else {
+				// setup is used with a command
+				// tagent setup <cmd>
 				setupCommand = os.Args[2]
 				flags = os.Args[2:]
+				// find -f flag in all flags and
+				// apply the argument right after it as env file
+				i := 0
+				for i = 0; i < len(os.Args)-1; i++ {
+					if os.Args[i] == "-f" {
+						sourceEnvFile(os.Args[i+1])
+					}
+				}
+				if os.Args[i] == "-f" {
+					log.Errorf("main:main() 'tagent setup' -f used but no filename given")
+					os.Exit(1)
+				}
 			}
-		} else {
-			setupCommand = tasks.DefaultSetupCommand
 		}
 
 		// only apply env vars to config when running 'setup' tasks
