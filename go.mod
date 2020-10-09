@@ -15,18 +15,18 @@ require (
 	golang.org/x/crypto v0.0.0-20191205180655-e7c4368fe9dd
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	gopkg.in/yaml.v2 v2.3.0
-	intel/isecl/lib/clients/v3 v3.0.0
-	intel/isecl/lib/common/v3 v3.0.0
-	intel/isecl/lib/platform-info/v3 v3.0.0
-	intel/isecl/lib/tpmprovider/v3 v3.0.0
+	intel/isecl/lib/clients/v3 v3.1.0
+	intel/isecl/lib/common/v3 v3.1.0
+	intel/isecl/lib/platform-info/v3 v3.1.0
+	intel/isecl/lib/tpmprovider/v3 v3.1.0
 )
 
-replace intel/isecl/lib/common/v3 => github.com/intel-secl/common/v3 v3.0.0
+replace intel/isecl/lib/common/v3 => github.com/intel-secl/common/v3 v3.1.0
 
-replace intel/isecl/lib/tpmprovider/v3 => gitlab.devtools.intel.com/sst/isecl/lib/tpm-provider.git/v3 v3.1/develop
+replace intel/isecl/lib/tpmprovider/v3 => github.com/intel-secl/tpm-provider/v3 v3.1.0
 
-replace intel/isecl/lib/platform-info/v3 => gitlab.devtools.intel.com/sst/isecl/lib/platform-info.git/v3 v3.1/develop
+replace intel/isecl/lib/platform-info/v3 => github.com/intel-secl/platform-info/v3 v3.1.0
 
-replace intel/isecl/lib/clients/v3 => github.com/intel-secl/clients/v3 v3.0.0
+replace intel/isecl/lib/clients/v3 => github.com/intel-secl/clients/v3 v3.1.0
 
 replace github.com/vmware/govmomi => github.com/arijit8972/govmomi fix-tpm-attestation-output
