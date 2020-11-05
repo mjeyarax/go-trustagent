@@ -42,7 +42,7 @@ const (
 var log = commLog.GetDefaultLogger()
 var secLog = commLog.GetSecurityLogger()
 
-func CreateTaskRegistry(cfg *config.TrustAgentConfiguration, flags []string) (*TaskRegistry, error) {
+func CreateTaskRegistry(cfg *config.TrustAgentConfiguration) (*TaskRegistry, error) {
 
 	var registry TaskRegistry
 

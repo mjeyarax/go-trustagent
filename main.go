@@ -468,6 +468,7 @@ func main() {
 
 		setupCommand := tasks.DefaultSetupCommand
 		flags := os.Args[1:]
+
 		//  len(os.Args) == 2 means the command is "tagent setup"
 		if len(os.Args) > 2 {
 			// tagent setup -f <filename>
@@ -482,18 +483,14 @@ func main() {
 				// setup is used with a command
 				// tagent setup <cmd>
 				setupCommand = os.Args[2]
-				flags = os.Args[2:]
-				// find -f flag in all flags and
-				// apply the argument right after it as env file
-				i := 0
-				for i = 0; i < len(os.Args)-1; i++ {
-					if os.Args[i] == "-f" {
-						sourceEnvFile(os.Args[i+1])
+				flags = os.Args[3:]
+				if len(flags) > 1 {
+					if flags[0] == "-f" {
+						sourceEnvFile(flags[1])
+					} else {
+						printUsage()
+						os.Exit(1)
 					}
-				}
-				if os.Args[i] == "-f" {
-					log.Errorf("main:main() 'tagent setup' -f used but no filename given")
-					os.Exit(1)
 				}
 			}
 		}
@@ -505,7 +502,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error loading environment variables\n %v \n\n", err)
 		}
 
-		registry, err := tasks.CreateTaskRegistry(cfg, flags)
+		registry, err := tasks.CreateTaskRegistry(cfg)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error while creating task registry \n Error: %s\n", err.Error())
 			log.Errorf("main:main() Error while creating task registry %+v", err)
