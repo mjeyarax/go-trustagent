@@ -55,7 +55,7 @@ type TagWriteRequestInfo struct {
 //    "vmm_name": "Virsh",
 //    "vmm_version": "4.5.0",
 //    "processor_info": "54 06 05 00 FF FB EB BF",
-//    "host_name": "t23ru33pcsd.fm.intel.com",
+//    "host_name": "127.0.0.1",
 //    "bios_name": "Intel Corporation",
 //    "hardware_uuid": "0018013a-96a4-e811-906e-00163566263e",
 //    "process_flags": "FPU VME DE PSE TSC MSR PAE MCE CX8 APIC SEP MTRR PGE MCA CMOV PAT PSE-36 CLFSH DS ACPI MMX FXSR SSE SSE2 SS HTT TM PBE",

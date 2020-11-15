@@ -1,9 +1,6 @@
 #--------------------------------------------------------------------------------------------------
 # See 'Readme.md' for information
 #--------------------------------------------------------------------------------------------------
-variables:
-  NO_PROXY: "gitlab.devtools.intel.com"
-  
 before_script:
   - git config --global http.proxy "${HTTP_PROXY}"
   - git config --global https.proxy "${HTTPS_PROXY}"
@@ -11,6 +8,7 @@ before_script:
   - export http_proxy="${HTTP_PROXY}"
   - export https_proxy="${HTTPS_PROXY}"
   - export no_proxy="${NO_PROXY}"
+  - export NO_PROXY="${NO_PROXY}"
   - export GITTAG=`git describe --tags --abbrev=0 2> /dev/null`
   - git config --list
   - env
