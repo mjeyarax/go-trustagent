@@ -21,12 +21,13 @@ require (
 	intel/isecl/lib/tpmprovider/v3 v3.2.0
 )
 
-replace intel/isecl/lib/common/v3 => github.com/intel-secl/common.git/v3 v3.2.0
+replace intel/isecl/lib/common/v3 => github.com/intel-secl/common/v3 v3.2.0
 
-replace intel/isecl/lib/tpmprovider/v3 => github.com/intel-secl/tpm-provider.git/v3 v3.2.0
+replace intel/isecl/lib/tpmprovider/v3 => github.com/intel-secl/tpm-provider/v3 v3.2.0
 
-replace intel/isecl/lib/platform-info/v3 => github.com/intel-secl/platform-info.git/v3 v3.2.0
+replace intel/isecl/lib/platform-info/v3 => github.com/intel-secl/platform-info/v3 v3.2.0
 
-replace intel/isecl/lib/clients/v3 => github.com/intel-secl/clients.git/v3 v3.2.0
+replace intel/isecl/lib/clients/v3 => github.com/intel-secl/clients/v3 v3.2.0
 
 replace github.com/vmware/govmomi => github.com/arijit8972/govmomi fix-tpm-attestation-output
+
