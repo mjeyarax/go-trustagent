@@ -61,6 +61,7 @@ checkmarx:
         - merge_requests
      tags: 
         - docker-checkmarx
+     allow_failure: true
      services:
          - docker:dind
      image:
