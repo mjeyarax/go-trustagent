@@ -156,7 +156,9 @@ func (task *ProvisionAttestationIdentityKey) Run(c setup.Context) error {
 	if err != nil {
 		return errors.Wrapf(err, "Could not create file %s", constants.AikCert)
 	}
-	defer certOut.Close()
+	defer func() {
+		err = certOut.Close()
+	}()
 
 	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: decrypted2}); err != nil {
 		return errors.Wrap(err, "Could not encode the AIK to pem")
@@ -303,7 +305,10 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 	//
 	var credentialSize uint16
 	buf := bytes.NewBuffer(identityProofRequest.Credential)
-	binary.Read(buf, binary.BigEndian, &credentialSize)
+	err = binary.Read(buf, binary.BigEndian, &credentialSize)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error while reading credential size")
+	}
 	if credentialSize == 0 || int(credentialSize) > len(identityProofRequest.Credential) {
 		return nil, errors.Errorf("Invalid credential size %d", credentialSize)
 	}
@@ -313,7 +318,10 @@ func (task *ProvisionAttestationIdentityKey) activateCredential(identityProofReq
 	//
 	var secretSize uint16
 	buf = bytes.NewBuffer(identityProofRequest.Secret)
-	binary.Read(buf, binary.BigEndian, &secretSize)
+	err = binary.Read(buf, binary.BigEndian, &secretSize)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error while reading secret size")
+	}
 	if secretSize == 0 || int(secretSize) > len(identityProofRequest.Secret) {
 		return nil, errors.Errorf("Invalid secretSize size %d", secretSize)
 	}

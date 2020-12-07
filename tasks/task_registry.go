@@ -174,7 +174,10 @@ func (registry *TaskRegistry) RunCommand(command string) error {
 	}
 
 	err := setupRunner.RunTasks()
-	registry.cfg.Save()	// always update the cofig.yaml regardless of error (so TPM owner/aik are persisted)
+	if err != nil {
+		return err
+	}
+	err = registry.cfg.Save()	// always update the cofig.yaml regardless of error (so TPM owner/aik are persisted)
 	if err != nil {
 		return err
 	}

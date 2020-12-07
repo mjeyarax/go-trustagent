@@ -76,7 +76,12 @@ func NewConfigFromYaml(pathToYaml string) (*TrustAgentConfiguration, error) {
 	var c TrustAgentConfiguration
 	file, err := os.Open(pathToYaml)
 	if err == nil {
-		defer file.Close()
+		defer func() {
+			derr := file.Close()
+			if derr != nil {
+				log.WithError(derr).Error("Error closing file")
+			}
+		}()
 		err = yaml.NewDecoder(file).Decode(&c)
 		if err != nil {
 			return nil, err
@@ -103,7 +108,10 @@ func (cfg *TrustAgentConfiguration) Save() error {
 		if os.IsNotExist(err) {
 			// error is that the config doesnt yet exist, create it
 			file, err = os.Create(cfg.configFile)
-			os.Chmod(cfg.configFile, 0660)
+			if err != nil {
+				return err
+			}
+			err = os.Chmod(cfg.configFile, 0660)
 			if err != nil {
 				return err
 			}
@@ -112,7 +120,12 @@ func (cfg *TrustAgentConfiguration) Save() error {
 			return err
 		}
 	}
-	defer file.Close()
+	defer func() {
+		derr := file.Close()
+		if derr != nil {
+			log.WithError(derr).Error("Error closing file")
+		}
+	}()
 	secLog.Info(message.ConfigChanged)
 	err = yaml.NewEncoder(file).Encode(cfg)
 	if err != nil {

@@ -49,11 +49,19 @@ func getApplicationMeasurement() endpointHandler {
 		// this should probably be done in wml --> if the wml log file is not yet created,
 		// 'measure' will fail.  for now, create the file before calling 'measure'.
 		if _, err := os.Stat(WML_LOG_FILE); os.IsNotExist(err) {
-			os.OpenFile(WML_LOG_FILE, os.O_RDONLY|os.O_CREATE, 0600)
+			_, err = os.OpenFile(WML_LOG_FILE, os.O_RDONLY|os.O_CREATE, 0600)
+			if err != nil {
+				log.WithError(err).Errorf("resource/measure:getApplicationMeasurement() - Unable to open file")
+				return &endpointError{Message: "Error: Unable to open log file", StatusCode: http.StatusInternalServerError}
+			}
 		}
 
 		// make sure 'measure' is not a symbolic link before executing it 
 		measureExecutable, err := os.Lstat(constants.TBootXmMeasurePath)
+		if err != nil {
+			log.WithError(err).Errorf("resource/measure:getApplicationMeasurement() - Unable to stat tboot path")
+			return &endpointError{Message: "Error: Unable to stat tboot path", StatusCode: http.StatusInternalServerError}
+		}
 		if measureExecutable.Mode() & os.ModeSymlink == os.ModeSymlink {
 			secLog.WithError(err).Errorf("resource/measure:getApplicationMeasurement() %s - 'measure' is a symbolic link", message.InvalidInputBadParam)
 			return &endpointError{Message: "Error: Invalid 'measure' file", StatusCode: http.StatusInternalServerError}

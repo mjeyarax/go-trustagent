@@ -134,7 +134,12 @@ func (service *TrustAgentService) Start() error {
 		secLog.WithError(err).Errorf("resource/service:Start() %s Failed to open http log file: %s\n", message.AppRuntimeErr, err.Error())
 		log.Tracef("resource/service:Start() %+v", err)
 	} else {
-		defer httpLogFile.Close()
+		defer func(){
+			derr := httpLogFile.Close()
+			if derr != nil {
+				log.WithError(derr).Error("Error closing file")
+			}
+		}()
 		httpWriter = httpLogFile
 	}
 
@@ -190,7 +195,10 @@ func requiresPermission(eh endpointHandler, permissionNames []string) endpointHa
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
-			w.Write([]byte("Could not get user roles from http context"))
+			_, writeErr := w.Write([]byte("Could not get user roles from http context"))
+			if writeErr != nil {
+				log.WithError(writeErr).Error("resource/service:requiresPermission() Error while writing response")
+			}
 			secLog.Errorf("resource/service:requiresPermission() %s Roles: %v | Context: %v", message.AuthenticationFailed, permissionNames, r.Context())
 			return errors.Wrap(err, "resource/service:requiresPermission() Could not get user roles from http context")
 		}

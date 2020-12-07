@@ -97,7 +97,10 @@ func (ctx *TpmQuoteContext) getNonce(hvsNonce []byte) ([]byte, error) {
 
 	// similar to HVS' SHA1.digestOf(hvsNonce).extend(ipBytes)
 	hash := sha1.New()
-	hash.Write(hvsNonce)
+	_, err := hash.Write(hvsNonce)
+	if err != nil {
+		return nil, err
+	}
 	taNonce := hash.Sum(nil)
 
 	if ctx.tpmQuoteResponse.IsTagProvisioned {
@@ -115,8 +118,14 @@ func (ctx *TpmQuoteContext) getNonce(hvsNonce []byte) ([]byte, error) {
 
 		// similar to HVS' SHA1.digestOf(taNonce).extend(tagBytes)
 		hash = sha1.New()
-		hash.Write(taNonce)
-		hash.Write(tagBytes)
+		_, err = hash.Write(taNonce)
+		if err != nil {
+			return nil, err
+		}
+		_, err = hash.Write(tagBytes)
+		if err != nil {
+			return nil, err
+		}
 		taNonce = hash.Sum(nil)
 
 		log.Debugf("resource/quote:getNonce() Used tag bytes '%s' to extend nonce to '%s', raw[%s]", hex.EncodeToString(tagBytes), base64.StdEncoding.EncodeToString(taNonce), hex.EncodeToString(taNonce))
