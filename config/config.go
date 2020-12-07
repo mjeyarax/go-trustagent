@@ -107,7 +107,7 @@ func (cfg *TrustAgentConfiguration) Save() error {
 		// we have an error
 		if os.IsNotExist(err) {
 			// error is that the config doesnt yet exist, create it
-			file, err = os.Create(cfg.configFile)
+			file, err = os.OpenFile(cfg.configFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 			if err != nil {
 				return err
 			}

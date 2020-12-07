@@ -162,7 +162,7 @@ func updatePlatformInfo() error {
 	}
 
 	// create the 'platform-info' file
-	f, err := os.Create(constants.PlatformInfoFilePath)
+	f, err := os.OpenFile(constants.PlatformInfoFilePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
 		return errors.Wrapf(err, "main:updatePlatformInfo() Error while creating %s", constants.PlatformInfoFilePath)
 	}
