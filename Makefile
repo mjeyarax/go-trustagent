@@ -27,9 +27,6 @@ installer: gta
 	cp dist/linux/tagent.service out/installer/tagent.service
 	cp dist/linux/tagent_init.service out/installer/tagent_init.service
 	cp dist/linux/install.sh out/installer/install.sh && chmod +x out/installer/install.sh
-	cp dist/linux/module_analysis.sh out/installer/module_analysis.sh && chmod +x out/installer/module_analysis.sh
-	cp dist/linux/module_analysis_da.sh out/installer/module_analysis_da.sh && chmod +x out/installer/module_analysis_da.sh
-	cp dist/linux/module_analysis_da_tcg.sh out/installer/module_analysis_da_tcg.sh && chmod +x out/installer/module_analysis_da_tcg.sh
 	cp dist/linux/manifest_tpm20.xml out/installer/manifest_tpm20.xml
 	cp dist/linux/manifest_wlagent.xml out/installer/manifest_wlagent.xml
 

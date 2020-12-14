@@ -194,15 +194,40 @@ func updateMeasureLog() error {
 	log.Trace("main:updateMeasureLog() Entering")
 	defer log.Trace("main:updateMeasureLog() Leaving")
 
-	secLog.Infof("%s main:updateMeasureLog() Running %s using system administrative privileges", message.SU, constants.ModuleAnalysis)
-	cmd := exec.Command(constants.ModuleAnalysis)
-	cmd.Dir = constants.BinDir
-	results, err := cmd.Output()
+	secLog.Infof("%s main:updateMeasureLog() Running code to read EventLog", message.SU)
+	eventLogInfo := resource.GetEventLogInfo()
+
+	err := eventLogInfo.FetchUefiEventInfo()
 	if err != nil {
-		return errors.Errorf("main:updateMeasureLog() module_analysis_sh error: %s", results)
+		log.Errorf("main:updateMeasureLog() Error while getting UEFI Event Log Info: %s\n", err.Error())
+	} else {
+		err = eventLogInfo.UpdateUefiEventLog()
+		if err != nil {
+			log.Errorf("main:updateMeasureLog() Error while updating UEFI Event Log: %s\n", err.Error())
+		}
 	}
 
-	log.Info("main:updateMeasureLog() Successfully updated measureLog.xml")
+	err = eventLogInfo.FetchTxtHeapInfo()
+	if err != nil {
+		log.Errorf("main:updateMeasureLog() Error while getting TXT Event Log Info: %s\n", err.Error())
+	} else {
+		eventLogInfo.TxtEnabled = true
+		err = eventLogInfo.UpdateTxtEventLog()
+		if err != nil {
+			log.Errorf("main:updateMeasureLog() Error while updating TXT Event Log: %s\n", err.Error())
+		}
+	}
+
+	err = eventLogInfo.UpdateAppEventLog()
+	if err != nil {
+		log.Errorf("main:updateMeasureLog() Error while updating Application Event Log: %s\n", err.Error())
+	}
+
+	if eventLogInfo.FinalPcrEventLog != nil {
+		eventLogInfo.WriteMeasureLogFile()
+	}
+
+	log.Info("main:updateMeasureLog() Successfully updated measureLog.json")
 	return nil
 }
 
@@ -349,7 +374,7 @@ func main() {
 
 		err = updateMeasureLog()
 		if err != nil {
-			log.Errorf("main:main() Error While creating measureLog.xml: %s\n", err.Error())
+			log.Errorf("main:main() Error While creating measureLog.json: %s\n", err.Error())
 		}
 
 		tagentUser, err := user.Lookup(constants.TagentUserName)

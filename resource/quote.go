@@ -19,7 +19,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -151,25 +150,21 @@ func (ctx *TpmQuoteContext) readEventLog() error {
 		return nil // if the file does not exist, do not include in the quote
 	}
 
+	// We will Add This changes in Next MR after MR of measureLog.json
+	// We have done the changes but this should be included only after testing.
 	eventLogBytes, err := ioutil.ReadFile(constants.MeasureLogFilePath)
 	if err != nil {
 		return errors.Wrapf(err, "resource/quote:readEventLog() Error reading file: %s", constants.MeasureLogFilePath)
 	}
 
-	// make sure the bytes are valid xml
-	err = xml.Unmarshal(eventLogBytes, new(interface{}))
+	// make sure the bytes are valid json
+	err = json.Unmarshal(eventLogBytes, new(interface{}))
 	if err != nil {
 		return errors.Wrap(err, "resource/quote:readEventLog() Error while unmarshalling event log")
 	}
 
-	// this was needed to avoid an error in HVS parsing...
-	// 'Current state not START_ELEMENT, END_ELEMENT or ENTITY_REFERENCE'
-	xml := string(eventLogBytes)
-	xml = strings.Replace(xml, " ", "", -1)
-	xml = strings.Replace(xml, "\t", "", -1)
-	xml = strings.Replace(xml, "\n", "", -1)
-
-	eventLog := base64.StdEncoding.EncodeToString([]byte(xml))
+	json := string(eventLogBytes)
+	eventLog := base64.StdEncoding.EncodeToString([]byte(json))
 	ctx.tpmQuoteResponse.EventLog = &eventLog
 	return nil
 }
@@ -272,7 +267,7 @@ func (ctx *TpmQuoteContext) createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) err
 		return errors.Wrap(err, "resource/quote:createTpmQuote() Error while reading Aik as Base64")
 	}
 
-	// eventlog: read /opt/trustagent/var/measureLog.xml (created during ) --> needs to integrate with module_analysis.sh
+	// eventlog: read /opt/trustagent/var/measureLog.json
 	err = ctx.readEventLog()
 	if err != nil {
 		return errors.Wrap(err, "resource/quote:createTpmQuote() Error while reading event log")
