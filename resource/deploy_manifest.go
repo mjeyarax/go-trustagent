@@ -25,7 +25,7 @@ func deployManifest() endpointHandler {
 		log.Debugf("resource/deploy_manifest:deployManifest() Request: %s", httpRequest.URL.Path)
 
 		contentType := httpRequest.Header.Get("Content-Type")
-		if  contentType != "application/xml" {
+		if contentType != "application/xml" {
 			log.Errorf("resource/deploy_manifest:deployManifest() %s - Invalid content-type '%s'", message.InvalidInputBadParam, contentType)
 			return &endpointError{Message: "Invalid content-type", StatusCode: http.StatusBadRequest}
 		}

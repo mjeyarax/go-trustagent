@@ -21,7 +21,7 @@ import (
 // that can be invoked at once (in specific order).
 type TaskRegistry struct {
 	taskMap map[string][]setup.Task
-	cfg *config.TrustAgentConfiguration
+	cfg     *config.TrustAgentConfiguration
 }
 
 const (
@@ -35,8 +35,8 @@ const (
 	CreateHostCommand                      = "create-host"
 	CreateHostUniqueFlavorCommand          = "create-host-unique-flavor"
 	GetConfiguredManifestCommand           = "get-configured-manifest"
-	ProvisionAttestationCommand			   = "provision-attestation"
-	UpdateCertificatesCommand			   = "update-certificates"
+	ProvisionAttestationCommand            = "provision-attestation"
+	UpdateCertificatesCommand              = "update-certificates"
 )
 
 var log = commLog.GetDefaultLogger()
@@ -64,12 +64,12 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration) (*TaskRegistry, err
 	}
 
 	takeOwnership := TakeOwnership{
-		tpmFactory: tpmFactory, 
+		tpmFactory:     tpmFactory,
 		ownerSecretKey: &cfg.Tpm.OwnerSecretKey,
 	}
 
 	downloadRootCACert := setup.Download_Ca_Cert{
-		Flags:                []string{"--force",},	 // to be consistent with other GTA tasks, always force update
+		Flags:                []string{"--force"}, // to be consistent with other GTA tasks, always force update
 		CmsBaseURL:           cfg.CMS.BaseURL,
 		CaCertDirPath:        constants.TrustedCaCertsDir,
 		TrustedTlsCertDigest: cfg.CMS.TLSCertDigest,
@@ -77,7 +77,7 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration) (*TaskRegistry, err
 	}
 
 	downloadTLSCert := setup.Download_Cert{
-		Flags:              []string{"--force",}, // to be consistent with other GTA tasks, always force update
+		Flags:              []string{"--force"}, // to be consistent with other GTA tasks, always force update
 		KeyFile:            constants.TLSKeyFilePath,
 		CertFile:           constants.TLSCertFilePath,
 		KeyAlgorithm:       constants.DefaultKeyAlgorithm,
@@ -94,10 +94,10 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration) (*TaskRegistry, err
 	}
 
 	provisionAttestationIdentityKey := ProvisionAttestationIdentityKey{
-		clientFactory: vsClientFactory,
-		tpmFactory: tpmFactory,
+		clientFactory:  vsClientFactory,
+		tpmFactory:     tpmFactory,
 		ownerSecretKey: &cfg.Tpm.OwnerSecretKey,
-		aikSecretKey: &cfg.Tpm.AikSecretKey,
+		aikSecretKey:   &cfg.Tpm.AikSecretKey,
 	}
 
 	downloadPrivacyCA := DownloadPrivacyCA{
@@ -105,7 +105,7 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration) (*TaskRegistry, err
 	}
 
 	provisionPrimaryKey := ProvisionPrimaryKey{
-		tpmFactory: tpmFactory,
+		tpmFactory:     tpmFactory,
 		ownerSecretKey: &cfg.Tpm.OwnerSecretKey,
 	}
 
@@ -116,14 +116,14 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration) (*TaskRegistry, err
 	registry.taskMap[DownloadPrivacyCACommand] = []setup.Task{&downloadPrivacyCA}
 	registry.taskMap[ProvisionPrimaryKeyCommand] = []setup.Task{&provisionPrimaryKey}
 
-	registry.taskMap[ProvisionAttestationCommand] = [] setup.Task{
+	registry.taskMap[ProvisionAttestationCommand] = []setup.Task{
 		&downloadPrivacyCA,
 		&takeOwnership,
 		&provisionAttestationIdentityKey,
 		&provisionPrimaryKey,
 	}
 
-	registry.taskMap[UpdateCertificatesCommand] = [] setup.Task{
+	registry.taskMap[UpdateCertificatesCommand] = []setup.Task{
 		&downloadRootCACert,
 		&downloadTLSCert,
 	}
@@ -141,14 +141,14 @@ func CreateTaskRegistry(cfg *config.TrustAgentConfiguration) (*TaskRegistry, err
 
 	registry.taskMap[CreateHostCommand] = []setup.Task{
 		&CreateHost{
-			clientFactory: vsClientFactory,
+			clientFactory:  vsClientFactory,
 			trustAgentPort: cfg.WebService.Port,
 		},
 	}
 
 	registry.taskMap[CreateHostUniqueFlavorCommand] = []setup.Task{
 		&CreateHostUniqueFlavor{
-			clientFactory: vsClientFactory,
+			clientFactory:  vsClientFactory,
 			trustAgentPort: cfg.WebService.Port,
 		},
 	}
@@ -177,7 +177,7 @@ func (registry *TaskRegistry) RunCommand(command string) error {
 	if err != nil {
 		return err
 	}
-	err = registry.cfg.Save()	// always update the cofig.yaml regardless of error (so TPM owner/aik are persisted)
+	err = registry.cfg.Save() // always update the cofig.yaml regardless of error (so TPM owner/aik are persisted)
 	if err != nil {
 		return err
 	}

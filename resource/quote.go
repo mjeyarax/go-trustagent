@@ -310,7 +310,7 @@ func getTpmQuote(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.Tpm
 		log.Debugf("resource/quote:getTpmQuote() Request: %s", httpRequest.URL.Path)
 
 		contentType := httpRequest.Header.Get("Content-Type")
-		if  contentType != "application/json" {
+		if contentType != "application/json" {
 			log.Errorf("resource/quote:getTpmQuote() %s - Invalid content-type '%s'", message.InvalidInputBadParam, contentType)
 			return &endpointError{Message: "Invalid content-type", StatusCode: http.StatusBadRequest}
 		}

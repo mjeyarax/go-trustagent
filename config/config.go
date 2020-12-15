@@ -7,11 +7,11 @@ package config
 import (
 	"fmt"
 	"intel/isecl/go-trust-agent/v3/constants"
-	"intel/isecl/lib/common/v3/setup"
-	"intel/isecl/lib/common/v3/validation"
 	commLog "intel/isecl/lib/common/v3/log"
 	"intel/isecl/lib/common/v3/log/message"
 	commLogInt "intel/isecl/lib/common/v3/log/setup"
+	"intel/isecl/lib/common/v3/setup"
+	"intel/isecl/lib/common/v3/validation"
 	"io"
 	"os"
 	"strconv"
@@ -33,37 +33,37 @@ const (
 //
 
 type TrustAgentConfiguration struct {
-	configFile        string
-	Logging struct {
-		LogLevel          string				// TRUSTAGENT_LOG_LEVEL
-		LogEnableStdout   bool					// TA_ENABLE_CONSOLE_LOG
-		LogEntryMaxLength int					// LOG_ENTRY_MAXLENGTH (NEEDS TO BE IN LLD)
+	configFile string
+	Logging    struct {
+		LogLevel          string // TRUSTAGENT_LOG_LEVEL
+		LogEnableStdout   bool   // TA_ENABLE_CONSOLE_LOG
+		LogEntryMaxLength int    // LOG_ENTRY_MAXLENGTH (NEEDS TO BE IN LLD)
 	}
 	WebService struct {
-		Port     int							// TRUSTAGENT_PORT
-		ReadTimeout       time.Duration			// TA_SERVER_READ_TIMEOUT
-		ReadHeaderTimeout time.Duration			// TA_SERVER_READ_HEADER_TIMEOUT
-		WriteTimeout      time.Duration			// TA_SERVER_WRITE_TIMEOUT
-		IdleTimeout       time.Duration			// TA_SERVER_IDLE_TIMEOUT
-		MaxHeaderBytes    int					// TA_SERVER_MAX_HEADER_BYTES
+		Port              int           // TRUSTAGENT_PORT
+		ReadTimeout       time.Duration // TA_SERVER_READ_TIMEOUT
+		ReadHeaderTimeout time.Duration // TA_SERVER_READ_HEADER_TIMEOUT
+		WriteTimeout      time.Duration // TA_SERVER_WRITE_TIMEOUT
+		IdleTimeout       time.Duration // TA_SERVER_IDLE_TIMEOUT
+		MaxHeaderBytes    int           // TA_SERVER_MAX_HEADER_BYTES
 	}
 	HVS struct {
-		Url string								// HVS_URL
+		Url string // HVS_URL
 	}
 	Tpm struct {
-		OwnerSecretKey string					// TPM_OWNER_SECRET (generated if not provided during take-ownership)
-		AikSecretKey   string					// Generated in provision-aik
+		OwnerSecretKey string // TPM_OWNER_SECRET (generated if not provided during take-ownership)
+		AikSecretKey   string // Generated in provision-aik
 	}
 	AAS struct {
-		BaseURL string							// AAS_API_URL
+		BaseURL string // AAS_API_URL
 	}
 	CMS struct {
-		BaseURL       string					// CMS_BASE_URL
-		TLSCertDigest string					// CMS_TLS_CERT_SHA384
+		BaseURL       string // CMS_BASE_URL
+		TLSCertDigest string // CMS_TLS_CERT_SHA384
 	}
 	TLS struct {
-		CertSAN  string							// SAN_LIST
-		CertCN string							// TA_TLS_CERT_CN
+		CertSAN string // SAN_LIST
+		CertCN  string // TA_TLS_CERT_CN
 	}
 }
 
@@ -187,7 +187,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 			cfg.AAS.BaseURL = environmentVariable + "/"
 		}
 		dirty = true
-	} 
+	}
 
 	//---------------------------------------------------------------------------------------------
 	// CMS_BASE_URL
@@ -276,9 +276,9 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 	//---------------------------------------------------------------------------------------------
 	cfg.Logging.LogEnableStdout = false
 	logEnableStdout, err := context.GetenvString("TA_ENABLE_CONSOLE_LOG", "Trustagent Enable standard output")
-	if err == nil  && logEnableStdout != "" {
+	if err == nil && logEnableStdout != "" {
 		cfg.Logging.LogEnableStdout, err = strconv.ParseBool(logEnableStdout)
-		if err != nil{
+		if err != nil {
 			fmt.Println("Error while parsing the variable TA_ENABLE_CONSOLE_LOG, setting to default value false")
 		}
 	}
@@ -340,7 +340,7 @@ func (cfg *TrustAgentConfiguration) LoadEnvironmentVariables() error {
 }
 
 // This function validates whether or not the configuration has enough information to start the http
-// service.  It requires the TPM owner/aik secret, port and AAS URL to run (all other configuration is 
+// service.  It requires the TPM owner/aik secret, port and AAS URL to run (all other configuration is
 // required during setup).
 func (cfg *TrustAgentConfiguration) Validate() error {
 

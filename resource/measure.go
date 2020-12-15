@@ -26,7 +26,7 @@ func getApplicationMeasurement() endpointHandler {
 		log.Debugf("resource/measure:getApplicationMeasurement() Request: %s", httpRequest.URL.Path)
 
 		contentType := httpRequest.Header.Get("Content-Type")
-		if  contentType != "application/xml" {
+		if contentType != "application/xml" {
 			log.Errorf("resource/measure:getApplicationMeasurement() %s - Invalid content-type '%s'", message.InvalidInputBadParam, contentType)
 			return &endpointError{Message: "Invalid content-type", StatusCode: http.StatusBadRequest}
 		}
@@ -56,13 +56,13 @@ func getApplicationMeasurement() endpointHandler {
 			}
 		}
 
-		// make sure 'measure' is not a symbolic link before executing it 
+		// make sure 'measure' is not a symbolic link before executing it
 		measureExecutable, err := os.Lstat(constants.TBootXmMeasurePath)
 		if err != nil {
 			log.WithError(err).Errorf("resource/measure:getApplicationMeasurement() - Unable to stat tboot path")
 			return &endpointError{Message: "Error: Unable to stat tboot path", StatusCode: http.StatusInternalServerError}
 		}
-		if measureExecutable.Mode() & os.ModeSymlink == os.ModeSymlink {
+		if measureExecutable.Mode()&os.ModeSymlink == os.ModeSymlink {
 			secLog.WithError(err).Errorf("resource/measure:getApplicationMeasurement() %s - 'measure' is a symbolic link", message.InvalidInputBadParam)
 			return &endpointError{Message: "Error: Invalid 'measure' file", StatusCode: http.StatusInternalServerError}
 		}
