@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"intel/isecl/go-trust-agent/v3/config"
 	"intel/isecl/go-trust-agent/v3/constants"
+	"intel/isecl/go-trust-agent/v3/eventlog"
 	"intel/isecl/go-trust-agent/v3/resource"
 	_ "intel/isecl/go-trust-agent/v3/swagger/docs"
 	"intel/isecl/go-trust-agent/v3/tasks"
@@ -195,39 +196,34 @@ func updateMeasureLog() error {
 	defer log.Trace("main:updateMeasureLog() Leaving")
 
 	secLog.Infof("%s main:updateMeasureLog() Running code to read EventLog", message.SU)
-	eventLogInfo := resource.GetEventLogInfo()
-
-	err := eventLogInfo.FetchUefiEventInfo()
+	evParser := eventlog.NewEventLogParser(constants.EventLogFilePath, constants.Tpm2FilePath, constants.AppEventFilePath)
+	pcrEventLogs, err := evParser.GetEventLogs()
 	if err != nil {
-		log.Errorf("main:updateMeasureLog() Error while getting UEFI Event Log Info: %s\n", err.Error())
-	} else {
-		err = eventLogInfo.UpdateUefiEventLog()
-		if err != nil {
-			log.Errorf("main:updateMeasureLog() Error while updating UEFI Event Log: %s\n", err.Error())
+		return errors.Wrap(err, "main:updateMeasureLog() Error while collecting pcr eventlog data")
+	}
+
+	jsonData, err := json.Marshal(pcrEventLogs)
+	if err != nil {
+		return errors.Wrap(err, "main:updateMeasureLog() Error while serializing pcr eventlog data")
+	}
+
+	jsonReport, err := os.OpenFile(constants.MeasureLogFilePath, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return errors.Wrapf(err, "main:updateMeasureLog() Error while opening %s", constants.MeasureLogFilePath)
+	}
+	defer func() {
+		derr := jsonReport.Close()
+		if derr != nil {
+			log.WithError(derr).Errorf("main:updateMeasureLog() Error closing %s", constants.MeasureLogFilePath)
 		}
-	}
+	}()
 
-	err = eventLogInfo.FetchTxtHeapInfo()
+	_, err = jsonReport.Write(jsonData)
 	if err != nil {
-		log.Errorf("main:updateMeasureLog() Error while getting TXT Event Log Info: %s\n", err.Error())
-	} else {
-		eventLogInfo.TxtEnabled = true
-		err = eventLogInfo.UpdateTxtEventLog()
-		if err != nil {
-			log.Errorf("main:updateMeasureLog() Error while updating TXT Event Log: %s\n", err.Error())
-		}
+		return errors.Wrapf(err, "main:updateMeasureLog() Error while writing into File: %s", constants.MeasureLogFilePath)
 	}
 
-	err = eventLogInfo.UpdateAppEventLog()
-	if err != nil {
-		log.Errorf("main:updateMeasureLog() Error while updating Application Event Log: %s\n", err.Error())
-	}
-
-	if eventLogInfo.FinalPcrEventLog != nil {
-		eventLogInfo.WriteMeasureLogFile()
-	}
-
-	log.Info("main:updateMeasureLog() Successfully updated measureLog.json")
+	log.Info("main:updateMeasureLog() Successfully updated measure-log.json")
 	return nil
 }
 
@@ -374,7 +370,7 @@ func main() {
 
 		err = updateMeasureLog()
 		if err != nil {
-			log.Errorf("main:main() Error While creating measureLog.json: %s\n", err.Error())
+			log.Errorf("main:main() Error While creating measure-log.json: %s\n", err.Error())
 		}
 
 		tagentUser, err := user.Lookup(constants.TagentUserName)

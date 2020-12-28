@@ -24,9 +24,12 @@ const (
 	RamfsDir                   = VarDir + "ramfs/"
 	SystemInfoDir              = VarDir + "system-info/"
 	PlatformInfoFilePath       = SystemInfoDir + "platform-info"
-	MeasureLogFilePath         = VarDir + "measureLog.json"
+	MeasureLogFilePath         = VarDir + "measure-log.json"
 	BindingKeyCertificatePath  = "/etc/workload-agent/bindingkey.pem"
 	TBootXmMeasurePath         = "/opt/tbootxm/bin/measure"
+	EventLogFilePath           = "/dev/mem"
+	Tpm2FilePath               = "/sys/firmware/acpi/tables/TPM2"
+	AppEventFilePath           = RamfsDir + "pcr_event_log"
 	RootUserName               = "root"
 	TagentUserName             = "tagent"
 	DefaultPort                = 1443

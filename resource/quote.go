@@ -147,24 +147,21 @@ func (ctx *TpmQuoteContext) readEventLog() error {
 
 	if _, err := os.Stat(constants.MeasureLogFilePath); os.IsNotExist(err) {
 		log.Debugf("esource/quote:readEventLog() Event log file '%s' was not present", constants.MeasureLogFilePath)
-		return nil // if the file does not exist, do not include in the quote
+		return nil // If the file does not exist, do not include in the quote
 	}
 
-	// We will Add This changes in Next MR after MR of measureLog.json
-	// We have done the changes but this should be included only after testing.
 	eventLogBytes, err := ioutil.ReadFile(constants.MeasureLogFilePath)
 	if err != nil {
 		return errors.Wrapf(err, "resource/quote:readEventLog() Error reading file: %s", constants.MeasureLogFilePath)
 	}
 
-	// make sure the bytes are valid json
+	// Make sure the bytes are valid json
 	err = json.Unmarshal(eventLogBytes, new(interface{}))
 	if err != nil {
 		return errors.Wrap(err, "resource/quote:readEventLog() Error while unmarshalling event log")
 	}
 
-	json := string(eventLogBytes)
-	eventLog := base64.StdEncoding.EncodeToString([]byte(json))
+	eventLog := base64.StdEncoding.EncodeToString(eventLogBytes)
 	ctx.tpmQuoteResponse.EventLog = &eventLog
 	return nil
 }
@@ -267,7 +264,7 @@ func (ctx *TpmQuoteContext) createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) err
 		return errors.Wrap(err, "resource/quote:createTpmQuote() Error while reading Aik as Base64")
 	}
 
-	// eventlog: read /opt/trustagent/var/measureLog.json
+	// eventlog: read /opt/trustagent/var/measure-log.json
 	err = ctx.readEventLog()
 	if err != nil {
 		return errors.Wrap(err, "resource/quote:createTpmQuote() Error while reading event log")
@@ -296,7 +293,7 @@ func getTpmQuote(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.Tpm
 		log.Debugf("resource/quote:getTpmQuote() Request: %s", httpRequest.URL.Path)
 
 		contentType := httpRequest.Header.Get("Content-Type")
-		if  contentType != "application/json" {
+		if contentType != "application/json" {
 			log.Errorf("resource/quote:getTpmQuote() %s - Invalid content-type '%s'", message.InvalidInputBadParam, contentType)
 			return &endpointError{Message: "Invalid content-type", StatusCode: http.StatusBadRequest}
 		}

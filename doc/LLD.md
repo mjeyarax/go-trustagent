@@ -378,7 +378,7 @@ The following files are present after installation, setup and measured launch.
 +-- tagent.service
 +-- var
     +-- manifest_{uid}.xml
-    +-- measureLog.json
+    +-- measure-log.json
     +-- ramfs
     ¦   +-- pcr_event_log
     ¦   +-- measurement_{uid}.xml
