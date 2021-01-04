@@ -36,7 +36,7 @@ func (eventLog *eventLogInfo) fetchTxtHeapInfo(eventLogFilePath string) error {
 		}
 	}()
 
-	_, err = file.Seek(TxtHeapBaseOffset, io.SeekStart)
+	_, err = file.Seek(eventLog.TxtHeapBaseOffset, io.SeekStart)
 	if err != nil {
 		return errors.Wrapf(err, "eventlog/collect_txt_event:fetchTxtHeapInfo() There was an error traversing %s", eventLogFilePath)
 	}
@@ -46,7 +46,7 @@ func (eventLog *eventLogInfo) fetchTxtHeapInfo(eventLogFilePath string) error {
 		return errors.Wrapf(err, "eventlog/collect_txt_event:fetchTxtHeapInfo() There was an error reading %s", eventLogFilePath)
 	}
 
-	_, err = file.Seek(TxtHeapSizeOffset, io.SeekStart)
+	_, err = file.Seek(eventLog.TxtHeapSizeOffset, io.SeekStart)
 	if err != nil {
 		return errors.Wrapf(err, "eventlog/collect_txt_event:fetchTxtHeapInfo() There was an error traversing %s", eventLogFilePath)
 	}

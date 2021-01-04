@@ -137,12 +137,14 @@ type pfrEventDataHeader struct { // Description
 
 // EventLogInfo structure is used as receiver object
 type eventLogInfo struct {
-	UefiEventSize    uint32
-	UefiEventAddr    uint64
-	TxtHeapSize      uint64
-	TxtHeapBaseAddr  uint64
-	FinalPcrEventLog []PcrEventLog
-	TxtEnabled       bool
+	UefiEventSize     uint32
+	UefiEventAddr     uint64
+	TxtHeapSize       uint64
+	TxtHeapBaseAddr   uint64
+	FinalPcrEventLog  []PcrEventLog
+	TxtEnabled        bool
+	TxtHeapBaseOffset int64
+	TxtHeapSizeOffset int64
 }
 
 // EventNameList - define map for event name
