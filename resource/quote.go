@@ -13,7 +13,6 @@ import (
 	"encoding/xml"
 	"intel/isecl/go-trust-agent/v3/config"
 	"intel/isecl/go-trust-agent/v3/constants"
-	"intel/isecl/lib/common/v3/log/message"
 	"intel/isecl/lib/tpmprovider/v3"
 	"io/ioutil"
 	"net/http"
@@ -22,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/intel-secl/intel-secl/v3/pkg/lib/common/log/message"
 	"github.com/pkg/errors"
 )
 

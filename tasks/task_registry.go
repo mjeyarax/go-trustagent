@@ -6,15 +6,16 @@ package tasks
 
 import (
 	"crypto/x509/pkix"
-	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
-	"github.com/pkg/errors"
 	"intel/isecl/go-trust-agent/v3/config"
 	"intel/isecl/go-trust-agent/v3/constants"
 	"intel/isecl/go-trust-agent/v3/util"
-	commLog "intel/isecl/lib/common/v3/log"
 	"intel/isecl/lib/common/v3/setup"
 	"intel/isecl/lib/tpmprovider/v3"
 	"os"
+
+	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
+	commLog "github.com/intel-secl/intel-secl/v3/pkg/lib/common/log"
+	"github.com/pkg/errors"
 )
 
 // The TaskRegistry is used to aggregate commands into logical groups

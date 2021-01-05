@@ -7,8 +7,8 @@ package resource
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/intel-secl/intel-secl/v3/pkg/lib/common/log/message"
 	"intel/isecl/go-trust-agent/v3/util"
-	"intel/isecl/lib/common/v3/log/message"
 	"net/http"
 )
 

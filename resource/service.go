@@ -10,14 +10,6 @@ import (
 	"fmt"
 	"intel/isecl/go-trust-agent/v3/config"
 	"intel/isecl/go-trust-agent/v3/constants"
-	"intel/isecl/lib/clients/v3"
-	"intel/isecl/lib/common/v3/auth"
-	commContext "intel/isecl/lib/common/v3/context"
-	"intel/isecl/lib/common/v3/crypt"
-	commLog "intel/isecl/lib/common/v3/log"
-	"intel/isecl/lib/common/v3/log/message"
-	"intel/isecl/lib/common/v3/middleware"
-	ct "intel/isecl/lib/common/v3/types/aas"
 	"intel/isecl/lib/tpmprovider/v3"
 	"io/ioutil"
 	stdlog "log"
@@ -29,6 +21,14 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/intel-secl/intel-secl/v3/pkg/clients"
+	"github.com/intel-secl/intel-secl/v3/pkg/lib/common/auth"
+	commContext "github.com/intel-secl/intel-secl/v3/pkg/lib/common/context"
+	"github.com/intel-secl/intel-secl/v3/pkg/lib/common/crypt"
+	commLog "github.com/intel-secl/intel-secl/v3/pkg/lib/common/log"
+	"github.com/intel-secl/intel-secl/v3/pkg/lib/common/log/message"
+	"github.com/intel-secl/intel-secl/v3/pkg/lib/common/middleware"
+	ct "github.com/intel-secl/intel-secl/v3/pkg/model/aas"
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 )
@@ -259,7 +259,13 @@ func fnGetJwtCerts() error {
 	req.Header.Add("accept", "application/x-pem-file")
 	secLog.Debugf("resource/service::fnGetJwtCerts() Connecting to AAS Endpoint %s", url)
 
-	hc, err := clients.HTTPClientWithCADir(constants.TrustedCaCertsDir)
+	caCerts, err := crypt.GetCertsFromDir(constants.TrustedCaCertsDir)
+	if err != nil {
+		log.WithError(err).Errorf("resource/service::fnGetJwtCerts() Error while getting certs from %s", constants.TrustedCaCertsDir)
+		return errors.Wrap(err, "resource/service::fnGetJwtCerts() Error while getting certs from %s")
+	}
+
+	hc, err := clients.HTTPClientWithCA(caCerts)
 	if err != nil {
 		return errors.Wrap(err, "resource/service:fnGetJwtCerts() Error setting up HTTP client")
 	}

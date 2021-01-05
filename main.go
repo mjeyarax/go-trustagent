@@ -19,13 +19,9 @@ import (
 	"intel/isecl/go-trust-agent/v3/resource"
 	_ "intel/isecl/go-trust-agent/v3/swagger/docs"
 	"intel/isecl/go-trust-agent/v3/tasks"
-	"intel/isecl/go-trust-agent/v3/util"
-	commonExec "intel/isecl/lib/common/v3/exec"
-	commLog "intel/isecl/lib/common/v3/log"
-	"intel/isecl/lib/common/v3/log/message"
-	"intel/isecl/lib/common/v3/validation"
-	"intel/isecl/lib/platform-info/v3/platforminfo"
 	"intel/isecl/lib/tpmprovider/v3"
+	"intel/isecl/go-trust-agent/v3/util"
+	"intel/isecl/lib/platform-info/v3/platforminfo"
 	"os"
 	"os/exec"
 	"os/user"
@@ -34,6 +30,10 @@ import (
 	"strings"
 	"syscall"
 
+	commonExec "github.com/intel-secl/intel-secl/v3/pkg/lib/common/exec"
+	commLog "github.com/intel-secl/intel-secl/v3/pkg/lib/common/log"
+	"github.com/intel-secl/intel-secl/v3/pkg/lib/common/validation"
+	"github.com/intel-secl/intel-secl/v3/pkg/lib/common/log/message"
 	"github.com/pkg/errors"
 )
 
