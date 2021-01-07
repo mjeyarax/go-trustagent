@@ -32,28 +32,28 @@ func (eventLog *eventLogInfo) fetchTxtHeapInfo(eventLogFilePath string) error {
 	defer func() {
 		derr := file.Close()
 		if derr != nil {
-			log.WithError(derr).Error("eventlog/collect_txt_event:fetchTxtHeapInfo() Error closing file")
+			log.WithError(derr).Errorf("eventlog/collect_txt_event:fetchTxtHeapInfo() There was an error closing %s", eventLogFilePath)
 		}
 	}()
 
 	_, err = file.Seek(TxtHeapBaseOffset, io.SeekStart)
 	if err != nil {
-		return errors.Wrapf(err, "eventlog/collect_txt_event:fetchTxtHeapInfo() There was an error traversing %s", eventLogFilePath)
+		return errors.Wrapf(err, "eventlog/collect_txt_event:fetchTxtHeapInfo() There was an error traversing %s for TXT Heap Base Offset", eventLogFilePath)
 	}
 
 	_, err = io.ReadFull(file, txtHeapBaseAddr)
 	if err != nil {
-		return errors.Wrapf(err, "eventlog/collect_txt_event:fetchTxtHeapInfo() There was an error reading %s", eventLogFilePath)
+		return errors.Wrapf(err, "eventlog/collect_txt_event:fetchTxtHeapInfo() There was an error reading TXT Heap Base Address from %s", eventLogFilePath)
 	}
 
 	_, err = file.Seek(TxtHeapSizeOffset, io.SeekStart)
 	if err != nil {
-		return errors.Wrapf(err, "eventlog/collect_txt_event:fetchTxtHeapInfo() There was an error traversing %s", eventLogFilePath)
+		return errors.Wrapf(err, "eventlog/collect_txt_event:fetchTxtHeapInfo() There was an error traversing %s for TXT Heap Size Offset", eventLogFilePath)
 	}
 
 	_, err = io.ReadFull(file, txtHeapSize)
 	if err != nil {
-		return errors.Wrapf(err, "eventlog/collect_txt_event:fetchTxtHeapInfo() There was an error reading %s", eventLogFilePath)
+		return errors.Wrapf(err, "eventlog/collect_txt_event:fetchTxtHeapInfo() There was an error reading TXT Heap Size from %s", eventLogFilePath)
 	}
 
 	eventLog.TxtHeapSize = binary.LittleEndian.Uint64(txtHeapSize)
@@ -77,14 +77,23 @@ func (eventLog *eventLogInfo) updateTxtEventLog(eventLogFilePath string) error {
 	defer func() {
 		derr := file.Close()
 		if derr != nil {
-			log.WithError(derr).Error("eventlog/collect_txt_event:updateTxtEventLog() Error closing file")
+			log.WithError(derr).Errorf("eventlog/collect_txt_event:updateTxtEventLog() There was an error closing %s", eventLogFilePath)
 		}
 	}()
 
 	mmap, err := syscall.Mmap(int(file.Fd()), int64(eventLog.TxtHeapBaseAddr), int(eventLog.TxtHeapSize), syscall.PROT_READ, syscall.MAP_SHARED)
 	if err != nil {
-		return errors.Wrapf(err, "eventlog/collect_txt_event:updateTxtEventLog() There was an error reading TXT heap data %s", eventLogFilePath)
+		return errors.Wrapf(err, "eventlog/collect_txt_event:updateTxtEventLog() There was an error reading TXT Heap Data from %s", eventLogFilePath)
 	}
+	defer func() {
+		// Unmap the /dev/mem buffer
+		if mmap != nil {
+			derr := syscall.Munmap(mmap)
+			if derr != nil {
+				log.WithError(derr).Error(derr, "eventlog/collect_txt_event:updateTxtEventLog() There was an error while unmapping TXT Heap Data")
+			}
+		}
+	}()
 
 	// Parse the txt-event log data
 	biosDataSize := binary.LittleEndian.Uint64(mmap[0:])
@@ -116,25 +125,19 @@ func (eventLog *eventLogInfo) updateTxtEventLog(eventLogFilePath string) error {
 	firstEventLogBuffer := bytes.NewBuffer(mmap[firstEventLogOffset:])
 
 	// Skip TCG_PCR_EVENT(Intel TXT spec. ver. 16.2) log data and put the remaining eventlog in measure-log.json
-	err = parseEventLog(firstEventLogBuffer, allocatedEventContainerSize)
+	err = eventLog.parseEventLog(firstEventLogBuffer, allocatedEventContainerSize)
 	if err != nil {
-		return errors.Wrap(err, "eventlog/collect_txt_event:updateTxtEventLog() Error while parsing EventLog data")
+		return errors.Wrap(err, "eventlog/collect_txt_event:updateTxtEventLog() There was an error while parsing TXT Event Log Data")
 	}
 
 	// Parse eventlog from nextRecordOffset and put in measure-log.json
 	if nextRecordOffset != 0 {
 		nextEventLogOffset := (physicalAddress - eventLog.TxtHeapBaseAddr) + uint64(nextRecordOffset)
 		nextEventLogBuffer := bytes.NewBuffer(mmap[nextEventLogOffset:])
-		err = createMeasureLog(nextEventLogBuffer, allocatedEventContainerSize-uint32(nextEventLogOffset))
+		err = eventLog.createMeasureLog(nextEventLogBuffer, allocatedEventContainerSize-uint32(nextEventLogOffset))
 		if err != nil {
-			return errors.Wrap(err, "eventlog/collect_txt_event:updateTxtEventLog() Error while parsing nextEventLogOffset data")
+			return errors.Wrap(err, "eventlog/collect_txt_event:updateTxtEventLog() There was an error while parsing TXT Next Event Log Offset Data")
 		}
-	}
-
-	// Unmap the /dev/mem buffer
-	err = syscall.Munmap(mmap)
-	if err != nil {
-		return errors.Wrap(err, "eventlog/collect_txt_event:updateTxtEventLog() Error while unmapping TXT heap data")
 	}
 
 	return nil

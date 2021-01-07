@@ -206,30 +206,8 @@ var eventNameList = map[uint32]string{
 	0x4ff:      "CAP_VALUE",
 }
 
-var evLogInfo *eventLogInfo
-
-// InitializeEventLogInfo - Function to create and intialize eventLogInfo variable with default values
-func initializeEventLogInfo() *eventLogInfo {
-	log.Trace("eventlog/common:initializeEventLogInfo() Entering")
-	defer log.Trace("eventlog/common:initializeEventLogInfo() Leaving")
-
-	eventLog := eventLogInfo{}
-	return &eventLog
-}
-
-// GetEventLogInfo - Getter function for eventLogInfo variable
-func getEventLogInfo() *eventLogInfo {
-	log.Trace("eventlog/common:getEventLogInfo() Entering")
-	defer log.Trace("eventlog/common:getEventLogInfo() Leaving")
-
-	if evLogInfo == nil {
-		evLogInfo = initializeEventLogInfo()
-	}
-	return evLogInfo
-}
-
 // ParseEventLog - Function to parse event log data from buffer
-func parseEventLog(buf *bytes.Buffer, size uint32) error {
+func (eventLog *eventLogInfo) parseEventLog(buf *bytes.Buffer, size uint32) error {
 	log.Trace("eventlog/common:parseEventLog() Entering")
 	defer log.Trace("eventlog/common:parseEventLog() Leaving")
 
@@ -237,35 +215,35 @@ func parseEventLog(buf *bytes.Buffer, size uint32) error {
 	tcgPcrEvent := tcgPcrEventV1{}
 	err := binary.Read(buf, binary.LittleEndian, &tcgPcrEvent.PcrIndex)
 	if err != nil {
-		return errors.Wrap(err, "eventlog/common:parseEventLog() There is an error reading binary data from buffer")
+		return errors.Wrap(err, "eventlog/common:parseEventLog() There is an error reading TCG_PCR_EVENT PCR Index from Event Log buffer")
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &tcgPcrEvent.EventType)
 	if err != nil {
-		return errors.Wrap(err, "eventlog/common:parseEventLog() There is an error reading binary data from buffer")
+		return errors.Wrap(err, "eventlog/common:parseEventLog() There is an error reading TCG_PCR_EVENT Event Type from Event Log buffer")
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &tcgPcrEvent.Digest)
 	if err != nil {
-		return errors.Wrap(err, "eventlog/common:parseEventLog() There is an error reading binary data from buffer")
+		return errors.Wrap(err, "eventlog/common:parseEventLog() There is an error reading TCG_PCR_EVENT Digest from Event Log buffer")
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &tcgPcrEvent.EventSize)
 	if err != nil {
-		return errors.Wrap(err, "eventlog/common:parseEventLog() There is an error reading binary data from buffer")
+		return errors.Wrap(err, "eventlog/common:parseEventLog() There is an error reading TCG_PCR_EVENT Event Size from Event Log buffer")
 	}
 
 	tcgPcrEvent.Event = buf.Next(int(tcgPcrEvent.EventSize))
-	err = createMeasureLog(buf, size-(tcgPcrEvent.EventSize+32))
+	err = eventLog.createMeasureLog(buf, size-(tcgPcrEvent.EventSize+32))
 	if err != nil {
-		return errors.Wrap(err, "eventlog/common:parseEventLog() There is an error parsing event log after skipping first one")
+		return errors.Wrap(err, "eventlog/common:parseEventLog() There is an error parsing TCG_PCR_EVENT2 Event Log data after skipping TCG_PCR_EVENT data from Event Log buffer")
 	}
 
 	return nil
 }
 
 // CreateMeasureLog - Function to create PCR Measure log data for measure-log.json
-func createMeasureLog(buf *bytes.Buffer, size uint32) error {
+func (eventLog *eventLogInfo) createMeasureLog(buf *bytes.Buffer, size uint32) error {
 	log.Trace("eventlog/common:createMeasureLog() Entering")
 	defer log.Trace("eventlog/common:createMeasureLog() Leaving")
 
@@ -277,7 +255,7 @@ func createMeasureLog(buf *bytes.Buffer, size uint32) error {
 	for offset = 0; offset < int64(size); {
 		err = binary.Read(buf, binary.LittleEndian, &tcgPcrEvent2.PcrIndex)
 		if err != nil {
-			return errors.Wrap(err, "eventlog/common:createMeasureLog() There is an error reading binary data from buffer")
+			return errors.Wrap(err, "eventlog/common:createMeasureLog() There is an error reading TCG_PCR_EVENT2 PCR Index from Event Log buffer")
 		}
 
 		offset = offset + Uint32Size
@@ -287,14 +265,14 @@ func createMeasureLog(buf *bytes.Buffer, size uint32) error {
 
 		err = binary.Read(buf, binary.LittleEndian, &tcgPcrEvent2.EventType)
 		if err != nil {
-			return errors.Wrap(err, "eventlog/common:createMeasureLog() There is an error reading binary data from buffer")
+			return errors.Wrap(err, "eventlog/common:createMeasureLog() There is an error reading TCG_PCR_EVENT2 Event Type from Event Log buffer")
 		}
 
 		offset = offset + Uint32Size
 		eventTypeStr := fmt.Sprintf("0x%x", tcgPcrEvent2.EventType)
 		err = binary.Read(buf, binary.LittleEndian, &tpmlDigestValues.Count)
 		if err != nil {
-			return errors.Wrap(err, "eventlog/common:createMeasureLog() There is an error reading binary data from buffer")
+			return errors.Wrap(err, "eventlog/common:createMeasureLog() There is an error reading TCG_PCR_EVENT2 Digest Count from Event Log buffer")
 		}
 
 		offset = offset + Uint32Size
@@ -312,7 +290,7 @@ func createMeasureLog(buf *bytes.Buffer, size uint32) error {
 			var algID uint16
 			err = binary.Read(buf, binary.LittleEndian, &algID)
 			if err != nil {
-				return errors.Wrap(err, "eventlog/common:createMeasureLog() There is an error reading binary data from buffer")
+				return errors.Wrap(err, "eventlog/common:createMeasureLog() There is an error reading TCG_PCR_EVENT2 Algorithm ID from Event Log buffer")
 			}
 
 			offset = offset + Uint16Size
@@ -342,7 +320,7 @@ func createMeasureLog(buf *bytes.Buffer, size uint32) error {
 			eventName, ok := eventNameList[tcgPcrEvent2.EventType]
 			if ok {
 				eventData[hashIndex].TypeName = eventName
-				if evLogInfo.TxtEnabled == true {
+				if eventLog.TxtEnabled == true {
 					eventData[hashIndex].Tags = append(eventData[hashIndex].Tags, eventName)
 				}
 			} else {
@@ -374,7 +352,7 @@ func createMeasureLog(buf *bytes.Buffer, size uint32) error {
 			if hashIndex+1 == int(tpmlDigestValues.Count) {
 				err = binary.Read(buf, binary.LittleEndian, &tcgPcrEvent2.EventSize)
 				if err != nil {
-					return errors.Wrap(err, "eventlog/common:createMeasureLog() There is an error reading binary data from buffer")
+					return errors.Wrap(err, "eventlog/common:createMeasureLog() There is an error reading TCG_PCR_EVENT2 Event Size from Event Log buffer")
 				}
 
 				offset = offset + Uint32Size
@@ -387,36 +365,37 @@ func createMeasureLog(buf *bytes.Buffer, size uint32) error {
 				for index := 0; index < int(tpmlDigestValues.Count); index++ {
 					var tempPcrEventLog PcrEventLog
 					// Handling of Uefi Event Tag according to TCG PC Client Platform Firmware Profile Specification v1.5
-					if evLogInfo.TxtEnabled == false {
+					if eventLog.TxtEnabled == false {
 						eventData[index].Tags, err = getEventTag(tcgPcrEvent2.EventType, tcgPcrEvent2.Event, tcgPcrEvent2.EventSize, tcgPcrEvent2.PcrIndex)
 						if err != nil {
-							log.WithError(err).Error("eventlog/common:createMeasureLog() There is an error in getting tag")
+							log.WithError(err).Error("eventlog/common:createMeasureLog() There is an error in getting Event Tag")
 						}
 					}
 
 					tempPcrEventLog.Pcr = pcr[index]
 					tempPcrEventLog.TpmEvents = append(tempPcrEventLog.TpmEvents, eventData[index])
-					if len(evLogInfo.FinalPcrEventLog) == 0 {
-						evLogInfo.FinalPcrEventLog = append(evLogInfo.FinalPcrEventLog, tempPcrEventLog)
+					if len(eventLog.FinalPcrEventLog) == 0 {
+						eventLog.FinalPcrEventLog = append(eventLog.FinalPcrEventLog, tempPcrEventLog)
 					} else {
 						var flag int = 0
-						for i := range evLogInfo.FinalPcrEventLog {
+						for i := range eventLog.FinalPcrEventLog {
 							// Check pcr index and bank if already existing in current array and then add eventlog data in array
-							if (evLogInfo.FinalPcrEventLog[i].Pcr.Index == pcr[index].Index) && (evLogInfo.FinalPcrEventLog[i].Pcr.Bank == pcr[index].Bank) {
-								evLogInfo.FinalPcrEventLog[i].TpmEvents = append(evLogInfo.FinalPcrEventLog[i].TpmEvents, eventData[index])
+							if (eventLog.FinalPcrEventLog[i].Pcr.Index == pcr[index].Index) && (eventLog.FinalPcrEventLog[i].Pcr.Bank == pcr[index].Bank) {
+								eventLog.FinalPcrEventLog[i].TpmEvents = append(eventLog.FinalPcrEventLog[i].TpmEvents, eventData[index])
 								flag = 1
 								break
 							}
 						}
 
 						if flag == 0 {
-							evLogInfo.FinalPcrEventLog = append(evLogInfo.FinalPcrEventLog, tempPcrEventLog)
+							eventLog.FinalPcrEventLog = append(eventLog.FinalPcrEventLog, tempPcrEventLog)
 						}
 					}
 				}
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -445,17 +424,17 @@ func getEventTag(eventType uint32, eventData []byte, eventSize uint32, pcrIndex 
 		buf := bytes.NewBuffer(eventData)
 		err = binary.Read(buf, binary.LittleEndian, &uefiVarData.VariableName)
 		if err != nil {
-			return nil, errors.Wrap(err, "eventlog/common:getEventTag() There is an error reading binary data from buffer")
+			return nil, errors.Wrap(err, "eventlog/common:getEventTag() There is an error reading Variable Name from TCG_PCR_EVENT2 buffer")
 		}
 
 		err = binary.Read(buf, binary.LittleEndian, &uefiVarData.UnicodeNameLength)
 		if err != nil {
-			return nil, errors.Wrap(err, "eventlog/common:getEventTag() There is an error reading binary data from buffer")
+			return nil, errors.Wrap(err, "eventlog/common:getEventTag() There is an error reading UnicodeName Length from TCG_PCR_EVENT2 buffer")
 		}
 
 		err = binary.Read(buf, binary.LittleEndian, &uefiVarData.VariableDataLength)
 		if err != nil {
-			return nil, errors.Wrap(err, "eventlog/common:getEventTag() There is an error reading binary data from buffer")
+			return nil, errors.Wrap(err, "eventlog/common:getEventTag() There is an error reading VariableData Length from TCG_PCR_EVENT2 buffer")
 		}
 
 		unicodeName = buf.Next(int(uefiVarData.UnicodeNameLength * 2))
@@ -474,7 +453,7 @@ func getEventTag(eventType uint32, eventData []byte, eventSize uint32, pcrIndex 
 		buf := bytes.NewBuffer(eventData)
 		err = binary.Read(buf, binary.LittleEndian, &blobDescriptionSize)
 		if err != nil {
-			return nil, errors.Wrap(err, "eventlog/common:getEventTag() There is an error reading binary data from buffer")
+			return nil, errors.Wrap(err, "eventlog/common:getEventTag() There is an error reading Blob Description Size from TCG_PCR_EVENT2 buffer")
 		}
 
 		blobDesc := buf.Next(int(blobDescriptionSize))
@@ -491,6 +470,9 @@ func getEventTag(eventType uint32, eventData []byte, eventSize uint32, pcrIndex 
 		//In some cases Event data may have extra bytes along with descriptive string followed by null char. So need to display only the string till null char.
 		if strings.Contains(tagName, NullUnicodePoint) {
 			nullIndex := strings.Index(tagName, NullUnicodePoint)
+			if nullIndex == 0 {
+				return nil, nil
+			}
 			return []string{tagName[:nullIndex]}, nil
 		}
 		return []string{tagName}, nil
@@ -513,7 +495,7 @@ func getEventTag(eventType uint32, eventData []byte, eventSize uint32, pcrIndex 
 		buf := bytes.NewBuffer(eventData)
 		err = binary.Read(buf, binary.LittleEndian, &pfrHeader)
 		if err != nil {
-			return nil, errors.Wrap(err, "eventlog/common:getEventTag() There is an error reading binary data from buffer")
+			return nil, errors.Wrap(err, "eventlog/common:getEventTag() There is an error reading PFR Header from TCG_PCR_EVENT2 buffer")
 		}
 		// PFR_EVENT_DATA_HEADER includes four UINT8 and three UINT32 variables. PFR_EVENT_DATA includes PFR_EVENT_DATA_HEADER and InfoSize + StringSize
 		pfrEventSize = (Uint8Size * 4) + (Uint32Size * 3) + uint32(pfrHeader.InfoSize) + uint32(pfrHeader.StringSize)

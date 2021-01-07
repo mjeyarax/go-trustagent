@@ -199,31 +199,36 @@ func updateMeasureLog() error {
 	evParser := eventlog.NewEventLogParser(constants.EventLogFilePath, constants.Tpm2FilePath, constants.AppEventFilePath)
 	pcrEventLogs, err := evParser.GetEventLogs()
 	if err != nil {
-		return errors.Wrap(err, "main:updateMeasureLog() Error while collecting pcr eventlog data")
+		return errors.Wrap(err, "main:updateMeasureLog() There was an error while collecting PCR Event Log Data")
 	}
 
 	jsonData, err := json.Marshal(pcrEventLogs)
 	if err != nil {
-		return errors.Wrap(err, "main:updateMeasureLog() Error while serializing pcr eventlog data")
+		return errors.Wrap(err, "main:updateMeasureLog() There was an error while serializing PCR Event Log Data")
 	}
 
 	jsonReport, err := os.OpenFile(constants.MeasureLogFilePath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		return errors.Wrapf(err, "main:updateMeasureLog() Error while opening %s", constants.MeasureLogFilePath)
+		return errors.Wrapf(err, "main:updateMeasureLog() There was an error while opening %s", constants.MeasureLogFilePath)
 	}
 	defer func() {
 		derr := jsonReport.Close()
 		if derr != nil {
-			log.WithError(derr).Errorf("main:updateMeasureLog() Error closing %s", constants.MeasureLogFilePath)
+			log.WithError(derr).Errorf("main:updateMeasureLog() There was an error closing %s", constants.MeasureLogFilePath)
 		}
 	}()
 
-	_, err = jsonReport.Write(jsonData)
-	if err != nil {
-		return errors.Wrapf(err, "main:updateMeasureLog() Error while writing into File: %s", constants.MeasureLogFilePath)
+	if pcrEventLogs != nil {
+		_, err = jsonReport.Write(jsonData)
+		if err != nil {
+			return errors.Wrapf(err, "main:updateMeasureLog() There was an error while writing in %s", constants.MeasureLogFilePath)
+		}
+
+		log.Info("main:updateMeasureLog() Successfully updated measure-log.json")
+	} else {
+		log.Info("main:updateMeasureLog() No events are there to update measure-log.json")
 	}
 
-	log.Info("main:updateMeasureLog() Successfully updated measure-log.json")
 	return nil
 }
 
@@ -370,7 +375,7 @@ func main() {
 
 		err = updateMeasureLog()
 		if err != nil {
-			log.Errorf("main:main() Error While creating measure-log.json: %s\n", err.Error())
+			log.Errorf("main:main() Error while creating measure-log.json: %s\n", err.Error())
 		}
 
 		tagentUser, err := user.Lookup(constants.TagentUserName)
