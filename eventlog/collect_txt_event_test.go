@@ -104,9 +104,6 @@ func Test_eventLogInfo_updateTxtEventLog(t *testing.T) {
 		TxtHeapBaseOffset int64
 		TxtHeapSizeOffset int64
 	}
-	evLogInfo = &eventLogInfo{
-		TxtEnabled: true,
-	}
 	type args struct {
 		eventLogFilePath string
 	}

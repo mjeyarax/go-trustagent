@@ -29,7 +29,7 @@ func (eventLog *eventLogInfo) updateAppEventLog(appEventFilePath string) error {
 	defer func() {
 		derr := file.Close()
 		if derr != nil {
-			log.WithError(derr).Error("eventlog/collect_application_event:updateAppEventLog() Error closing file")
+			log.WithError(derr).Errorf("eventlog/collect_application_event:updateAppEventLog() There was an error closing %s", appEventFilePath)
 		}
 	}()
 
@@ -45,7 +45,7 @@ func (eventLog *eventLogInfo) updateAppEventLog(appEventFilePath string) error {
 		tempAppEventLog.Pcr.Bank = array[0]
 		index, err := strconv.Atoi(array[1])
 		if err != nil {
-			return errors.Wrap(err, "eventlog/collect_application_event:updateAppEventLog() Error while converting string to integer")
+			return errors.Wrap(err, "eventlog/collect_application_event:updateAppEventLog() There was an error while converting string to integer")
 		}
 
 		tempAppEventLog.Pcr.Index = uint32(index)

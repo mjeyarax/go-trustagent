@@ -33,50 +33,50 @@ func (eventLog *eventLogInfo) fetchUefiEventInfo(tpm2FilePath string) error {
 	defer func() {
 		derr := file.Close()
 		if derr != nil {
-			log.WithError(derr).Error("eventlog/collect_uefi_event:fetchUefiEventInfo() Error closing file")
+			log.WithError(derr).Errorf("eventlog/collect_uefi_event:fetchUefiEventInfo() There was an error closing %s", tpm2FilePath)
 		}
 	}()
 
 	// Validate TPM2 file signature
 	_, err = io.ReadFull(file, tpm2Sig)
 	if err != nil {
-		return errors.Wrapf(err, "eventlog/collect_uefi_event:fetchUefiEventInfo() There was an error reading %s", tpm2FilePath)
+		return errors.Wrapf(err, "eventlog/collect_uefi_event:fetchUefiEventInfo() There was an error reading TPM2 Signature from %s", tpm2FilePath)
 	}
 
 	tpm2Signature := string(tpm2Sig)
 	if Tpm2Signature != tpm2Signature {
-		return errors.Errorf("eventlog/collect_uefi_event:fetchUefiEventInfo() Invalid TPM2 signature %s", tpm2FilePath)
+		return errors.Errorf("eventlog/collect_uefi_event:fetchUefiEventInfo() Invalid TPM2 Signature in %s", tpm2FilePath)
 	}
 
 	// Validate TPM2 file length
 	_, err = io.ReadFull(file, tpm2len)
 	if err != nil {
-		return errors.Wrapf(err, "eventlog/collect_uefi_event:fetchUefiEventInfo() There was an error reading %s", tpm2FilePath)
+		return errors.Wrapf(err, "eventlog/collect_uefi_event:fetchUefiEventInfo() There was an error reading TPM2 File Length from %s", tpm2FilePath)
 	}
 
 	tpm2FileLength := binary.LittleEndian.Uint32(tpm2len)
 	if tpm2FileLength < Tpm2FileLength {
-		return errors.Errorf("eventlog/collect_uefi_event:fetchUefiEventInfo() UefiEventInfo missing in %s", tpm2FilePath)
+		return errors.Errorf("eventlog/collect_uefi_event:fetchUefiEventInfo() UEFI Event Info missing in %s", tpm2FilePath)
 	}
 
 	_, err = file.Seek(UefiBaseOffset, io.SeekStart)
 	if err != nil {
-		return errors.Wrapf(err, "eventlog/collect_uefi_event:fetchUefiEventInfo() There was an error traversing %s", tpm2FilePath)
+		return errors.Wrapf(err, "eventlog/collect_uefi_event:fetchUefiEventInfo() There was an error traversing %s for UEFI Base Offset", tpm2FilePath)
 	}
 
 	_, err = io.ReadFull(file, uefiEventAddr)
 	if err != nil {
-		return errors.Wrapf(err, "eventlog/collect_uefi_event:fetchUefiEventInfo() There was an error reading %s", tpm2FilePath)
+		return errors.Wrapf(err, "eventlog/collect_uefi_event:fetchUefiEventInfo() There was an error reading UEFI Event Address from %s", tpm2FilePath)
 	}
 
 	_, err = file.Seek(UefiSizeOffset, io.SeekStart)
 	if err != nil {
-		return errors.Wrapf(err, "eventlog/collect_uefi_event:fetchUefiEventInfo() There was an error traversing %s", tpm2FilePath)
+		return errors.Wrapf(err, "eventlog/collect_uefi_event:fetchUefiEventInfo() There was an error traversing %s for UEFI Size Offset", tpm2FilePath)
 	}
 
 	_, err = io.ReadFull(file, uefiEventSize)
 	if err != nil {
-		return errors.Wrapf(err, "eventlog/collect_uefi_event:fetchUefiEventInfo() There was an error reading %s", tpm2FilePath)
+		return errors.Wrapf(err, "eventlog/collect_uefi_event:fetchUefiEventInfo() There was an error reading UEFI Event Size from %s", tpm2FilePath)
 	}
 
 	eventLog.UefiEventSize = binary.LittleEndian.Uint32(uefiEventSize)
@@ -101,25 +101,25 @@ func (eventLog *eventLogInfo) updateUefiEventLog(eventLogFilePath string) error 
 	defer func() {
 		derr := file.Close()
 		if derr != nil {
-			log.WithError(derr).Error("eventlog/collect_uefi_event:updateUefiEventLog() Error closing file")
+			log.WithError(derr).Errorf("eventlog/collect_uefi_event:updateUefiEventLog() There was an error closing %s", eventLogFilePath)
 		}
 	}()
 
 	// Go to Uefi Event Log Address in /dev/mem
 	_, err = file.Seek(int64(eventLog.UefiEventAddr), io.SeekStart)
 	if err != nil {
-		return errors.Wrapf(err, "eventlog/collect_uefi_event:updateUefiEventLog() There was an error traversing %s", eventLogFilePath)
+		return errors.Wrapf(err, "eventlog/collect_uefi_event:updateUefiEventLog() There was an error traversing %s for UEFI Event Address", eventLogFilePath)
 	}
 
 	_, err = io.ReadFull(file, eventLogBuffer)
 	if err != nil {
-		return errors.Wrapf(err, "eventlog/collect_uefi_event:updateUefiEventLog() There was an error reading %s", eventLogFilePath)
+		return errors.Wrapf(err, "eventlog/collect_uefi_event:updateUefiEventLog() There was an error reading UEFI Event Log from %s", eventLogFilePath)
 	}
 
 	buf := bytes.NewBuffer(eventLogBuffer)
-	err = parseEventLog(buf, eventLog.UefiEventSize)
+	err = eventLog.parseEventLog(buf, eventLog.UefiEventSize)
 	if err != nil {
-		return errors.Wrap(err, "eventlog/collect_uefi_event:updateUefiEventLog() Error while parsing EventLog data")
+		return errors.Wrap(err, "eventlog/collect_uefi_event:updateUefiEventLog() There was an error while parsing UEFI Event Log Data")
 	}
 
 	return nil

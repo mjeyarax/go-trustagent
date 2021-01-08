@@ -84,7 +84,6 @@ func Test_eventLogInfo_updateUefiEventLog(t *testing.T) {
 		TxtHeapBaseOffset int64
 		TxtHeapSizeOffset int64
 	}
-	evLogInfo = &eventLogInfo{}
 	type args struct {
 		eventLogFilePath string
 	}

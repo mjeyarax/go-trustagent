@@ -60,14 +60,14 @@ func (evtLogFile *EventLogFiles) GetEventLogs() ([]PcrEventLog, error) {
 	log.Trace("eventlog/event_log:GetEventLogs() Entering")
 	defer log.Trace("eventlog/event_log:GetEventLogs() Leaving")
 
-	eventLog := getEventLogInfo()
+	eventLog := eventLogInfo{}
 	err := eventLog.fetchUefiEventInfo(evtLogFile.Tpm2FilePath)
 	if err != nil {
-		log.WithError(err).Error("eventlog/event_log:GetEventLogs() Error while getting UEFI Event Log Info")
+		log.WithError(err).Error("eventlog/event_log:GetEventLogs() There was an error while getting UEFI Event Log Info")
 	} else {
 		err = eventLog.updateUefiEventLog(evtLogFile.DevMemFilePath)
 		if err != nil {
-			log.WithError(err).Error("eventlog/event_log:GetEventLogs() Error while updating UEFI Event Log")
+			log.WithError(err).Error("eventlog/event_log:GetEventLogs() There was an error while updating UEFI Event Log")
 		}
 	}
 
@@ -75,18 +75,18 @@ func (evtLogFile *EventLogFiles) GetEventLogs() ([]PcrEventLog, error) {
 	eventLog.TxtHeapSizeOffset = TxtHeapSizeOffset
 	err = eventLog.fetchTxtHeapInfo(evtLogFile.DevMemFilePath)
 	if err != nil {
-		log.WithError(err).Error("eventlog/event_log:GetEventLogs() Error while getting TXT Event Log Info")
+		log.WithError(err).Error("eventlog/event_log:GetEventLogs() There was an error while getting TXT Event Log Info")
 	} else {
 		eventLog.TxtEnabled = true
 		err = eventLog.updateTxtEventLog(evtLogFile.DevMemFilePath)
 		if err != nil {
-			log.WithError(err).Error("eventlog/event_log:GetEventLogs() Error while updating TXT Event Log")
+			log.WithError(err).Error("eventlog/event_log:GetEventLogs() There was an error while updating TXT Event Log")
 		}
 	}
 
 	err = eventLog.updateAppEventLog(evtLogFile.AppEventFilePath)
 	if err != nil {
-		log.WithError(err).Error("eventlog/event_log:GetEventLogs() Error while updating Application Event Log")
+		log.WithError(err).Error("eventlog/event_log:GetEventLogs() There was an error while updating Application Event Log")
 	}
 
 	return eventLog.FinalPcrEventLog, nil
