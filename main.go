@@ -218,12 +218,12 @@ func updateMeasureLog() error {
 		}
 	}()
 
-	if pcrEventLogs != nil {
-		_, err = jsonReport.Write(jsonData)
-		if err != nil {
-			return errors.Wrapf(err, "main:updateMeasureLog() There was an error while writing in %s", constants.MeasureLogFilePath)
-		}
+	_, err = jsonReport.Write(jsonData)
+	if err != nil {
+		return errors.Wrapf(err, "main:updateMeasureLog() There was an error while writing in %s", constants.MeasureLogFilePath)
+	}
 
+	if pcrEventLogs != nil {
 		log.Info("main:updateMeasureLog() Successfully updated measure-log.json")
 	} else {
 		log.Info("main:updateMeasureLog() No events are there to update measure-log.json")
