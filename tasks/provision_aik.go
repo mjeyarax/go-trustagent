@@ -16,7 +16,6 @@ import (
 	"intel/isecl/go-trust-agent/v3/util"
 	"intel/isecl/lib/common/v3/setup"
 	"intel/isecl/lib/tpmprovider/v3"
-	"math/big"
 	"os"
 
 	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
@@ -250,12 +249,8 @@ func (task *ProvisionAttestationIdentityKey) populateIdentityRequest(identityReq
 		return err
 	}
 
-	identityRequest.IdentityRequestBlock = aikPublicKeyBytes
 	identityRequest.AikModulus = aikPublicKeyBytes
-
 	identityRequest.TpmVersion = "2.0" // Assume TPM 2.0 for GTA (1.2 is no longer supported)
-	identityRequest.AikBlob = new(big.Int).SetInt64(tpmprovider.TPM_HANDLE_AIK).Bytes()
-
 	identityRequest.AikName, err = tpm.GetAikName()
 	if err != nil {
 		return errors.Wrap(err, "Error while retrieving Aik Name from tpm")
