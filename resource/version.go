@@ -8,8 +8,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"intel/isecl/go-trust-agent/v3/util"
-	"net/http"
 	"intel/isecl/lib/common/v3/log/message"
+	"net/http"
 )
 
 // GetVersion handles GET /version

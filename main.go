@@ -163,11 +163,16 @@ func updatePlatformInfo() error {
 	}
 
 	// create the 'platform-info' file
-	f, err := os.Create(constants.PlatformInfoFilePath)
-	defer f.Close()
+	f, err := os.OpenFile(constants.PlatformInfoFilePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
 		return errors.Wrapf(err, "main:updatePlatformInfo() Error while creating %s", constants.PlatformInfoFilePath)
 	}
+	defer func() {
+		derr := f.Close()
+		if derr != nil {
+			log.WithError(derr).Error("Error closing file")
+		}
+	}()
 
 	// collect the platform info
 	secLog.Infof("%s main:updatePlatformInfo() Trying to fetch platform info", message.SU)
@@ -449,7 +454,11 @@ func main() {
 			os.Exit(1)
 		}
 
-		service.Start()
+		err = service.Start()
+		if err != nil {
+			log.Errorf("main:main() Error while starting trustagent service %+v", err)
+			os.Exit(1)
+		}
 
 	case "start":
 		cfg.LogConfiguration(cfg.Logging.LogEnableStdout)
@@ -591,7 +600,12 @@ func sourceEnvFile(trustagentEnvFile string) {
 		fmt.Fprintf(os.Stderr, "Unable to open file: %s", trustagentEnvFile)
 		os.Exit(1)
 	}
-	defer file.Close()
+	defer func() {
+		derr := file.Close()
+		if derr != nil {
+			log.WithError(derr).Error("Error closing file")
+		}
+	}()
 
 	scanner := bufio.NewScanner(file)
 	var envKeyPair []string
@@ -601,7 +615,10 @@ func sourceEnvFile(trustagentEnvFile string) {
 		}
 		if strings.Contains(scanner.Text(), "=") {
 			envKeyPair = strings.Split(scanner.Text(), "=")
-			os.Setenv(envKeyPair[0], envKeyPair[1])
+			err = os.Setenv(envKeyPair[0], envKeyPair[1])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Unable to set env: %s", envKeyPair[0])
+			}
 		}
 	}
 }

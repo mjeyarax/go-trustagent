@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"intel/isecl/lib/common/v3/setup"
 	"intel/isecl/lib/tpmprovider/v3"
-	
+
 	"github.com/pkg/errors"
 )
 
 type ProvisionPrimaryKey struct {
-	tpmFactory tpmprovider.TpmFactory
+	tpmFactory     tpmprovider.TpmFactory
 	ownerSecretKey *string
 }
 

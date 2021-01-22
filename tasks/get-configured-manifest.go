@@ -22,13 +22,13 @@ import (
 
 type GetConfiguredManifest struct {
 	clientFactory      hvsclient.HVSClientFactory
-	savedManifestFiles []string		// internal task variable that tracks saved manifests (used in Validate())
+	savedManifestFiles []string // internal task variable that tracks saved manifests (used in Validate())
 }
 
 func (task GetConfiguredManifest) saveManifest(manifestXml []byte) error {
 	log.Trace("tasks/get-configured-manifest:saveManifest() Entering")
 	defer log.Trace("tasks/get-configured-manifest:saveManifest() Leaving")
-	
+
 	manifest := hvsclient.Manifest{}
 	err := xml.Unmarshal(manifestXml, &manifest)
 	if err != nil {
@@ -70,7 +70,7 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 
 	envVar := os.Getenv(constants.FlavorUUIDs)
 	if envVar != "" {
-		if len(envVar) > constants.FlavorUUIDMaxLength{
+		if len(envVar) > constants.FlavorUUIDMaxLength {
 			secLog.Errorf("%s tasks/get-configured-manifest:Run() values given in %s exceeds maximum length limit", message.InvalidInputBadParam, constants.FlavorUUIDs)
 			return errors.New("Flavor UUID exceeds maximum length limit")
 		}
@@ -88,7 +88,7 @@ func (task *GetConfiguredManifest) Run(c setup.Context) error {
 	}
 
 	envVar = os.Getenv(constants.FlavorLabels)
-	if len(envVar) > constants.FlavorLabelsMaxLength{
+	if len(envVar) > constants.FlavorLabelsMaxLength {
 		secLog.Errorf("%s tasks/get-configured-manifest:Run() values given in %s exceeds maximum length limit", message.InvalidInputBadParam, constants.FlavorLabels)
 		return errors.New("Flavor labels exceeds maximum length limit")
 	}

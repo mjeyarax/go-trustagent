@@ -14,8 +14,8 @@ import (
 )
 
 type TakeOwnership struct {
-	tpmFactory tpmprovider.TpmFactory
-	ownerSecretKey *string	// this is an 'out' variable that can be set by the task
+	tpmFactory     tpmprovider.TpmFactory
+	ownerSecretKey *string // this is an 'out' variable that can be set by the task
 }
 
 // Retrieves the 'OwnerSecretKey' value from configuration.  If it is not there, it generates a

@@ -11,9 +11,9 @@ import (
 	"intel/isecl/go-trust-agent/v3/config"
 	"intel/isecl/go-trust-agent/v3/constants"
 	"intel/isecl/lib/clients/v3"
-	"intel/isecl/lib/common/v3/crypt"
 	"intel/isecl/lib/common/v3/auth"
 	commContext "intel/isecl/lib/common/v3/context"
+	"intel/isecl/lib/common/v3/crypt"
 	commLog "intel/isecl/lib/common/v3/log"
 	"intel/isecl/lib/common/v3/log/message"
 	"intel/isecl/lib/common/v3/middleware"
@@ -97,10 +97,10 @@ func CreateTrustAgentService(config *config.TrustAgentConfiguration, tpmFactory 
 	trustAgentService.router.SkipClean(true)
 
 	noAuthRouter := trustAgentService.router.PathPrefix("").Subrouter()
-        noAuthRouter.HandleFunc("/version", errorHandler(getVersion())).Methods("GET")
+	noAuthRouter.HandleFunc("/version", errorHandler(getVersion())).Methods("GET")
 	authRouter := trustAgentService.router.PathPrefix("/v2/").Subrouter()
-        authRouter.Use(middleware.NewTokenAuth(constants.TrustedJWTSigningCertsDir, constants.TrustedCaCertsDir, fnGetJwtCerts, cacheTime))
-	
+	authRouter.Use(middleware.NewTokenAuth(constants.TrustedJWTSigningCertsDir, constants.TrustedCaCertsDir, fnGetJwtCerts, cacheTime))
+
 	// use permission-based access control for webservices
 	authRouter.HandleFunc("/aik", errorHandler(requiresPermission(getAik(), []string{getAIKPerm}))).Methods("GET")
 	authRouter.HandleFunc("/host", errorHandler(requiresPermission(getPlatformInfo(), []string{getHostInfoPerm}))).Methods("GET")
@@ -134,7 +134,12 @@ func (service *TrustAgentService) Start() error {
 		secLog.WithError(err).Errorf("resource/service:Start() %s Failed to open http log file: %s\n", message.AppRuntimeErr, err.Error())
 		log.Tracef("resource/service:Start() %+v", err)
 	} else {
-		defer httpLogFile.Close()
+		defer func() {
+			derr := httpLogFile.Close()
+			if derr != nil {
+				log.WithError(derr).Error("Error closing file")
+			}
+		}()
 		httpWriter = httpLogFile
 	}
 
@@ -146,10 +151,10 @@ func (service *TrustAgentService) Start() error {
 
 	httpLog := stdlog.New(httpWriter, "", 0)
 	h := &http.Server{
-		Addr:      fmt.Sprintf(":%d", service.port),
-		Handler:   handlers.RecoveryHandler(handlers.RecoveryLogger(httpLog), handlers.PrintRecoveryStack(true))(handlers.CombinedLoggingHandler(os.Stderr, service.router)),
-		ErrorLog:  httpLog,
-		TLSConfig: tlsconfig,
+		Addr:              fmt.Sprintf(":%d", service.port),
+		Handler:           handlers.RecoveryHandler(handlers.RecoveryLogger(httpLog), handlers.PrintRecoveryStack(true))(handlers.CombinedLoggingHandler(os.Stderr, service.router)),
+		ErrorLog:          httpLog,
+		TLSConfig:         tlsconfig,
 		ReadTimeout:       cfg.WebService.ReadTimeout,
 		ReadHeaderTimeout: cfg.WebService.ReadHeaderTimeout,
 		WriteTimeout:      cfg.WebService.WriteTimeout,
@@ -190,7 +195,10 @@ func requiresPermission(eh endpointHandler, permissionNames []string) endpointHa
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
-			w.Write([]byte("Could not get user roles from http context"))
+			_, writeErr := w.Write([]byte("Could not get user roles from http context"))
+			if writeErr != nil {
+				log.WithError(writeErr).Error("resource/service:requiresPermission() Error while writing response")
+			}
 			secLog.Errorf("resource/service:requiresPermission() %s Roles: %v | Context: %v", message.AuthenticationFailed, permissionNames, r.Context())
 			return errors.Wrap(err, "resource/service:requiresPermission() Could not get user roles from http context")
 		}
@@ -240,12 +248,12 @@ func fnGetJwtCerts() error {
 
 	cfg, err := config.NewConfigFromYaml(constants.ConfigFilePath)
 	if err != nil {
-        fmt.Printf("ERROR: %+v\n", err)
-        return nil
-    }
+		fmt.Printf("ERROR: %+v\n", err)
+		return nil
+	}
 
 	aasURL := cfg.AAS.BaseURL
-	
+
 	url := aasURL + "noauth/jwt-certificates"
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Add("accept", "application/x-pem-file")

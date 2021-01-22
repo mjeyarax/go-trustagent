@@ -29,7 +29,7 @@ func getAik() endpointHandler {
 
 		// HVS does not provide a content-type to /aik, so only allow the empty string...
 		contentType := httpRequest.Header.Get("Content-Type")
-		if  contentType != "" {
+		if contentType != "" {
 			log.Errorf("resource/aik:getAik() %s - Invalid content-type '%s'", message.InvalidInputBadParam, contentType)
 			return &endpointError{Message: "Invalid content-type", StatusCode: http.StatusBadRequest}
 		}

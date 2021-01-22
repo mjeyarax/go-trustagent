@@ -25,7 +25,7 @@ func getBindingKeyCertificate() endpointHandler {
 
 		// HVS does not provide a content-type, exlude other values
 		contentType := httpRequest.Header.Get("Content-Type")
-		if  contentType != "" {
+		if contentType != "" {
 			log.Errorf("resource/binding_key_certificate:getBindingKeyCertificate() %s - Invalid content-type '%s'", message.InvalidInputBadParam, contentType)
 			return &endpointError{Message: "Invalid content-type", StatusCode: http.StatusBadRequest}
 		}
