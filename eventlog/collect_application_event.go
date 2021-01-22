@@ -13,27 +13,27 @@ import (
 	"github.com/pkg/errors"
 )
 
-// UpdateAppEventLog - Function to parse and update Application Event Log
-func (eventLog *eventLogInfo) updateAppEventLog(appEventFilePath string) error {
-	log.Trace("eventlog/collect_application_event:updateAppEventLog() Entering")
-	defer log.Trace("eventlog/collect_application_event:updateAppEventLog() Leaving")
+// GetAppEventLog - Function to get Application Event Log
+func getAppEventLog(appEventFilePath string) ([]PcrEventLog, error) {
+	log.Trace("eventlog/collect_application_event:getAppEventLog() Entering")
+	defer log.Trace("eventlog/collect_application_event:getAppEventLog() Leaving")
 
 	if _, err := os.Stat(appEventFilePath); os.IsNotExist(err) {
-		return errors.Wrapf(err, "eventlog/collect_application_event:updateAppEventLog() %s file does not exist", appEventFilePath)
+		return nil, errors.Wrapf(err, "eventlog/collect_application_event:getAppEventLog() %s file does not exist", appEventFilePath)
 	}
 
 	file, err := os.Open(appEventFilePath)
 	if err != nil {
-		return errors.Wrapf(err, "eventlog/collect_application_event:updateAppEventLog() There was an error opening %s", appEventFilePath)
+		return nil, errors.Wrapf(err, "eventlog/collect_application_event:getAppEventLog() There was an error opening %s", appEventFilePath)
 	}
 	defer func() {
 		derr := file.Close()
 		if derr != nil {
-			log.WithError(derr).Errorf("eventlog/collect_application_event:updateAppEventLog() There was an error closing %s", appEventFilePath)
+			log.WithError(derr).Errorf("eventlog/collect_application_event:getAppEventLog() There was an error closing %s", appEventFilePath)
 		}
 	}()
 
-	var tempAppEventLogs []PcrEventLog
+	var appEventLogs []PcrEventLog
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		var tempEventData TpmEvent
@@ -45,7 +45,7 @@ func (eventLog *eventLogInfo) updateAppEventLog(appEventFilePath string) error {
 		tempAppEventLog.Pcr.Bank = array[0]
 		index, err := strconv.Atoi(array[1])
 		if err != nil {
-			return errors.Wrap(err, "eventlog/collect_application_event:updateAppEventLog() There was an error while converting string to integer")
+			return nil, errors.Wrap(err, "eventlog/collect_application_event:getAppEventLog() There was an error while converting string to integer")
 		}
 
 		tempAppEventLog.Pcr.Index = uint32(index)
@@ -57,10 +57,10 @@ func (eventLog *eventLogInfo) updateAppEventLog(appEventFilePath string) error {
 
 		// Flag is used to check if same pcr index and pcr bank is available in existing array
 		flag := 0
-		if tempAppEventLogs != nil {
-			for i := range tempAppEventLogs {
-				if (tempAppEventLogs[i].Pcr.Index == tempAppEventLog.Pcr.Index) && (tempAppEventLogs[i].Pcr.Bank == tempAppEventLog.Pcr.Bank) {
-					tempAppEventLogs[i].TpmEvents = append(tempAppEventLogs[i].TpmEvents, tempEventData)
+		if appEventLogs != nil {
+			for i := range appEventLogs {
+				if (appEventLogs[i].Pcr.Index == tempAppEventLog.Pcr.Index) && (appEventLogs[i].Pcr.Bank == tempAppEventLog.Pcr.Bank) {
+					appEventLogs[i].TpmEvents = append(appEventLogs[i].TpmEvents, tempEventData)
 					flag = 1
 					break
 				}
@@ -68,14 +68,9 @@ func (eventLog *eventLogInfo) updateAppEventLog(appEventFilePath string) error {
 		}
 
 		if flag == 0 {
-			tempAppEventLogs = append(tempAppEventLogs, tempAppEventLog)
+			appEventLogs = append(appEventLogs, tempAppEventLog)
 		}
 	}
 
-	// Add all Application event log data in final EventLog Array
-	for i := range tempAppEventLogs {
-		eventLog.FinalPcrEventLog = append(eventLog.FinalPcrEventLog, tempAppEventLogs[i])
-	}
-
-	return nil
+	return appEventLogs, nil
 }

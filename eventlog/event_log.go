@@ -60,32 +60,30 @@ func (evtLogFile *EventLogFiles) GetEventLogs() ([]PcrEventLog, error) {
 	log.Trace("eventlog/event_log:GetEventLogs() Entering")
 	defer log.Trace("eventlog/event_log:GetEventLogs() Leaving")
 
-	eventLog := eventLogInfo{}
-	err := eventLog.fetchUefiEventInfo(evtLogFile.Tpm2FilePath)
+	var finalPcrEventLog []PcrEventLog
+	uefiEventLogs, err := getUefiEventLog(evtLogFile.Tpm2FilePath, evtLogFile.DevMemFilePath)
 	if err != nil {
-		log.WithError(err).Error("eventlog/event_log:GetEventLogs() There was an error while getting UEFI Event Log Info")
+		log.WithError(err).Error("eventlog/event_log:GetEventLogs() There was an error while getting UEFI Event Log")
 	} else {
-		err = eventLog.updateUefiEventLog(evtLogFile.DevMemFilePath)
-		if err != nil {
-			log.WithError(err).Error("eventlog/event_log:GetEventLogs() There was an error while updating UEFI Event Log")
-		}
+		// Add all Uefi event log data in final Event Log Array
+		finalPcrEventLog = append(finalPcrEventLog, uefiEventLogs...)
 	}
 
-	err = eventLog.fetchTxtHeapInfo(evtLogFile.DevMemFilePath)
+	txtEventLogs, err := getTxtEventLog(evtLogFile.DevMemFilePath, TxtHeapBaseOffset, TxtHeapSizeOffset)
 	if err != nil {
-		log.WithError(err).Error("eventlog/event_log:GetEventLogs() There was an error while getting TXT Event Log Info")
+		log.WithError(err).Error("eventlog/event_log:GetEventLogs() There was an error while getting TXT Event Log")
 	} else {
-		eventLog.TxtEnabled = true
-		err = eventLog.updateTxtEventLog(evtLogFile.DevMemFilePath)
-		if err != nil {
-			log.WithError(err).Error("eventlog/event_log:GetEventLogs() There was an error while updating TXT Event Log")
-		}
+		// Add all TXT event log data in final Event Log Array
+		finalPcrEventLog = append(finalPcrEventLog, txtEventLogs...)
 	}
 
-	err = eventLog.updateAppEventLog(evtLogFile.AppEventFilePath)
+	appEventLogs, err := getAppEventLog(evtLogFile.AppEventFilePath)
 	if err != nil {
-		log.WithError(err).Error("eventlog/event_log:GetEventLogs() There was an error while updating Application Event Log")
+		log.WithError(err).Error("eventlog/event_log:GetEventLogs() There was an error while getting Application Event Log")
+	} else {
+		// Add all Application event log data in final Event Log Array
+		finalPcrEventLog = append(finalPcrEventLog, appEventLogs...)
 	}
 
-	return eventLog.FinalPcrEventLog, nil
+	return finalPcrEventLog, nil
 }
