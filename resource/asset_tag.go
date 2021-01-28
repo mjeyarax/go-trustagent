@@ -21,7 +21,7 @@ import (
 //		"hardware_uuid"   : "7a569dad-2d82-49e4-9156-069b0065b262"
 //  }
 type TagWriteRequest struct {
-	Tag           []byte `json:"tag"`
+	Tag          []byte `json:"tag"`
 	HardwareUUID string `json:"hardware_uuid"`
 }
 
@@ -42,7 +42,7 @@ func setAssetTag(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.Tpm
 		tpmSecretKey := cfg.Tpm.OwnerSecretKey
 
 		contentType := httpRequest.Header.Get("Content-Type")
-		if  contentType != "application/json" {
+		if contentType != "application/json" {
 			log.Errorf("resource/asset_tag:setAssetTag( %s - Invalid content-type '%s'", message.InvalidInputBadParam, contentType)
 			return &endpointError{Message: "Invalid content-type", StatusCode: http.StatusBadRequest}
 		}

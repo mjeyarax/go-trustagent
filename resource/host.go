@@ -66,7 +66,7 @@ func getPlatformInfo() endpointHandler {
 
 		// HVS does not provide a content-type when calling /host
 		contentType := httpRequest.Header.Get("Content-Type")
-		if  contentType != "" {
+		if contentType != "" {
 			log.Errorf("resource/host:getPlatformInfo() %s - Invalid content-type '%s'", message.InvalidInputBadParam, contentType)
 			return &endpointError{Message: "Invalid content-type", StatusCode: http.StatusBadRequest}
 		}

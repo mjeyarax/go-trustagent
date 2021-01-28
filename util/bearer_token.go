@@ -5,10 +5,10 @@
 package util
 
 import (
-	"os"
 	"intel/isecl/go-trust-agent/v3/constants"
+	"os"
 )
 
-func GetBearerToken() (string) {
+func GetBearerToken() string {
 	return os.Getenv(constants.EnvBearerToken)
 }

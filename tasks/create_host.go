@@ -51,7 +51,7 @@ func (task *CreateHost) Run(c setup.Context) error {
 		// no host present, create a new one
 
 		hostCreateReq := hvs.HostCreateRequest{
-			HostName: currentIP.String(),
+			HostName:         currentIP.String(),
 			ConnectionString: util.GetConnectionString(currentIP, task.trustAgentPort),
 		}
 

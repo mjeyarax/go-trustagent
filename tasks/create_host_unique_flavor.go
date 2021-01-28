@@ -9,9 +9,9 @@ import (
 	"github.com/intel-secl/intel-secl/v3/pkg/clients/hvsclient"
 	"github.com/intel-secl/intel-secl/v3/pkg/hvs/domain/models"
 	cf "github.com/intel-secl/intel-secl/v3/pkg/lib/flavor/common"
-	"intel/isecl/lib/common/v3/setup"
-	"intel/isecl/go-trust-agent/v3/util"
 	"github.com/pkg/errors"
+	"intel/isecl/go-trust-agent/v3/util"
+	"intel/isecl/lib/common/v3/setup"
 )
 
 type CreateHostUniqueFlavor struct {
@@ -37,8 +37,8 @@ func (task *CreateHostUniqueFlavor) Run(c setup.Context) error {
 	}
 
 	flavorCreateCriteria := models.FlavorCreateRequest{
-			ConnectionString: util.GetConnectionString(currentIP, task.trustAgentPort),
-			FlavorParts:      []cf.FlavorPart{cf.FlavorPartHostUnique},
+		ConnectionString: util.GetConnectionString(currentIP, task.trustAgentPort),
+		FlavorParts:      []cf.FlavorPart{cf.FlavorPartHostUnique},
 	}
 
 	_, err = flavorsClient.CreateFlavor(&flavorCreateCriteria)
@@ -52,7 +52,7 @@ func (task *CreateHostUniqueFlavor) Run(c setup.Context) error {
 func (task *CreateHostUniqueFlavor) Validate(c setup.Context) error {
 	log.Trace("tasks/create_host_unique_flavor:Validate() Entering")
 	defer log.Trace("tasks/create_host_unique_flavor:Validate() Leaving")
-	
+
 	// no validation is currently implemented (i.e. as long as Run did not fail)
 	log.Info("tasks/create_host_unique_flavor:Validate() Create host unique flavor was successful.")
 	return nil

@@ -10,7 +10,7 @@ import (
 	"intel/isecl/go-trust-agent/v3/constants"
 	"io/ioutil"
 	"os"
-	
+
 	"github.com/pkg/errors"
 )
 
