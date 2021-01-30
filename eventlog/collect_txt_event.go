@@ -21,6 +21,7 @@ func getTxtEventLog(devMemFilePath string, txtHeapBaseOffset int64, txtHeapSizeO
 
 	txtHeapBaseAddr := make([]byte, Uint64Size)
 	txtHeapSize := make([]byte, Uint64Size)
+
 	if _, err := os.Stat(devMemFilePath); os.IsNotExist(err) {
 		return nil, errors.Wrapf(err, "eventlog/collect_txt_event:getTxtEventLog() %s file does not exist", devMemFilePath)
 	}
@@ -29,6 +30,7 @@ func getTxtEventLog(devMemFilePath string, txtHeapBaseOffset int64, txtHeapSizeO
 	if err != nil {
 		return nil, errors.Wrapf(err, "eventlog/collect_txt_event:getTxtEventLog() There was an error opening %s", devMemFilePath)
 	}
+
 	defer func() {
 		derr := file.Close()
 		if derr != nil {
@@ -62,6 +64,7 @@ func getTxtEventLog(devMemFilePath string, txtHeapBaseOffset int64, txtHeapSizeO
 	if err != nil {
 		return nil, errors.Wrapf(err, "eventlog/collect_txt_event:getTxtEventLog() There was an error reading TXT Heap Data from %s", devMemFilePath)
 	}
+
 	defer func() {
 		// Unmap the /dev/mem buffer
 		if mmap != nil {

@@ -8,151 +8,105 @@ import (
 	"testing"
 )
 
-func Test_eventLogInfo_fetchUefiEventInfo(t *testing.T) {
-	type fields struct {
-		UefiEventSize     uint32
-		UefiEventAddr     uint64
-		TxtHeapSize       uint64
-		TxtHeapBaseAddr   uint64
-		FinalPcrEventLog  []PcrEventLog
-		TxtEnabled        bool
-		TxtHeapBaseOffset int64
-		TxtHeapSizeOffset int64
-	}
+func Test_getUefiEventLog(t *testing.T) {
 	type args struct {
-		tpm2FilePath string
+		tpm2FilePath   string
+		devMemFilePath string
 	}
 	tests := []struct {
 		name    string
-		fields  fields
 		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-		{
-			name:   "Positive test case",
-			fields: fields{},
-			args: args{
-				tpm2FilePath: "../test/eventlog/tpm2_valid",
-			},
-			wantErr: false,
-		},
-		{
-			name:   "Negative test: TPM2 file has invalid file length",
-			fields: fields{},
-			args: args{
-				tpm2FilePath: "../test/eventlog/tpm2_invalid_file_length",
-			},
-			wantErr: true,
-		},
-		{
-			name:   "Negative test: TPM2 file has invalid signature",
-			fields: fields{},
-			args: args{
-				tpm2FilePath: "../test/eventlog/tpm2_invalid_signature",
-			},
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eventLog := &eventLogInfo{
-				UefiEventSize:     tt.fields.UefiEventSize,
-				UefiEventAddr:     tt.fields.UefiEventAddr,
-				TxtHeapSize:       tt.fields.TxtHeapSize,
-				TxtHeapBaseAddr:   tt.fields.TxtHeapBaseAddr,
-				FinalPcrEventLog:  tt.fields.FinalPcrEventLog,
-				TxtEnabled:        tt.fields.TxtEnabled,
-				TxtHeapBaseOffset: tt.fields.TxtHeapBaseOffset,
-				TxtHeapSizeOffset: tt.fields.TxtHeapSizeOffset,
-			}
-			if err := eventLog.fetchUefiEventInfo(tt.args.tpm2FilePath); (err != nil) != tt.wantErr {
-				t.Errorf("eventLogInfo.fetchUefiEventInfo() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func Test_eventLogInfo_updateUefiEventLog(t *testing.T) {
-	type fields struct {
-		UefiEventSize     uint32
-		UefiEventAddr     uint64
-		TxtHeapSize       uint64
-		TxtHeapBaseAddr   uint64
-		FinalPcrEventLog  []PcrEventLog
-		TxtEnabled        bool
-		TxtHeapBaseOffset int64
-		TxtHeapSizeOffset int64
-	}
-	type args struct {
-		eventLogFilePath string
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
+		want    []PcrEventLog
 		wantErr bool
 	}{
 		// TODO: Add test cases.
 		{
 			name: "Positive test case",
-			fields: fields{
-				UefiEventSize: 65536,
-				UefiEventAddr: 0,
-			},
 			args: args{
-				eventLogFilePath: "../test/eventlog/uefi_event_log.bin",
+				tpm2FilePath:   "../test/eventlog/tpm2_valid",
+				devMemFilePath: "../test/eventlog/uefi_event_log.bin",
 			},
 			wantErr: false,
 		},
 		{
-			name: "Negative test: Uefi event log file does not exist",
-			fields: fields{
-				UefiEventSize: 65536,
-				UefiEventAddr: 0,
-			},
+			name: "Negative test: Invalid Offset",
 			args: args{
-				eventLogFilePath: "../test/eventlog/uefi_event.bin",
+				tpm2FilePath:   "../test/eventlog/tpm2_invalid_address",
+				devMemFilePath: "../test/eventlog/uefi_event_log.bin",
 			},
 			wantErr: true,
 		},
 		{
-			name: "Negative test: Invalid uefi event log address",
-			fields: fields{
-				UefiEventSize: 65536,
-				UefiEventAddr: 1048576,
-			},
+			name: "Negative test: TPM2 file has invalid file length",
 			args: args{
-				eventLogFilePath: "../test/eventlog/uefi_event_log.bin",
+				tpm2FilePath:   "../test/eventlog/tpm2_invalid_file_length",
+				devMemFilePath: "../test/eventlog/uefi_event_log.bin",
 			},
 			wantErr: true,
 		},
 		{
-			name: "Negative test: Invalid uefi event log size",
-			fields: fields{
-				UefiEventSize: 0,
-				UefiEventAddr: 0,
-			},
+			name: "Negative test: TPM2 file has invalid signature",
 			args: args{
-				eventLogFilePath: "../test/eventlog/uefi_event_log.bin",
+				tpm2FilePath:   "../test/eventlog/tpm2_invalid_signature",
+				devMemFilePath: "../test/eventlog/uefi_event_log.bin",
 			},
 			wantErr: true,
+		},
+		{
+			name: "Negative test: File Not exist",
+			args: args{
+				tpm2FilePath:   "../test/eventlog/tpm2_not_exist",
+				devMemFilePath: "../test/eventlog/uefi_event_log.bin",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Negative test: Empty TPM2",
+			args: args{
+				tpm2FilePath:   "../test/eventlog/empty.bin",
+				devMemFilePath: "../test/eventlog/uefi_event_log.bin",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Negative test: Empty EventLogFile",
+			args: args{
+				tpm2FilePath:   "../test/eventlog/tpm2_valid",
+				devMemFilePath: "../test/eventlog/empty.bin",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Negative test: Empty EventLogFile",
+			args: args{
+				tpm2FilePath:   "../test/eventlog/tpm2_valid",
+				devMemFilePath: "../test/eventlog/eventlog_not_exist.bin",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Negative test: Empty EventLogFile",
+			args: args{
+				tpm2FilePath:   "../test/eventlog/tpm2_valid1",
+				devMemFilePath: "../test/eventlog/incomplete_tcg_spec_event.bin",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Negative test: EventLogFile Invalid",
+			args: args{
+				tpm2FilePath:   "../test/eventlog/tpm2_valid",
+				devMemFilePath: "../test/eventlog/uefi_event_log_invalid.bin",
+			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			eventLog := &eventLogInfo{
-				UefiEventSize:     tt.fields.UefiEventSize,
-				UefiEventAddr:     tt.fields.UefiEventAddr,
-				TxtHeapSize:       tt.fields.TxtHeapSize,
-				TxtHeapBaseAddr:   tt.fields.TxtHeapBaseAddr,
-				FinalPcrEventLog:  tt.fields.FinalPcrEventLog,
-				TxtEnabled:        tt.fields.TxtEnabled,
-				TxtHeapBaseOffset: tt.fields.TxtHeapBaseOffset,
-				TxtHeapSizeOffset: tt.fields.TxtHeapSizeOffset,
-			}
-			if err := eventLog.updateUefiEventLog(tt.args.eventLogFilePath); (err != nil) != tt.wantErr {
-				t.Errorf("eventLogInfo.updateUefiEventLog() error = %v, wantErr %v", err, tt.wantErr)
+			_, err := getUefiEventLog(tt.args.tpm2FilePath, tt.args.devMemFilePath)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getUefiEventLog() error = %v, wantErr %v", err, tt.wantErr)
+				return
 			}
 		})
 	}
