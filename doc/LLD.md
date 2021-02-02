@@ -361,9 +361,6 @@ The following files are present after installation, setup and measured launch.
 ```
 /opt/trustagent/
 +-- bin
-¦   +-- module_analysis_da.sh
-¦   +-- module_analysis_da_tcg.sh
-¦   +-- module_analysis.sh
 ¦   +-- tagent
 +-- cacerts
 ¦   +-- cacertfile.pem
@@ -381,7 +378,7 @@ The following files are present after installation, setup and measured launch.
 +-- tagent.service
 +-- var
     +-- manifest_{uid}.xml
-    +-- measureLog.xml
+    +-- measure-log.json
     +-- ramfs
     ¦   +-- pcr_event_log
     ¦   +-- measurement_{uid}.xml

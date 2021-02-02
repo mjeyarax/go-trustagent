@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"intel/isecl/go-trust-agent/v3/config"
 	"intel/isecl/go-trust-agent/v3/constants"
+	"intel/isecl/go-trust-agent/v3/eventlog"
 	"intel/isecl/go-trust-agent/v3/resource"
 	_ "intel/isecl/go-trust-agent/v3/swagger/docs"
 	"intel/isecl/go-trust-agent/v3/tasks"
@@ -199,15 +200,40 @@ func updateMeasureLog() error {
 	log.Trace("main:updateMeasureLog() Entering")
 	defer log.Trace("main:updateMeasureLog() Leaving")
 
-	secLog.Infof("%s main:updateMeasureLog() Running %s using system administrative privileges", message.SU, constants.ModuleAnalysis)
-	cmd := exec.Command(constants.ModuleAnalysis)
-	cmd.Dir = constants.BinDir
-	results, err := cmd.Output()
+	secLog.Infof("%s main:updateMeasureLog() Running code to read EventLog", message.SU)
+	evParser := eventlog.NewEventLogParser(constants.EventLogFilePath, constants.Tpm2FilePath, constants.AppEventFilePath)
+	pcrEventLogs, err := evParser.GetEventLogs()
 	if err != nil {
-		return errors.Errorf("main:updateMeasureLog() module_analysis_sh error: %s", results)
+		return errors.Wrap(err, "main:updateMeasureLog() There was an error while collecting PCR Event Log Data")
 	}
 
-	log.Info("main:updateMeasureLog() Successfully updated measureLog.xml")
+	jsonData, err := json.Marshal(pcrEventLogs)
+	if err != nil {
+		return errors.Wrap(err, "main:updateMeasureLog() There was an error while serializing PCR Event Log Data")
+	}
+
+	jsonReport, err := os.OpenFile(constants.MeasureLogFilePath, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
+	if err != nil {
+		return errors.Wrapf(err, "main:updateMeasureLog() There was an error while opening %s", constants.MeasureLogFilePath)
+	}
+	defer func() {
+		derr := jsonReport.Close()
+		if derr != nil {
+			log.WithError(derr).Errorf("main:updateMeasureLog() There was an error closing %s", constants.MeasureLogFilePath)
+		}
+	}()
+
+	_, err = jsonReport.Write(jsonData)
+	if err != nil {
+		return errors.Wrapf(err, "main:updateMeasureLog() There was an error while writing in %s", constants.MeasureLogFilePath)
+	}
+
+	if pcrEventLogs != nil {
+		log.Info("main:updateMeasureLog() Successfully updated measure-log.json")
+	} else {
+		log.Info("main:updateMeasureLog() No events are there to update measure-log.json")
+	}
+
 	return nil
 }
 
@@ -354,7 +380,7 @@ func main() {
 
 		err = updateMeasureLog()
 		if err != nil {
-			log.Errorf("main:main() Error While creating measureLog.xml: %s\n", err.Error())
+			log.Errorf("main:main() Error while creating measure-log.json: %s\n", err.Error())
 		}
 
 		tagentUser, err := user.Lookup(constants.TagentUserName)
