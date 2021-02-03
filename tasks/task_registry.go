@@ -43,25 +43,39 @@ const (
 var log = commLog.GetDefaultLogger()
 var secLog = commLog.GetSecurityLogger()
 
-func CreateTaskRegistry(cfg *config.TrustAgentConfiguration) (*TaskRegistry, error) {
+func CreateTaskRegistry(setupCmd string, cfg *config.TrustAgentConfiguration) (*TaskRegistry, error) {
 
 	var registry TaskRegistry
+	var vsClientFactory hvsclient.HVSClientFactory
+	var tpmFactory tpmprovider.TpmFactory
+	var err error
 
 	if cfg == nil {
-		return nil, errors.New("The cfg paramater was not provided")
+		return nil, errors.New("The cfg parameter was not provided")
 	}
 
 	registry.cfg = cfg
 	registry.taskMap = make(map[string][]setup.Task)
 
-	vsClientFactory, err := hvsclient.NewVSClientFactory(cfg.HVS.Url, util.GetBearerToken(), constants.TrustedCaCertsDir)
-	if err != nil {
-		return nil, errors.Wrap(err, "Could not create the hvsclient factory")
-	}
+	switch setupCmd {
+	case DefaultSetupCommand, ProvisionAttestationIdentityKeyCommand, ProvisionAttestationCommand,
+		DownloadPrivacyCACommand, CreateHostCommand, CreateHostUniqueFlavorCommand, GetConfiguredManifestCommand:
+		vsClientFactory, err = hvsclient.NewVSClientFactory(cfg.HVS.Url, util.GetBearerToken(),
+			constants.TrustedCaCertsDir)
+		if err != nil {
+			return nil, errors.Wrap(err, "Could not create the hvsclient factory")
+		}
+		fallthrough
 
-	tpmFactory, err := tpmprovider.NewTpmFactory()
-	if err != nil {
-		return nil, errors.Wrap(err, "Could not create tpm factory")
+	case TakeOwnershipCommand, ProvisionPrimaryKeyCommand:
+		switch setupCmd {
+		case DefaultSetupCommand, ProvisionAttestationIdentityKeyCommand, ProvisionAttestationCommand,
+			TakeOwnershipCommand, ProvisionPrimaryKeyCommand:
+			tpmFactory, err = tpmprovider.NewTpmFactory()
+			if err != nil {
+				return nil, errors.Wrap(err, "Could not create tpm factory")
+			}
+		}
 	}
 
 	takeOwnership := TakeOwnership{

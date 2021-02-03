@@ -19,9 +19,9 @@ import (
 	"intel/isecl/go-trust-agent/v3/resource"
 	_ "intel/isecl/go-trust-agent/v3/swagger/docs"
 	"intel/isecl/go-trust-agent/v3/tasks"
-	"intel/isecl/lib/tpmprovider/v3"
 	"intel/isecl/go-trust-agent/v3/util"
 	"intel/isecl/lib/platform-info/v3/platforminfo"
+	"intel/isecl/lib/tpmprovider/v3"
 	"os"
 	"os/exec"
 	"os/user"
@@ -32,8 +32,8 @@ import (
 
 	commonExec "github.com/intel-secl/intel-secl/v3/pkg/lib/common/exec"
 	commLog "github.com/intel-secl/intel-secl/v3/pkg/lib/common/log"
-	"github.com/intel-secl/intel-secl/v3/pkg/lib/common/validation"
 	"github.com/intel-secl/intel-secl/v3/pkg/lib/common/log/message"
+	"github.com/intel-secl/intel-secl/v3/pkg/lib/common/validation"
 	"github.com/pkg/errors"
 )
 
@@ -511,7 +511,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error loading environment variables\n %v \n\n", err)
 		}
 
-		registry, err := tasks.CreateTaskRegistry(cfg)
+		registry, err := tasks.CreateTaskRegistry(setupCommand, cfg)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error while creating task registry \n Error: %s\n", err.Error())
 			log.Errorf("main:main() Error while creating task registry %+v", err)
