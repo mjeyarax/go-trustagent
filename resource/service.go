@@ -254,7 +254,7 @@ func fnGetJwtCerts() error {
 
 	aasURL := cfg.AAS.BaseURL
 
-	url := aasURL + "noauth/jwt-certificates"
+	url := aasURL + "jwt-certificates"
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Add("accept", "application/x-pem-file")
 	secLog.Debugf("resource/service::fnGetJwtCerts() Connecting to AAS Endpoint %s", url)
