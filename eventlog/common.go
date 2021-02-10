@@ -56,6 +56,7 @@ const (
 	Event800000E0 = 0x800000E0
 	Event00000007 = 0x00000007
 	Event00000001 = 0x00000001
+	Event00000003 = 0x00000003
 	Event00000005 = 0x00000005
 	Event0000000A = 0x0000000A
 	Event0000000C = 0x0000000C
@@ -460,6 +461,23 @@ func getEventTag(eventType uint32, eventData []byte, eventSize uint32, pcrIndex 
 				return nil, nil
 			}
 			return []string{tagName[:nullIndex]}, nil
+		}
+		return []string{tagName}, nil
+	}
+	//Handling EV_NO_ACTION Event. If this Event has the event data as StartupLocality followed by 3, the tag should be "StartupLocality3"
+	//Event data has StartupLocality followed by 0, then the tag should be "StartupLocality0"
+	if eventType == Event00000003 {
+		buf := bytes.NewBuffer(eventData)
+		noAction := buf.Next(int(eventSize))
+		tagName := fmt.Sprintf("%s", noAction)
+		//In some cases Event data may have extra bytes along with descriptive string followed by null char. So need to display only the string till null char.
+		if strings.Contains(tagName, NullUnicodePoint) {
+			nullIndex := strings.Index(tagName, NullUnicodePoint)
+			if nullIndex == 0 {
+				return nil, nil
+			}
+			tagName = fmt.Sprintf("%s%d", tagName[:nullIndex], tagName[nullIndex+1])
+			return []string{tagName}, nil
 		}
 		return []string{tagName}, nil
 	}
