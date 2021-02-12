@@ -20,7 +20,6 @@ func Test_getTxtEventLog(t *testing.T) {
 		want    []PcrEventLog
 		wantErr bool
 	}{
-		// TODO: Add test cases.
 		{
 			name: "Positive test case",
 			args: args{

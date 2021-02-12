@@ -21,7 +21,6 @@ func TestEventLogFiles_GetEventLogs(t *testing.T) {
 		want    []PcrEventLog
 		wantErr bool
 	}{
-		// TODO: Add test cases.
 		{
 			name: "Test Case",
 			fields: fields{
@@ -59,7 +58,6 @@ func TestNewEventLogParser(t *testing.T) {
 		args args
 		want EventLogParser
 	}{
-		// TODO: Add test cases.
 		{
 			name: "Test Case",
 			args: args{
