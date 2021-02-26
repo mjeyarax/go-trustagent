@@ -29,7 +29,6 @@ import (
 	"github.com/intel-secl/intel-secl/v3/pkg/lib/common/log/message"
 	"github.com/intel-secl/intel-secl/v3/pkg/lib/common/middleware"
 	ct "github.com/intel-secl/intel-secl/v3/pkg/model/aas"
-	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 )
 
@@ -226,7 +225,7 @@ func errorHandler(eh endpointHandler) http.HandlerFunc {
 	defer log.Trace("resource/service:errorHandler() Leaving")
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := eh(w, r); err != nil {
-			if gorm.IsRecordNotFoundError(err) {
+			if strings.TrimSpace(strings.ToLower(err.Error())) == "record not found" {
 				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			}

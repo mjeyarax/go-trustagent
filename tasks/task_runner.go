@@ -18,13 +18,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// The TaskRegistry is used to aggregate commands into logical groups
-// that can be invoked at once (in specific order).
-type TaskRegistry struct {
-	taskMap map[string][]setup.Task
-	cfg     *config.TrustAgentConfiguration
-}
-
 const (
 	DefaultSetupCommand                    = "all"
 	DownloadRootCACertCommand              = "download-ca-cert"
@@ -43,19 +36,18 @@ const (
 var log = commLog.GetDefaultLogger()
 var secLog = commLog.GetSecurityLogger()
 
-func CreateTaskRegistry(setupCmd string, cfg *config.TrustAgentConfiguration) (*TaskRegistry, error) {
+func CreateTaskRunner(setupCmd string, cfg *config.TrustAgentConfiguration) (*setup.Runner, error) {
+	log.Trace("tasks/task_runner:CreateTaskRunner() Entering")
+	defer log.Trace("tasks/task_runner:CreateTaskRunner() Leaving")
 
-	var registry TaskRegistry
 	var vsClientFactory hvsclient.HVSClientFactory
 	var tpmFactory tpmprovider.TpmFactory
 	var err error
+	var runner setup.Runner
 
 	if cfg == nil {
 		return nil, errors.New("The cfg parameter was not provided")
 	}
-
-	registry.cfg = cfg
-	registry.taskMap = make(map[string][]setup.Task)
 
 	switch setupCmd {
 	case DefaultSetupCommand, ProvisionAttestationIdentityKeyCommand, ProvisionAttestationCommand,
@@ -78,12 +70,12 @@ func CreateTaskRegistry(setupCmd string, cfg *config.TrustAgentConfiguration) (*
 		}
 	}
 
-	takeOwnership := TakeOwnership{
+	takeOwnershipTask := &TakeOwnership{
 		tpmFactory:     tpmFactory,
 		ownerSecretKey: &cfg.Tpm.OwnerSecretKey,
 	}
 
-	downloadRootCACert := setup.Download_Ca_Cert{
+	downloadRootCACertTask := &setup.Download_Ca_Cert{
 		Flags:                []string{"--force"}, // to be consistent with other GTA tasks, always force update
 		CmsBaseURL:           cfg.CMS.BaseURL,
 		CaCertDirPath:        constants.TrustedCaCertsDir,
@@ -91,7 +83,7 @@ func CreateTaskRegistry(setupCmd string, cfg *config.TrustAgentConfiguration) (*
 		ConsoleWriter:        os.Stdout,
 	}
 
-	downloadTLSCert := setup.Download_Cert{
+	downloadTLSCertTask := &setup.Download_Cert{
 		Flags:              []string{"--force"}, // to be consistent with other GTA tasks, always force update
 		KeyFile:            constants.TLSKeyFilePath,
 		CertFile:           constants.TLSCertFilePath,
@@ -108,94 +100,78 @@ func CreateTaskRegistry(setupCmd string, cfg *config.TrustAgentConfiguration) (*
 		ConsoleWriter: os.Stdout,
 	}
 
-	provisionAttestationIdentityKey := ProvisionAttestationIdentityKey{
+	provisionAttestationIdentityKeyTask := &ProvisionAttestationIdentityKey{
 		clientFactory:  vsClientFactory,
 		tpmFactory:     tpmFactory,
 		ownerSecretKey: &cfg.Tpm.OwnerSecretKey,
 		aikSecretKey:   &cfg.Tpm.AikSecretKey,
 	}
 
-	downloadPrivacyCA := DownloadPrivacyCA{
+	downloadPrivacyCATask := &DownloadPrivacyCA{
 		clientFactory: vsClientFactory,
 	}
 
-	provisionPrimaryKey := ProvisionPrimaryKey{
+	provisionPrimaryKeyTask := &ProvisionPrimaryKey{
 		tpmFactory:     tpmFactory,
 		ownerSecretKey: &cfg.Tpm.OwnerSecretKey,
 	}
 
-	registry.taskMap[TakeOwnershipCommand] = []setup.Task{&takeOwnership}
-	registry.taskMap[DownloadRootCACertCommand] = []setup.Task{&downloadRootCACert}
-	registry.taskMap[DownloadCertCommand] = []setup.Task{&downloadTLSCert}
-	registry.taskMap[ProvisionAttestationIdentityKeyCommand] = []setup.Task{&provisionAttestationIdentityKey}
-	registry.taskMap[DownloadPrivacyCACommand] = []setup.Task{&downloadPrivacyCA}
-	registry.taskMap[ProvisionPrimaryKeyCommand] = []setup.Task{&provisionPrimaryKey}
-
-	registry.taskMap[ProvisionAttestationCommand] = []setup.Task{
-		&downloadPrivacyCA,
-		&takeOwnership,
-		&provisionAttestationIdentityKey,
-		&provisionPrimaryKey,
+	createHostUniqueFlavorTask := &CreateHostUniqueFlavor{
+		clientFactory:  vsClientFactory,
+		trustAgentPort: cfg.WebService.Port,
 	}
 
-	registry.taskMap[UpdateCertificatesCommand] = []setup.Task{
-		&downloadRootCACert,
-		&downloadTLSCert,
+	getConfiguredManifestTask := &GetConfiguredManifest{
+		clientFactory: vsClientFactory,
 	}
 
-	registry.taskMap[DefaultSetupCommand] = []setup.Task{
-		&downloadRootCACert,
-		&downloadTLSCert,
-		&downloadPrivacyCA,
-		&takeOwnership,
-		&provisionAttestationIdentityKey,
-		&provisionPrimaryKey,
+	createHostTask := &CreateHost{
+		clientFactory:  vsClientFactory,
+		trustAgentPort: cfg.WebService.Port,
 	}
 
-	// these are individual commands that are not included in default setup tasks
+	switch setupCmd {
+	case ProvisionAttestationCommand:
+		runner.Tasks = append(runner.Tasks, []setup.Task{downloadPrivacyCATask, takeOwnershipTask,
+			provisionAttestationIdentityKeyTask, provisionPrimaryKeyTask}...)
 
-	registry.taskMap[CreateHostCommand] = []setup.Task{
-		&CreateHost{
-			clientFactory:  vsClientFactory,
-			trustAgentPort: cfg.WebService.Port,
-		},
+	case UpdateCertificatesCommand:
+		runner.Tasks = append(runner.Tasks, []setup.Task{downloadRootCACertTask, downloadTLSCertTask}...)
+
+	case CreateHostCommand:
+		runner.Tasks = append(runner.Tasks, createHostTask)
+
+	case CreateHostUniqueFlavorCommand:
+		runner.Tasks = append(runner.Tasks, createHostUniqueFlavorTask)
+
+	case GetConfiguredManifestCommand:
+		runner.Tasks = append(runner.Tasks, getConfiguredManifestTask)
+
+	case DefaultSetupCommand:
+		runner.Tasks = append(runner.Tasks, []setup.Task{downloadRootCACertTask, downloadTLSCertTask,
+			downloadPrivacyCATask, takeOwnershipTask, provisionAttestationIdentityKeyTask, provisionPrimaryKeyTask}...)
+
+	case DownloadRootCACertCommand:
+		runner.Tasks = append(runner.Tasks, downloadRootCACertTask)
+
+	case DownloadCertCommand:
+		runner.Tasks = append(runner.Tasks, downloadTLSCertTask)
+
+	case DownloadPrivacyCACommand:
+		runner.Tasks = append(runner.Tasks, downloadPrivacyCATask)
+
+	case TakeOwnershipCommand:
+		runner.Tasks = append(runner.Tasks, takeOwnershipTask)
+
+	case ProvisionAttestationIdentityKeyCommand:
+		runner.Tasks = append(runner.Tasks, provisionAttestationIdentityKeyTask)
+
+	case ProvisionPrimaryKeyCommand:
+		runner.Tasks = append(runner.Tasks, provisionPrimaryKeyTask)
+
+	default:
+		return nil, errors.New("Invalid setup command")
 	}
 
-	registry.taskMap[CreateHostUniqueFlavorCommand] = []setup.Task{
-		&CreateHostUniqueFlavor{
-			clientFactory:  vsClientFactory,
-			trustAgentPort: cfg.WebService.Port,
-		},
-	}
-
-	registry.taskMap[GetConfiguredManifestCommand] = []setup.Task{
-		&GetConfiguredManifest{
-			clientFactory: vsClientFactory,
-		},
-	}
-
-	return &registry, nil
-}
-
-func (registry *TaskRegistry) RunCommand(command string) error {
-	tasks, ok := registry.taskMap[command]
-	if !ok {
-		return errors.New("Command '" + command + "' is not a valid setup option")
-	}
-
-	setupRunner := &setup.Runner{
-		Tasks:    tasks,
-		AskInput: false,
-	}
-
-	err := setupRunner.RunTasks()
-	if err != nil {
-		return err
-	}
-	err = registry.cfg.Save() // always update the cofig.yaml regardless of error (so TPM owner/aik are persisted)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return &runner, nil
 }

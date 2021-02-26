@@ -511,17 +511,24 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error loading environment variables\n %v \n\n", err)
 		}
 
-		registry, err := tasks.CreateTaskRegistry(setupCommand, cfg)
+		runner, err := tasks.CreateTaskRunner(setupCommand, cfg)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error while creating task registry \n Error: %s\n", err.Error())
-			log.Errorf("main:main() Error while creating task registry %+v", err)
+			fmt.Fprintf(os.Stderr, "Error while creating task runner \n Error: %s\n", err.Error())
+			log.Errorf("main:main() Error while creating task runner %+v", err)
 			os.Exit(1)
 		}
 
-		err = registry.RunCommand(setupCommand)
+		err = runner.RunTasks()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error while running setup Command %s, \n Error: %s\n ", setupCommand, err.Error())
 			log.Errorf("main:main() Error while running setup Command %s, %+v", setupCommand, err)
+			os.Exit(1)
+		}
+		// always update the cofig.yaml regardless of error (so TPM owner/aik are persisted)
+		err = cfg.Save()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error while saving configuration, \n Error: %s\n ", err.Error())
+			log.Errorf("main:main() Error while saving configuration, %+v", err)
 			os.Exit(1)
 		}
 

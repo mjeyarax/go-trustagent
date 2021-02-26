@@ -6,7 +6,6 @@ require (
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/intel-secl/intel-secl/v3 v3.5.0
-	github.com/jinzhu/gorm v1.9.15
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.6.1

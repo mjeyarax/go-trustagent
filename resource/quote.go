@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
+	"github.com/intel-secl/intel-secl/v3/pkg/lib/host-connector/types"
 	"intel/isecl/go-trust-agent/v3/config"
 	"intel/isecl/go-trust-agent/v3/constants"
 	"intel/isecl/lib/tpmprovider/v3"
@@ -151,9 +152,15 @@ func (ctx *TpmQuoteContext) readAikAsBase64() error {
 	return nil
 }
 
-func (ctx *TpmQuoteContext) readEventLog() error {
+func (ctx *TpmQuoteContext) readEventLog(pcrBanks []string) error {
 	log.Trace("resource/quote:readEventLog() Entering")
 	defer log.Trace("resource/quote:readEventLog() Leaving")
+
+	// create map of active pcrbanks
+	activePcrBanks := make(map[string]bool, len(pcrBanks))
+	for _, pb := range pcrBanks {
+		activePcrBanks[pb] = true
+	}
 
 	if _, err := os.Stat(constants.MeasureLogFilePath); os.IsNotExist(err) {
 		log.Debugf("esource/quote:readEventLog() Event log file '%s' was not present", constants.MeasureLogFilePath)
@@ -165,10 +172,29 @@ func (ctx *TpmQuoteContext) readEventLog() error {
 		return errors.Wrapf(err, "resource/quote:readEventLog() Error reading file: %s", constants.MeasureLogFilePath)
 	}
 
+	var xmlEventLog types.MeasureLog
 	// make sure the bytes are valid xml
-	err = xml.Unmarshal(eventLogBytes, new(interface{}))
+	err = xml.Unmarshal(eventLogBytes, &xmlEventLog)
 	if err != nil {
 		return errors.Wrap(err, "resource/quote:readEventLog() Error while unmarshalling event log")
+	}
+
+	// ISECL-12121: strip out the event logs for the inactive PCR banks
+	var newmodule []types.Module
+	for i, eLog := range newmodule {
+		if _, ok := activePcrBanks[eLog.PcrBank]; ok {
+			newmodule = append(newmodule, eLog)
+		} else {
+			log.Infof("resource/quote:readEventLog() Dropping event log for inactive PCR bank %s "+
+				"at index %d", eLog.PcrBank, i)
+		}
+	}
+	xmlEventLog.Txt.Modules.Module = newmodule
+
+	// marshal the cleaned up log structure
+	eventLogBytes, err = xml.Marshal(xmlEventLog)
+	if err != nil {
+		return errors.Wrap(err, "resource/quote:readEventLog() Error while marshalling event log after cleanup")
 	}
 
 	// this was needed to avoid an error in HVS parsing...
@@ -191,7 +217,6 @@ func (ctx *TpmQuoteContext) getQuote(tpmQuoteRequest *TpmQuoteRequest) error {
 	}
 
 	log.Debugf("resource/quote:getQuote() Providing tpm nonce value '%s', raw[%s]", base64.StdEncoding.EncodeToString(nonce), hex.EncodeToString(nonce))
-
 	quoteBytes, err := ctx.tpm.GetTpmQuote(ctx.cfg.Tpm.AikSecretKey, nonce, tpmQuoteRequest.PcrBanks, tpmQuoteRequest.Pcrs)
 	if err != nil {
 		return err
@@ -282,7 +307,7 @@ func (ctx *TpmQuoteContext) createTpmQuote(tpmQuoteRequest *TpmQuoteRequest) err
 	}
 
 	// eventlog: read /opt/trustagent/var/measureLog.xml (created during ) --> needs to integrate with module_analysis.sh
-	err = ctx.readEventLog()
+	err = ctx.readEventLog(tpmQuoteRequest.PcrBanks)
 	if err != nil {
 		return errors.Wrap(err, "resource/quote:createTpmQuote() Error while reading event log")
 	}
@@ -348,6 +373,19 @@ func getTpmQuote(cfg *config.TrustAgentConfiguration, tpmFactory tpmprovider.Tpm
 		if len(tpmQuoteRequest.Nonce) == 0 {
 			seclog.Errorf("resource/quote:getTpmQuote() %s - The TpmQuoteRequest does not contain a nonce", message.InvalidInputProtocolViolation)
 			return &endpointError{Message: "The TpmQuoteRequest does not contain a nonce", StatusCode: http.StatusBadRequest}
+		}
+
+		// ISECL-12121: strip inactive PCR Banks from the request
+		for i, pcrBank := range tpmQuoteRequest.PcrBanks {
+			isActive, err := tpm.IsPcrBankActive(pcrBank)
+			if !isActive {
+				log.Infof("resource/quote:getQuote() %s PCR bank is inactive. Dropping from quote request. %s",
+					pcrBank, err.Error())
+				tpmQuoteRequest.PcrBanks = append(tpmQuoteRequest.PcrBanks[:i], tpmQuoteRequest.PcrBanks[i+1:]...)
+			} else if err != nil {
+				log.WithError(err).Errorf("resource/quote:getQuote() Error while determining PCR bank "+
+					"%s state: %s", pcrBank, err.Error())
+			}
 		}
 
 		err = ctx.createTpmQuote(&tpmQuoteRequest)
