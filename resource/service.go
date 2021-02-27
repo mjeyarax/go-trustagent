@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -75,7 +76,6 @@ func (e endpointError) Error() string {
 }
 
 var cacheTime, _ = time.ParseDuration(constants.JWTCertsCacheTime)
-var clog = commLog.GetDefaultLogger()
 var seclog = commLog.GetSecurityLogger()
 
 func CreateTrustAgentService(config *config.TrustAgentConfiguration, tpmFactory tpmprovider.TpmFactory) (*TrustAgentService, error) {
