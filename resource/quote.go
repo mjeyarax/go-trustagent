@@ -181,7 +181,7 @@ func (ctx *TpmQuoteContext) readEventLog(pcrBanks []string) error {
 
 	// ISECL-12121: strip out the event logs for the inactive PCR banks
 	var newmodule []types.Module
-	for i, eLog := range newmodule {
+	for i, eLog := range xmlEventLog.Txt.Modules.Module {
 		if _, ok := activePcrBanks[eLog.PcrBank]; ok {
 			newmodule = append(newmodule, eLog)
 		} else {
