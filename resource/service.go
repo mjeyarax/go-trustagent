@@ -95,7 +95,7 @@ func CreateTrustAgentService(config *config.TrustAgentConfiguration, tpmFactory 
 	// ISECL-8715 - Prevent potential open redirects to external URLs
 	trustAgentService.router.SkipClean(true)
 
-	noAuthRouter := trustAgentService.router.PathPrefix("").Subrouter()
+	noAuthRouter := trustAgentService.router.PathPrefix("/v2/").Subrouter()
 	noAuthRouter.HandleFunc("/version", errorHandler(getVersion())).Methods("GET")
 	authRouter := trustAgentService.router.PathPrefix("/v2/").Subrouter()
 	authRouter.Use(middleware.NewTokenAuth(constants.TrustedJWTSigningCertsDir, constants.TrustedCaCertsDir, fnGetJwtCerts, cacheTime))

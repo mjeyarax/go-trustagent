@@ -19,7 +19,7 @@ package docs
 //     description: Successfully retrieved the version.
 //     content: text/plain
 //
-// x-sample-call-endpoint: https://trustagent.server.com:1443/version
+// x-sample-call-endpoint: https://trustagent.server.com:1443/v2/version
 // x-sample-call-output: |
 //   Service Name: Trust Agent
 //   Version: v3.4.0-0f0162ea
