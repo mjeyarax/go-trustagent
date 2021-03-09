@@ -79,7 +79,6 @@ TRUSTAGENT_LOG_DIR=/var/log/trustagent
 TRUSTAGENT_CFG_DIR=$TRUSTAGENT_HOME/configuration
 TRUSTAGENT_VAR_DIR=$TRUSTAGENT_HOME/var/
 TRUSTAGENT_YUM_PACKAGES="tpm2-tss-2.0.0-4.el8.x86_64 tpm2-abrmd-2.1.1-3.el8.x86_64 dmidecode compat-openssl10 logrotate redhat-lsb-core"
-TBOOT_DEPENDENCY="tboot-1.9.*"
 TPM2_ABRMD_SERVICE=tpm2-abrmd.service
 
 #--------------------------------------------------------------------------------------------------
@@ -97,30 +96,6 @@ systemctl status $TRUSTAGENT_SERVICE 2>&1 >/dev/null
 if [ $? -eq 0 ]; then
     echo_failure "Please stop the tagent service before running the installer"
     exit 1
-fi
-
-# if secure efi is not enabled, require tboot has been installed.  Note: This must
-# be done manually until RHEL 8.3 (a manual patch is required).
-bootctl status 2> /dev/null | grep 'Secure Boot: disabled' > /dev/null
-if [ $? -eq 0 ]; then
-    SUEFI_ENABLED="false"
-    
-    rpm -qa | grep ${TBOOT_DEPENDENCY} >/dev/null
-    if [ $? -ne 0 ]; then
-      echo_failure "tboot must be installed on non SUEFI systems."
-      exit 1
-    fi
-fi
-
-# if suefi is enabled, tboot should not be installed
-# exit with error when such scenario is detected
-bootctl status 2> /dev/null | grep 'Secure Boot: enabled' > /dev/null
-if [ $? -eq 0 ]; then
-  rpm -qa | grep ${TBOOT_DEPENDENCY} >/dev/null
-  if [ $? -eq 0 ]; then
-    echo_failure "tagent cannot be installed on a system with both tboot and secure-boot enabled"
-    exit 1
-  fi
 fi
 
 install_packages() {

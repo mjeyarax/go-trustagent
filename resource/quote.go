@@ -170,7 +170,7 @@ func (ctx *TpmQuoteContext) readEventLog() error {
 		return errors.Wrap(err, "resource/quote:readEventLog() Error while unmarshalling event log")
 	}
 
-	eventLog := base64.StdEncoding.EncodeToString(eventLogBytes)
+	eventLog := string(eventLogBytes)
 	ctx.tpmQuoteResponse.EventLog = &eventLog
 	return nil
 }
