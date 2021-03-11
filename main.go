@@ -212,7 +212,17 @@ func updateMeasureLog() error {
 }
 
 func printVersion() {
-	fmt.Printf(util.GetVersion())
+	versionInfo, err := util.GetVersionInfo()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error while getting version info: %v \n", err)
+		os.Exit(1)
+	}
+
+	if len(os.Args) > 2 && os.Args[2] == "short" {
+		fmt.Printf("%d.%d\n", versionInfo.Major, versionInfo.Minor)
+	} else {
+		fmt.Printf(util.GetVersion())
+	}
 }
 
 func uninstall() error {
