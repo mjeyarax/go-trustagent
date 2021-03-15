@@ -18,7 +18,7 @@ func getVersion() endpointHandler {
 
 		httpWriter.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 		log.Debugf("resource/version:getVersion() Trust Agent Version:\n %s", util.GetVersion())
-		httpWriter.Header().Set("Content-Type", "application/json")
+		httpWriter.Header().Set("Content-Type", "text/plain")
 		httpWriter.WriteHeader(http.StatusOK)
 		_, _ = bytes.NewBuffer([]byte(util.GetVersion())).WriteTo(httpWriter)
 		return nil
